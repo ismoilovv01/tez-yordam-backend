@@ -9,17 +9,12 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:3001',
-  'http://localhost:3002',
-  'http://localhost:3003',
-  'http://localhost:3004',
-  process.env.FRONTEND_URL
-];
+// Required for Railway / reverse proxy
+app.set('trust proxy', 1);
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
+  origin: '*',
+  credentials: false,
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -449,7 +444,6 @@ app.patch('/api/emergencies/:id/reject', authenticateToken, async (req, res) => 
   }
 });
 
-// PATCH /api/emergencies/:id/cancel - Caller cancels their own request
 app.patch('/api/emergencies/:id/cancel', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -464,7 +458,6 @@ app.patch('/api/emergencies/:id/cancel', authenticateToken, async (req, res) => 
   }
 });
 
-// PATCH /api/driver/cancel/:callId - Driver cancels assigned call
 app.patch('/api/driver/cancel/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
@@ -595,8 +588,6 @@ app.get('/health', (req, res) => {
 // DRIVER APP ENDPOINTS
 // =====================================================
 
-// GET /api/driver/assigned-call
-// Returns the active emergency assigned to this driver's ambulance
 app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   try {
     const ambulanceResult = await pool.query(
@@ -629,8 +620,6 @@ app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   }
 });
 
-// PATCH /api/driver/location
-// Updates ambulance GPS coordinates (called every 10 seconds by LocationTracker)
 app.patch('/api/driver/location', authenticateToken, async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
@@ -659,8 +648,6 @@ app.patch('/api/driver/location', authenticateToken, async (req, res) => {
   }
 });
 
-// PATCH /api/driver/arrived/:callId
-// Driver marks themselves as arrived at patient location
 app.patch('/api/driver/arrived/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
@@ -697,8 +684,6 @@ app.patch('/api/driver/arrived/:callId', authenticateToken, async (req, res) => 
   }
 });
 
-// PATCH /api/driver/start/:callId
-// Driver starts driving to patient
 app.patch('/api/driver/start/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
@@ -717,8 +702,6 @@ app.patch('/api/driver/start/:callId', authenticateToken, async (req, res) => {
   }
 });
 
-// PATCH /api/driver/complete/:callId
-// Driver marks call as completed
 app.patch('/api/driver/complete/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
@@ -755,8 +738,6 @@ app.patch('/api/driver/complete/:callId', authenticateToken, async (req, res) =>
   }
 });
 
-// GET /api/driver/call-history
-// Returns all past emergencies assigned to this driver's ambulance
 app.get('/api/driver/call-history', authenticateToken, async (req, res) => {
   try {
     const ambulanceResult = await pool.query(
@@ -787,8 +768,6 @@ app.get('/api/driver/call-history', authenticateToken, async (req, res) => {
   }
 });
 
-// GET /api/driver/available-calls
-// Returns all confirmed emergencies visible to drivers (not yet accepted by a driver)
 app.get('/api/driver/available-calls', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -806,8 +785,6 @@ app.get('/api/driver/available-calls', authenticateToken, async (req, res) => {
   }
 });
 
-// POST /api/driver/accept-call/:callId
-// Driver accepts an available call — assigns their ambulance to it
 app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) => {
   try {
     const { callId } = req.params;
@@ -823,7 +800,6 @@ app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) 
 
     const ambulanceId = ambulanceResult.rows[0].id;
 
-    // Make sure it is still in confirmed status (not already accepted by another driver)
     const checkResult = await pool.query(
       "SELECT id FROM emergencies WHERE id = $1 AND status = 'confirmed'",
       [callId]
