@@ -493,3 +493,47 @@ app.listen(PORT, () => {
   console.log(`Emergency dispatch backend running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
+
+// ── FIREBASE AUTH ─────────────────────────────────────────────────────────
+
+app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
+  try {
+    const { phone, firebase_verified, first_name, last_name } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Phone required' });
+    if (!firebase_verified) return res.status(400).json({ error: 'Firebase verification required' });
+    if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number' });
+
+    let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    let user;
+
+    if (!userResult.rows.length) {
+      if (!first_name || !last_name) {
+        return res.status(200).json({ success: true, requires_profile: true });
+      }
+      const created = await pool.query(
+        'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, phone, user_type, dispatch_center_id, first_name, last_name',
+        [phone, 'caller', first_name.trim(), last_name.trim()]
+      );
+      user = created.rows[0];
+    } else {
+      user = userResult.rows[0];
+      if (first_name && last_name) {
+        await pool.query(
+          'UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3',
+          [first_name.trim(), last_name.trim(), user.id]
+        );
+        user.first_name = first_name.trim();
+        user.last_name  = last_name.trim();
+      }
+    }
+
+    const token = generateToken(user.id);
+    res.json({
+      success: true, token,
+      user: { id: user.id, phone: user.phone, user_type: user.user_type, dispatch_center_id: user.dispatch_center_id, first_name: user.first_name, last_name: user.last_name }
+    });
+  } catch (err) {
+    console.error('Firebase verify error:', err);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
