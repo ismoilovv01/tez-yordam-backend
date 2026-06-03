@@ -6,21 +6,27 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const rateLimit = require('express-rate-limit');
-const admin = require('firebase-admin');
+
+let admin;
+try {
+  admin = require('firebase-admin');
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+    console.log('Firebase Admin initialized successfully');
+  }
+} catch (err) {
+  console.error('Firebase Admin init error:', err.message);
+  admin = null;
+}
 
 const app = express();
 app.set('trust proxy', 1);
-
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  });
-}
 
 app.use(cors({
   origin: '*',
@@ -90,64 +96,20 @@ async function checkRole(req, res, next) {
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 
-// Send SMS via Firebase Admin
 app.post('/api/auth/send-code', authLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number format' });
-
     const code = generateVerificationCode();
     const codeHash = await hashCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60000);
-
     await pool.query(
       'INSERT INTO verification_codes (phone, code, code_hash, expires_at) VALUES ($1, $2, $3, $4)',
       [phone, code, codeHash, expiresAt]
     );
-
-    // Send SMS via Firebase Admin
-    try {
-      await admin.auth().createCustomToken(phone); // validates phone exists in Firebase
-    } catch {}
-
-    // Use Firebase Admin to send SMS
-    // Firebase Admin doesn't have direct SMS sending - we use the phone number verification
-    // through creating a session cookie approach
-    // For now send via console and Firebase handles verification on client
     console.log(`Verification code for ${phone}: ${code}`);
-
-    // Actually send SMS using Firebase Auth REST API
-    const fetch = require('node-fetch').default || require('node-fetch');
-    const firebaseApiKey = process.env.FIREBASE_API_KEY || 'AIzaSyBmfC9YnDQ5J21q5p5FbZIKkEsWZGm81io';
-    
-    try {
-      const smsRes = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:sendVerificationCode?key=${firebaseApiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phoneNumber: phone,
-            recaptchaToken: 'testing-bypass',
-          }),
-        }
-      );
-      const smsData = await smsRes.json();
-      if (smsData.sessionInfo) {
-        // Store session info for verification
-        await pool.query(
-          'UPDATE verification_codes SET code = $1 WHERE phone = $2 AND verified = FALSE ORDER BY created_at DESC LIMIT 1',
-          [smsData.sessionInfo, phone]
-        );
-        console.log(`Firebase SMS sent to ${phone}`);
-        return res.json({ success: true, message: 'SMS sent via Firebase' });
-      }
-    } catch (smsErr) {
-      console.log('Firebase SMS failed, using console code:', smsErr.message);
-    }
-
-    res.json({ success: true, message: 'Code sent. Check console for testing.' });
+    res.json({ success: true, message: 'Code sent.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send code' });
@@ -159,7 +121,6 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
     const { phone, code, first_name, last_name } = req.body;
     if (!phone || !code) return res.status(400).json({ error: 'Phone and code required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number' });
-
     const codeResult = await pool.query(
       'SELECT * FROM verification_codes WHERE phone = $1 AND verified = FALSE ORDER BY created_at DESC LIMIT 1',
       [phone]
@@ -170,10 +131,8 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
     const codeValid = await bcrypt.compare(code, record.code_hash);
     if (!codeValid) return res.status(400).json({ error: 'Invalid code' });
     await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
-
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
-
     if (!userResult.rows.length) {
       if (!first_name || !last_name) {
         return res.status(200).json({ success: true, requires_profile: true });
@@ -192,7 +151,6 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
         user.last_name = last_name.trim();
       }
     }
-
     const token = generateToken(user.id);
     res.json({
       success: true, token,
@@ -204,24 +162,19 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
   }
 });
 
-// Firebase Admin verify endpoint - verifies Firebase ID token
 app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
   try {
     const { phone, id_token, first_name, last_name } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone required' });
-
-    // Verify Firebase ID token if provided
-    if (id_token) {
+    if (id_token && admin) {
       try {
         await admin.auth().verifyIdToken(id_token);
       } catch (err) {
         return res.status(401).json({ error: 'Invalid Firebase token' });
       }
     }
-
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
-
     if (!userResult.rows.length) {
       if (!first_name || !last_name) {
         return res.status(200).json({ success: true, requires_profile: true });
@@ -240,7 +193,6 @@ app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
         user.last_name = last_name.trim();
       }
     }
-
     const token = generateToken(user.id);
     res.json({
       success: true, token,
@@ -254,10 +206,7 @@ app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
 
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
-    const r = await pool.query(
-      'SELECT id, phone, user_type, dispatch_center_id, first_name, last_name FROM users WHERE id = $1',
-      [req.userId]
-    );
+    const r = await pool.query('SELECT id, phone, user_type, dispatch_center_id, first_name, last_name FROM users WHERE id = $1', [req.userId]);
     if (!r.rows.length) return res.status(404).json({ error: 'User not found' });
     res.json(r.rows[0]);
   } catch (err) {
@@ -288,7 +237,7 @@ app.post('/api/emergencies', authenticateToken, async (req, res) => {
 
 app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers can view emergencies' });
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
     if (!req.dispatchCenterId) return res.status(403).json({ error: 'Dispatcher not assigned to a center' });
     const { status } = req.query;
     let query = `SELECT e.*, a.unit_number, a.driver_name, a.driver_phone,
@@ -329,9 +278,9 @@ app.get('/api/emergencies/:id', authenticateToken, async (req, res) => {
 
 app.patch('/api/emergencies/:id/confirm', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers can confirm' });
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
     const e = await pool.query('SELECT dispatch_center_id FROM emergencies WHERE id = $1', [req.params.id]);
-    if (!e.rows.length) return res.status(404).json({ error: 'Emergency not found' });
+    if (!e.rows.length) return res.status(404).json({ error: 'Not found' });
     if (e.rows[0].dispatch_center_id !== req.dispatchCenterId) return res.status(403).json({ error: 'No permission' });
     const result = await pool.query(
       'UPDATE emergencies SET status = $1, dispatcher_id = $2, confirmed_at = NOW() WHERE id = $3 RETURNING *',
@@ -350,7 +299,7 @@ app.patch('/api/emergencies/:id/reject', authenticateToken, async (req, res) => 
       "UPDATE emergencies SET status = 'cancelled', cancelled_by = 'dispatcher', rejected_at = NOW() WHERE id = $1 RETURNING *",
       [req.params.id]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Emergency not found' });
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -385,7 +334,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to assign ambulance' });
+    res.status(500).json({ error: 'Failed to assign' });
   }
 });
 
@@ -411,7 +360,7 @@ app.get('/api/ambulances/:id', authenticateToken, async (req, res) => {
       'SELECT id, unit_number, driver_name, latitude, longitude, last_location_update FROM ambulances WHERE id = $1',
       [req.params.id]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'Ambulance not found' });
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
