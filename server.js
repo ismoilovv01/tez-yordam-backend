@@ -204,6 +204,64 @@ app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
   }
 });
 
+// Email register
+app.post('/api/auth/email-register', authLimiter, async (req, res) => {
+  try {
+    const { email, password, first_name, last_name } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email va parol kerak' });
+    if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
+
+    // Validate password length
+    if (password.length < 8) return res.status(400).json({ error: "Parol kamida 8 ta belgidan iborat bo'lishi kerak" });
+
+    // Check if email already exists
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (existing.rows.length) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+
+    const password_hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (email, password_hash, first_name, last_name, user_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, first_name, last_name, user_type',
+      [email.toLowerCase(), password_hash, first_name.trim(), last_name.trim(), 'caller']
+    );
+    const user = result.rows[0];
+    const token = generateToken(user.id);
+    res.status(201).json({ success: true, token, user });
+  } catch (err) {
+    console.error('Email register error:', err);
+    res.status(500).json({ error: 'Server xatosi' });
+  }
+});
+
+// Email login
+app.post('/api/auth/email-login', authLimiter, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Email va parol kerak' });
+
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (!result.rows.length) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
+
+    const user = result.rows[0];
+    if (!user.password_hash) return res.status(400).json({ error: 'Bu hisob telefon raqam orqali ro\'yxatdan o\'tgan' });
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
+
+    const token = generateToken(user.id);
+    res.json({
+      success: true, token,
+      user: { id: user.id, email: user.email, first_name: user.first_name, last_name: user.last_name, user_type: user.user_type, dispatch_center_id: user.dispatch_center_id }
+    });
+  } catch (err) {
+    console.error('Email login error:', err);
+    res.status(500).json({ error: 'Server xatosi' });
+  }
+});
+
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT id, phone, user_type, dispatch_center_id, first_name, last_name FROM users WHERE id = $1', [req.userId]);
