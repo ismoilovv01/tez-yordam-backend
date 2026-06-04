@@ -131,6 +131,12 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
     const codeValid = await bcrypt.compare(code, record.code_hash);
     if (!codeValid) return res.status(400).json({ error: 'Invalid code' });
     await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
+
+    // skip_user_create: just verify OTP, don't create user (used for email registration flow)
+    if (req.body.skip_user_create) {
+      return res.json({ success: true, verified: true });
+    }
+
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userResult.rows.length) {
@@ -207,9 +213,10 @@ app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
 // Email register
 app.post('/api/auth/email-register', authLimiter, async (req, res) => {
   try {
-    const { email, password, first_name, last_name } = req.body;
+    const { email, password, first_name, last_name, phone } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email va parol kerak' });
     if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
+    if (!phone) return res.status(400).json({ error: 'Telefon raqam kerak' });
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -222,10 +229,17 @@ app.post('/api/auth/email-register', authLimiter, async (req, res) => {
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (existing.rows.length) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
 
+    // Check phone if provided
+    if (phone && !validatePhone(phone)) return res.status(400).json({ error: "Noto'g'ri telefon raqam" });
+    if (phone) {
+      const existingPhone = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
+      if (existingPhone.rows.length) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
+    }
+
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (email, password_hash, first_name, last_name, user_type) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, first_name, last_name, user_type',
-      [email.toLowerCase(), password_hash, first_name.trim(), last_name.trim(), 'caller']
+      'INSERT INTO users (email, password_hash, first_name, last_name, user_type, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, phone, first_name, last_name, user_type',
+      [email.toLowerCase(), password_hash, first_name.trim(), last_name.trim(), 'caller', phone || null]
     );
     const user = result.rows[0];
     const token = generateToken(user.id);
