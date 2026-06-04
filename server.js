@@ -384,6 +384,34 @@ app.get('/api/dispatch-centers', async (req, res) => {
   }
 });
 
+// Last emergency for home screen
+app.get('/api/emergencies/my/last', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [req.userId]
+    );
+    res.json(result.rows[0] || null);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Emergency history for notifications screen
+app.get('/api/emergencies/my/history', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // ── DRIVER ────────────────────────────────────────────────────────────────
