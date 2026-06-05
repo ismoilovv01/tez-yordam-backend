@@ -13,9 +13,9 @@ try {
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        project_id: process.env.FIREBASE_PROJECT_ID,
+        client_email: process.env.FIREBASE_CLIENT_EMAIL,
+        private_key: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
       }),
     });
     console.log('Firebase Admin initialized successfully');
@@ -130,25 +130,30 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
     if (new Date() > new Date(record.expires_at)) return res.status(400).json({ error: 'Code expired' });
     const codeValid = await bcrypt.compare(code, record.code_hash);
     if (!codeValid) return res.status(400).json({ error: 'Invalid code' });
-    await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
 
     // skip_user_create: just verify OTP, don't create user (used for email registration flow)
     if (req.body.skip_user_create) {
+      await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
       return res.json({ success: true, verified: true });
     }
 
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userResult.rows.length) {
+      // New user — don't mark OTP verified yet, ask for profile first
       if (!first_name || !last_name) {
         return res.status(200).json({ success: true, requires_profile: true });
       }
+      // Has name — mark verified and create user
+      await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, phone, user_type, dispatch_center_id, first_name, last_name',
         [phone, 'caller', first_name.trim(), last_name.trim()]
       );
       user = created.rows[0];
     } else {
+      // Existing user — mark verified
+      await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
       user = userResult.rows[0];
       if (first_name && last_name) {
         await pool.query('UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3',
@@ -217,25 +222,16 @@ app.post('/api/auth/email-register', authLimiter, async (req, res) => {
     if (!email || !password) return res.status(400).json({ error: 'Email va parol kerak' });
     if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
     if (!phone) return res.status(400).json({ error: 'Telefon raqam kerak' });
-
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
-
-    // Validate password length
     if (password.length < 8) return res.status(400).json({ error: "Parol kamida 8 ta belgidan iborat bo'lishi kerak" });
-
-    // Check if email already exists
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
     if (existing.rows.length) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
-
-    // Check phone if provided
     if (phone && !validatePhone(phone)) return res.status(400).json({ error: "Noto'g'ri telefon raqam" });
     if (phone) {
       const existingPhone = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
       if (existingPhone.rows.length) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
     }
-
     const password_hash = await bcrypt.hash(password, 10);
     const result = await pool.query(
       'INSERT INTO users (email, password_hash, first_name, last_name, user_type, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, phone, first_name, last_name, user_type',
@@ -255,16 +251,12 @@ app.post('/api/auth/email-login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email va parol kerak' });
-
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
     if (!result.rows.length) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
-
     const user = result.rows[0];
     if (!user.password_hash) return res.status(400).json({ error: 'Bu hisob telefon raqam orqali ro\'yxatdan o\'tgan' });
-
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
-
     const token = generateToken(user.id);
     res.json({
       success: true, token,
@@ -280,7 +272,10 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT id, phone, user_type, dispatch_center_id, first_name, last_name FROM users WHERE id = $1', [req.userId]);
     if (!r.rows.length) return res.status(404).json({ error: 'User not found' });
-    res.json(r.rows[0]);
+    const countR = await pool.query('SELECT COUNT(*) as count FROM emergencies WHERE user_id = $1', [req.userId]);
+    const user = r.rows[0];
+    user.call_count = parseInt(countR.rows[0].count);
+    res.json(user);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to get user' });
@@ -314,7 +309,7 @@ app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
     const { status } = req.query;
     let query = `SELECT e.*, a.unit_number, a.driver_name, a.driver_phone,
                    u.phone as user_phone, u.first_name, u.last_name
-                   FROM emergencies e 
+                   FROM emergencies e
                    LEFT JOIN ambulances a ON e.assigned_ambulance_id = a.id
                    LEFT JOIN users u ON e.user_id = u.id
                    WHERE e.dispatch_center_id = $1`;
@@ -326,6 +321,32 @@ app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to get emergencies' });
+  }
+});
+
+app.get('/api/emergencies/my/last', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [req.userId]
+    );
+    res.json(result.rows[0] || null);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/emergencies/my/history', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -456,35 +477,104 @@ app.get('/api/dispatch-centers', async (req, res) => {
   }
 });
 
-// Last emergency for home screen
-app.get('/api/emergencies/my/last', authenticateToken, async (req, res) => {
+app.post('/api/admin/seed-dispatch-centers', authenticateToken, checkRole, async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
-      [req.userId]
-    );
-    res.json(result.rows[0] || null);
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    const centers = [
+      { name: 'Toshkent Tez Yordam Markazi', city: 'Toshkent', service_type: 'ambulance', phone: '+998712345678' },
+      { name: 'Toshkent Politsiya Boshqarmasi', city: 'Toshkent', service_type: 'police', phone: '+998712345679' },
+      { name: "Toshkent Yong'in Xavfsizligi", city: 'Toshkent', service_type: 'fire', phone: '+998712345680' },
+    ];
+    for (const center of centers) {
+      await pool.query(
+        `INSERT INTO dispatch_centers (name, city, service_type, phone)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (service_type, city) DO NOTHING`,
+        [center.name, center.city, center.service_type, center.phone]
+      );
+    }
+    res.json({ success: true, message: 'Dispatch centers seeded' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Emergency history for notifications screen
-app.get('/api/emergencies/my/history', authenticateToken, async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT id, status, created_at, service_type FROM emergencies WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
-      [req.userId]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Failed to seed dispatch centers' });
   }
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+
+// ── ADMIN ─────────────────────────────────────────────────────────────────
+
+app.get('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
+  try {
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!req.dispatchCenterId) return res.status(403).json({ error: 'No dispatch center assigned' });
+    const result = await pool.query(
+      `SELECT u.id, u.phone, u.email, u.first_name, u.last_name, u.user_type, u.dispatch_center_id,
+              a.id as ambulance_id, a.unit_number, a.driver_name, a.status as ambulance_status
+       FROM users u
+       LEFT JOIN ambulances a ON u.id = a.driver_user_id
+       WHERE u.user_type = 'driver' AND u.dispatch_center_id = $1
+       ORDER BY u.created_at DESC`,
+      [req.dispatchCenterId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to get drivers' });
+  }
+});
+
+app.post('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
+  try {
+    const { phone, email, password, first_name, last_name, unit_number, dispatch_center_id } = req.body;
+    if (!phone || !first_name || !last_name || !unit_number) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    const password_hash = await bcrypt.hash(password || '123456', 10);
+    const userResult = await pool.query(
+      'INSERT INTO users (phone, email, password_hash, first_name, last_name, user_type, dispatch_center_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [phone, email || null, password_hash, first_name, last_name, 'driver', dispatch_center_id || req.dispatchCenterId]
+    );
+    const userId = userResult.rows[0].id;
+    const ambulanceResult = await pool.query(
+      'INSERT INTO ambulances (unit_number, driver_name, driver_phone, driver_user_id, dispatch_center_id, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [unit_number, `${first_name} ${last_name}`, phone, userId, dispatch_center_id || req.dispatchCenterId, 'available']
+    );
+    res.status(201).json({ user: userResult.rows[0], ambulance: ambulanceResult.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to add driver' });
+  }
+});
+
+app.patch('/api/admin/drivers/:id/block', authenticateToken, checkRole, async (req, res) => {
+  try {
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    const { blocked } = req.body;
+    const result = await pool.query(
+      'UPDATE users SET blocked = $1 WHERE id = $2 AND user_type = $3 RETURNING *',
+      [blocked, req.params.id, 'driver']
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Driver not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update driver' });
+  }
+});
+
+app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, res) => {
+  try {
+    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    await pool.query('DELETE FROM ambulances WHERE driver_user_id = $1', [req.params.id]);
+    await pool.query('DELETE FROM users WHERE id = $1 AND user_type = $2', [req.params.id, 'driver']);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to remove driver' });
+  }
+});
 
 // ── DRIVER ────────────────────────────────────────────────────────────────
 
