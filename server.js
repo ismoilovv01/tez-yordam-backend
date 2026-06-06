@@ -725,6 +725,50 @@ app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) 
   }
 });
 
+
+// Update profile name
+app.patch('/api/auth/update-profile', authenticateToken, async (req, res) => {
+  try {
+    const { first_name, last_name } = req.body;
+    if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
+    await pool.query('UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3', [first_name.trim(), last_name.trim(), req.userId]);
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server xatosi' }); }
+});
+
+// Update email
+app.patch('/api/auth/update-email', authenticateToken, async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email kerak' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
+    const existing = await pool.query('SELECT id FROM users WHERE email = $1 AND id != $2', [email.toLowerCase(), req.userId]);
+    if (existing.rows.length) return res.status(400).json({ error: 'Bu email allaqachon ishlatilmoqda' });
+    await pool.query('UPDATE users SET email = $1 WHERE id = $2', [email.toLowerCase(), req.userId]);
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server xatosi' }); }
+});
+
+// Change password
+app.patch('/api/auth/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { current_password, new_password } = req.body;
+    if (!new_password || new_password.length < 8) return res.status(400).json({ error: "Yangi parol kamida 8 ta belgi bo'lishi kerak" });
+    const userRes = await pool.query('SELECT * FROM users WHERE id = $1', [req.userId]);
+    if (!userRes.rows.length) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+    const user = userRes.rows[0];
+    if (user.password_hash) {
+      if (!current_password) return res.status(400).json({ error: 'Hozirgi parolni kiriting' });
+      const valid = await bcrypt.compare(current_password, user.password_hash);
+      if (!valid) return res.status(400).json({ error: "Hozirgi parol noto'g'ri" });
+    }
+    const hash = await bcrypt.hash(new_password, 10);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, req.userId]);
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server xatosi' }); }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Emergency dispatch backend running on port ${PORT}`);
