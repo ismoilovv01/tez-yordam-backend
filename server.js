@@ -139,8 +139,13 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
 
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
+    const requestedRole = req.body.role; // 'driver' or 'caller'
     if (!userResult.rows.length) {
-      // New user — don't mark OTP verified yet, ask for profile first
+      // New user — if they claim to be a driver, reject (drivers must be pre-registered)
+      if (requestedRole === 'driver') {
+        return res.status(403).json({ error: "Siz haydovchi sifatida ro'yxatdan o'tilmagan. Iltimos administrator bilan bog'laning." });
+      }
+      // New caller — don't mark OTP verified yet, ask for profile first
       if (!first_name || !last_name) {
         return res.status(200).json({ success: true, requires_profile: true });
       }
