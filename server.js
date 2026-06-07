@@ -300,7 +300,9 @@ app.post('/api/emergencies', authenticateToken, async (req, res) => {
       'INSERT INTO emergencies (user_id, dispatch_center_id, service_type, latitude, longitude, description, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [req.userId, dispatch_center_id, service_type, latitude, longitude, description || null, 'new']
     );
-    res.status(201).json(result.rows[0]);
+    const newEmergency = result.rows[0];
+    if (global.io) global.io.emit('emergency_created', newEmergency);
+    res.status(201).json(newEmergency);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create emergency' });
@@ -774,8 +776,27 @@ app.patch('/api/auth/change-password', authenticateToken, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server xatosi' }); }
 });
 
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE'] }
+});
+
+// Make io accessible in routes
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+  socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
+});
+
+// Export io for use in route handlers
+global.io = io;
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Emergency dispatch backend running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
