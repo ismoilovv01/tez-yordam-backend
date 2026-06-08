@@ -54,6 +54,16 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+// Run migrations on startup
+(async () => {
+  try {
+    await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'ambulance'");
+    await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
+    await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
+    console.log('✅ Migrations complete');
+  } catch(e) { console.log('Migration:', e.message); }
+})();
+
 pool.query('SELECT NOW()', (err) => {
   if (err) console.error('Database connection error:', err);
   else console.log('Database connected successfully');
