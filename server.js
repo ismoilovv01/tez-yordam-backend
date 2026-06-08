@@ -826,13 +826,22 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
     const centerR = await pool.query('SELECT service_type FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
     const service_type = centerR.rows[0]?.service_type || 'ambulance';
 
-    // Check duplicate: same unit_number AND plate_region in same dispatch center
+    // Check duplicate phone
+    if (driver_phone) {
+      const fullPhone = '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'');
+      const dupPhone = await pool.query(
+        "SELECT id FROM ambulances WHERE driver_phone = $1 AND dispatch_center_id = $2 AND login_code NOT LIKE 'OLD-%'",
+        [fullPhone, dispatch_center_id]
+      );
+      if (dupPhone.rows.length > 0) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
+    }
+    // Check duplicate plate + region
     if (unit_number && plate_region) {
-      const dupCheck = await pool.query(
-        "SELECT id FROM ambulances WHERE unit_number = $1 AND plate_region = $2 AND dispatch_center_id = $3",
+      const dupPlate = await pool.query(
+        "SELECT id FROM ambulances WHERE unit_number = $1 AND plate_region = $2 AND dispatch_center_id = $3 AND login_code NOT LIKE 'OLD-%'",
         [unit_number, plate_region, dispatch_center_id]
       );
-      if (dupCheck.rows.length > 0) return res.status(400).json({ error: "Bu mashina raqami va viloyat kodi allaqachon ro'yxatdan o'tgan" });
+      if (dupPlate.rows.length > 0) return res.status(400).json({ error: "Bu mashina raqami va viloyat kodi allaqachon ro'yxatdan o'tgan" });
     }
 
     // Generate unique 8-char login code
