@@ -822,10 +822,14 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
     const centerR = await pool.query('SELECT service_type FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
     const service_type = centerR.rows[0]?.service_type || 'ambulance';
 
-    // Check duplicate phone
+    // Check duplicate phone - only within same dispatch center
     if (driver_phone) {
       const fullPhone = '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'');
-      const dupCheck = await pool.query('SELECT id FROM ambulances WHERE driver_phone = $1 AND dispatch_center_id = $2', [fullPhone, dispatch_center_id]);
+      const shortPhone = driver_phone.replace('+998','').replace(/[^0-9]/g,'');
+      const dupCheck = await pool.query(
+        "SELECT id FROM ambulances WHERE (driver_phone = $1 OR driver_phone = $2) AND dispatch_center_id = $3",
+        [fullPhone, shortPhone, dispatch_center_id]
+      );
       if (dupCheck.rows.length > 0) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
     }
 
