@@ -822,6 +822,13 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
     const centerR = await pool.query('SELECT service_type FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
     const service_type = centerR.rows[0]?.service_type || 'ambulance';
 
+    // Check duplicate phone
+    if (driver_phone) {
+      const fullPhone = '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'');
+      const dupCheck = await pool.query('SELECT id FROM ambulances WHERE driver_phone = $1 AND dispatch_center_id = $2', [fullPhone, dispatch_center_id]);
+      if (dupCheck.rows.length > 0) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
+    }
+
     // Generate unique 8-char login code
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let login_code;
@@ -835,7 +842,7 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
     // Create ambulance record with login code (no user yet)
     const result = await pool.query(
       'INSERT INTO ambulances (unit_number, driver_name, driver_phone, dispatch_center_id, service_type, login_code, status, plate_region) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [unit_number, driver_name, driver_phone || '', dispatch_center_id, service_type, login_code, 'available', plate_region || '']
+      [unit_number, driver_name, driver_phone ? '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'') : '', dispatch_center_id, service_type, login_code, 'available', plate_region || '']
     );
 
     res.json({ success: true, login_code, ambulance: result.rows[0] });
@@ -858,6 +865,18 @@ app.get('/api/dispatcher/drivers', authenticateToken, checkRole, async (req, res
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Edit driver
+app.patch('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (req, res) => {
+  try {
+    const { driver_name, driver_phone, unit_number, plate_region } = req.body;
+    await pool.query(
+      'UPDATE ambulances SET driver_name=$1, driver_phone=$2, unit_number=$3, plate_region=$4 WHERE id=$5',
+      [driver_name, driver_phone ? '+998' + driver_phone.replace('+998','') : '', unit_number, plate_region, req.params.id]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Delete driver
