@@ -795,6 +795,123 @@ io.on('connection', (socket) => {
 // Export io for use in route handlers
 global.io = io;
 
+
+// Generate driver login code (dispatcher only)
+app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
+  try {
+    const { unit_number, driver_name, driver_phone } = req.body;
+    if (!unit_number || !driver_name) return res.status(400).json({ error: 'unit_number and driver_name required' });
+
+    // Get dispatcher's dispatch center
+    const dispR = await pool.query('SELECT dispatch_center_id FROM users WHERE id = $1', [req.userId]);
+    const dispatch_center_id = dispR.rows[0]?.dispatch_center_id;
+    if (!dispatch_center_id) return res.status(400).json({ error: 'Dispatcher has no dispatch center' });
+
+    // Get service type from dispatch center
+    const centerR = await pool.query('SELECT service_type FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
+    const service_type = centerR.rows[0]?.service_type || 'ambulance';
+
+    // Generate unique 8-char login code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let login_code;
+    let exists = true;
+    while (exists) {
+      login_code = Array.from({length: 8}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      const check = await pool.query('SELECT id FROM ambulances WHERE login_code = $1', [login_code]);
+      exists = check.rows.length > 0;
+    }
+
+    // Create ambulance record with login code (no user yet)
+    const result = await pool.query(
+      'INSERT INTO ambulances (unit_number, driver_name, driver_phone, dispatch_center_id, service_type, login_code, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [unit_number, driver_name, driver_phone || '', dispatch_center_id, service_type, login_code, 'available']
+    );
+
+    res.json({ success: true, login_code, ambulance: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all drivers for dispatcher
+app.get('/api/dispatcher/drivers', authenticateToken, checkRole, async (req, res) => {
+  try {
+    const dispR = await pool.query('SELECT dispatch_center_id FROM users WHERE id = $1', [req.userId]);
+    const dispatch_center_id = dispR.rows[0]?.dispatch_center_id;
+    const result = await pool.query(
+      'SELECT id, unit_number, driver_name, driver_phone, service_type, login_code, status, driver_user_id FROM ambulances WHERE dispatch_center_id = $1 ORDER BY created_at DESC',
+      [dispatch_center_id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete driver
+app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM ambulances WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Driver login with code (no OTP needed)
+app.post('/api/auth/driver-login', async (req, res) => {
+  try {
+    const { login_code, phone } = req.body;
+    if (!login_code || !phone) return res.status(400).json({ error: 'login_code and phone required' });
+
+    // Find ambulance by login code
+    const ambR = await pool.query(
+      'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1',
+      [login_code.toUpperCase()]
+    );
+    if (!ambR.rows.length) return res.status(404).json({ error: "Noto'g'ri login kod. Dispetcher bilan bog'laning." });
+    const ambulance = ambR.rows[0];
+
+    const service_type = ambulance.service_type || ambulance.center_service_type || 'ambulance';
+
+    // Find or create user for this phone
+    let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    let user;
+    if (!userR.rows.length) {
+      const created = await pool.query(
+        'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
+        [phone, 'driver', ambulance.driver_name?.split(' ')[0] || 'Hodim', ambulance.driver_name?.split(' ')[1] || '']
+      );
+      user = created.rows[0];
+    } else {
+      user = userR.rows[0];
+      // Update user_type to driver if not already
+      if (user.user_type !== 'driver') {
+        await pool.query('UPDATE users SET user_type = $1 WHERE id = $2', ['driver', user.id]);
+        user.user_type = 'driver';
+      }
+    }
+
+    // Link user to ambulance
+    await pool.query('UPDATE ambulances SET driver_user_id = $1 WHERE id = $2', [user.id, ambulance.id]);
+
+    // Generate JWT
+    const token = jwt.sign({ userId: user.id, userType: 'driver' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      success: true,
+      token,
+      user: { ...user, service_type },
+      service_type,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Emergency dispatch backend running on port ${PORT}`);
