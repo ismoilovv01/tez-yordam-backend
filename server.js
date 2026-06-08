@@ -60,6 +60,7 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS service_type VARCHAR(50) DEFAULT 'ambulance'");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
+    await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
     console.log('✅ Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
 })();
@@ -809,7 +810,7 @@ global.io = io;
 // Generate driver login code (dispatcher only)
 app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
   try {
-    const { unit_number, driver_name, driver_phone } = req.body;
+    const { unit_number, driver_name, driver_phone, plate_region } = req.body;
     if (!unit_number || !driver_name) return res.status(400).json({ error: 'unit_number and driver_name required' });
 
     // Get dispatcher's dispatch center
@@ -833,8 +834,8 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
 
     // Create ambulance record with login code (no user yet)
     const result = await pool.query(
-      'INSERT INTO ambulances (unit_number, driver_name, driver_phone, dispatch_center_id, service_type, login_code, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-      [unit_number, driver_name, driver_phone || '', dispatch_center_id, service_type, login_code, 'available']
+      'INSERT INTO ambulances (unit_number, driver_name, driver_phone, dispatch_center_id, service_type, login_code, status, plate_region) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+      [unit_number, driver_name, driver_phone || '', dispatch_center_id, service_type, login_code, 'available', plate_region || '']
     );
 
     res.json({ success: true, login_code, ambulance: result.rows[0] });
