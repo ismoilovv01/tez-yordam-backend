@@ -61,9 +61,6 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
-    // Clean up old test records that have no login_code (created before this system)
-    // Only keep records that have a login_code (created by dispatcher)
-    // Don't delete records that have driver_user_id (active drivers)
     console.log('✅ DB migrations done');
     console.log('✅ Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
@@ -154,17 +151,14 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
 
     let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
-    const requestedRole = req.body.role; // 'driver' or 'caller'
+    const requestedRole = req.body.role;
     if (!userResult.rows.length) {
-      // New user — if they claim to be a driver, reject (drivers must be pre-registered)
       if (requestedRole === 'driver') {
         return res.status(403).json({ error: "Siz haydovchi sifatida ro'yxatdan o'tilmagan. Iltimos administrator bilan bog'laning." });
       }
-      // New caller — don't mark OTP verified yet, ask for profile first
       if (!first_name || !last_name) {
         return res.status(200).json({ success: true, requires_profile: true });
       }
-      // Has name — mark verified and create user
       await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, phone, user_type, dispatch_center_id, first_name, last_name',
@@ -172,7 +166,6 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
       );
       user = created.rows[0];
     } else {
-      // Existing user — mark verified
       await pool.query('UPDATE verification_codes SET verified = TRUE WHERE id = $1', [record.id]);
       user = userResult.rows[0];
       if (first_name && last_name) {
@@ -246,7 +239,7 @@ app.post('/api/auth/email-register', authLimiter, async (req, res) => {
     if (!emailRegex.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
     if (password.length < 8) return res.status(400).json({ error: "Parol kamida 8 ta belgidan iborat bo'lishi kerak" });
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
-    if (existing.rows.length) return res.status(400).json({ error: 'Bu email allaqachon ro\'yxatdan o\'tgan' });
+    if (existing.rows.length) return res.status(400).json({ error: "Bu email allaqachon ro'yxatdan o'tgan" });
     if (phone && !validatePhone(phone)) return res.status(400).json({ error: "Noto'g'ri telefon raqam" });
     if (phone) {
       const existingPhone = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
@@ -274,7 +267,7 @@ app.post('/api/auth/email-login', authLimiter, async (req, res) => {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
     if (!result.rows.length) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
     const user = result.rows[0];
-    if (!user.password_hash) return res.status(400).json({ error: 'Bu hisob telefon raqam orqali ro\'yxatdan o\'tgan' });
+    if (!user.password_hash) return res.status(400).json({ error: "Bu hisob telefon raqam orqali ro'yxatdan o'tgan" });
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(400).json({ error: "Email yoki parol noto'g'ri" });
     const token = generateToken(user.id);
@@ -747,7 +740,6 @@ app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) 
   }
 });
 
-
 // Update profile name
 app.patch('/api/auth/update-profile', authenticateToken, async (req, res) => {
   try {
@@ -799,7 +791,6 @@ const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST', 'PATCH', 'DELETE'] }
 });
 
-// Make io accessible in routes
 app.set('io', io);
 
 io.on('connection', (socket) => {
@@ -807,26 +798,22 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log('Client disconnected:', socket.id));
 });
 
-// Export io for use in route handlers
 global.io = io;
 
+// ── DISPATCHER HODIM MANAGEMENT ───────────────────────────────────────────
 
-// Generate driver login code (dispatcher only)
 app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
   try {
     const { unit_number, driver_name, driver_phone, plate_region } = req.body;
     if (!unit_number || !driver_name) return res.status(400).json({ error: 'unit_number and driver_name required' });
 
-    // Get dispatcher's dispatch center
     const dispR = await pool.query('SELECT dispatch_center_id FROM users WHERE id = $1', [req.userId]);
     const dispatch_center_id = dispR.rows[0]?.dispatch_center_id;
     if (!dispatch_center_id) return res.status(400).json({ error: 'Dispatcher has no dispatch center' });
 
-    // Get service type from dispatch center
     const centerR = await pool.query('SELECT service_type FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
     const service_type = centerR.rows[0]?.service_type || 'ambulance';
 
-    // Check duplicate phone
     if (driver_phone) {
       const fullPhone = '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'');
       const dupPhone = await pool.query(
@@ -835,7 +822,6 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
       );
       if (dupPhone.rows.length > 0) return res.status(400).json({ error: "Bu telefon raqam allaqachon ro'yxatdan o'tgan" });
     }
-    // Check duplicate plate + region
     if (unit_number && plate_region) {
       const dupPlate = await pool.query(
         "SELECT id FROM ambulances WHERE unit_number = $1 AND plate_region = $2 AND dispatch_center_id = $3 AND login_code NOT LIKE 'OLD-%'",
@@ -844,7 +830,6 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
       if (dupPlate.rows.length > 0) return res.status(400).json({ error: "Bu mashina raqami va viloyat kodi allaqachon ro'yxatdan o'tgan" });
     }
 
-    // Generate unique 8-char login code
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let login_code;
     let exists = true;
@@ -854,7 +839,6 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
       exists = check.rows.length > 0;
     }
 
-    // Create ambulance record with login code (no user yet)
     const result = await pool.query(
       'INSERT INTO ambulances (unit_number, driver_name, driver_phone, dispatch_center_id, service_type, login_code, status, plate_region) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
       [unit_number, driver_name, driver_phone ? '+998' + driver_phone.replace('+998','').replace(/[^0-9]/g,'') : '', dispatch_center_id, service_type, login_code, 'available', plate_region || '']
@@ -867,7 +851,6 @@ app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, asy
   }
 });
 
-// Get all drivers for dispatcher
 app.get('/api/dispatcher/drivers', authenticateToken, checkRole, async (req, res) => {
   try {
     const dispR = await pool.query('SELECT dispatch_center_id FROM users WHERE id = $1', [req.userId]);
@@ -882,7 +865,6 @@ app.get('/api/dispatcher/drivers', authenticateToken, checkRole, async (req, res
   }
 });
 
-// Edit driver
 app.patch('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (req, res) => {
   try {
     const { driver_name, driver_phone, unit_number, plate_region } = req.body;
@@ -894,7 +876,6 @@ app.patch('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (re
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// Delete driver
 app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (req, res) => {
   try {
     await pool.query('DELETE FROM ambulances WHERE id = $1', [req.params.id]);
@@ -904,14 +885,13 @@ app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (r
   }
 });
 
+// ── DRIVER LOGIN WITH CODE ────────────────────────────────────────────────
 
-// Driver login with code (no OTP needed)
 app.post('/api/auth/driver-login', async (req, res) => {
   try {
     const { login_code, phone } = req.body;
     if (!login_code || !phone) return res.status(400).json({ error: 'login_code and phone required' });
 
-    // Find ambulance by login code
     const ambR = await pool.query(
       'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1',
       [login_code.toUpperCase()]
@@ -921,28 +901,35 @@ app.post('/api/auth/driver-login', async (req, res) => {
 
     const service_type = ambulance.service_type || ambulance.center_service_type || 'ambulance';
 
-    // Find or create user for this phone
+    // Parse name from ambulance record (dispatcher-entered name)
+    const nameParts = (ambulance.driver_name || 'Hodim').trim().split(' ');
+    const firstName = nameParts[0] || 'Hodim';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
     let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userR.rows.length) {
+      // New user — create with name from ambulance
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
-        [phone, 'driver', ambulance.driver_name?.split(' ')[0] || 'Hodim', ambulance.driver_name?.split(' ')[1] || '']
+        [phone, 'driver', firstName, lastName]
       );
       user = created.rows[0];
     } else {
       user = userR.rows[0];
-      // Update user_type to driver if not already
-      if (user.user_type !== 'driver') {
-        await pool.query('UPDATE users SET user_type = $1 WHERE id = $2', ['driver', user.id]);
-        user.user_type = 'driver';
-      }
+      // Always sync name from ambulance record + ensure driver type
+      await pool.query(
+        'UPDATE users SET user_type = $1, first_name = $2, last_name = $3 WHERE id = $4',
+        ['driver', firstName, lastName, user.id]
+      );
+      user.user_type = 'driver';
+      user.first_name = firstName;
+      user.last_name = lastName;
     }
 
     // Link user to ambulance
     await pool.query('UPDATE ambulances SET driver_user_id = $1 WHERE id = $2', [user.id, ambulance.id]);
 
-    // Generate JWT
     const token = jwt.sign({ userId: user.id, userType: 'driver' }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
     res.json({
