@@ -42,7 +42,7 @@ const generalLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 50,
+  windowMs: 15 * 60 * 1000, max: 500,
   message: 'Too many login attempts, please try again later.',
   skipSuccessfulRequests: true
 });
