@@ -308,7 +308,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
     const r = await pool.query('SELECT id, phone, user_type, dispatch_center_id, first_name, last_name FROM users WHERE id = $1', [req.userId]);
     if (!r.rows.length) return res.status(404).json({ error: 'User not found' });
-    const countR = await pool.query('SELECT COUNT(*) as count FROM emergencies WHERE user_id = $1', [req.userId]);
+    const countR = await pool.query('SELECT COUNT(*) as count FROM emergencies WHERE user_id = $1 AND created_at >= (SELECT created_at FROM users WHERE id = $1)', [req.userId]);
     const user = r.rows[0];
     user.call_count = parseInt(countR.rows[0].count);
     res.json(user);
