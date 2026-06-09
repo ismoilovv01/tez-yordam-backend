@@ -932,22 +932,24 @@ app.post('/api/auth/driver-login', async (req, res) => {
     let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userR.rows.length) {
-      // New user — create with name from ambulance
+      // New user — create as caller so they can still use app as caller too
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
-        [phone, 'driver', firstName, lastName]
+        [phone, 'caller', firstName, lastName]
       );
       user = created.rows[0];
     } else {
       user = userR.rows[0];
-      // Always sync name from ambulance record + ensure driver type
-      await pool.query(
-        'UPDATE users SET user_type = $1, first_name = $2, last_name = $3 WHERE id = $4',
-        ['driver', firstName, lastName, user.id]
-      );
-      user.user_type = 'driver';
-      user.first_name = firstName;
-      user.last_name = lastName;
+      // NEVER change user_type — caller can also be a hodim
+      // Only update name if user has no name yet
+      if (!user.first_name && !user.last_name) {
+        await pool.query(
+          'UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3',
+          [firstName, lastName, user.id]
+        );
+        user.first_name = firstName;
+        user.last_name = lastName;
+      }
     }
 
     // Link user to ambulance
