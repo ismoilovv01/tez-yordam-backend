@@ -38,12 +38,35 @@ app.use(cors({
 app.use(bodyParser.json({ limit: '10kb' }));
 
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, max: 1000,
+  windowMs: 15 * 60 * 1000, max: 2000,
   message: 'Too many requests from this IP, please try again later.'
 });
+
+// Per-phone rate limit: max 10 OTP requests per phone per 10 minutes
+const phoneOtpCounts = new Map();
+function phoneRateLimit(req, res, next) {
+  const phone = req.body?.phone;
+  if (!phone) return next();
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000; // 10 minutes
+  const max = 10;
+  const entry = phoneOtpCounts.get(phone) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + windowMs;
+  }
+  entry.count++;
+  phoneOtpCounts.set(phone, entry);
+  if (entry.count > max) {
+    return res.status(429).json({ error: '10 daqiqa ichida juda ko\'p urinish. Iltimos kuting.' });
+  }
+  next();
+}
+
+// Keep authLimiter as a very loose fallback (per-IP, very high limit)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 9999,
-  message: 'Too many login attempts, please try again later.',
+  message: 'Too many requests',
   skipSuccessfulRequests: true
 });
 
@@ -108,7 +131,7 @@ async function checkRole(req, res, next) {
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 
-app.post('/api/auth/send-code', authLimiter, async (req, res) => {
+app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
