@@ -84,6 +84,7 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
+    await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
     console.log('✅ DB migrations done');
     console.log('✅ Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
@@ -136,6 +137,11 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number format' });
+    // Check if phone is in allowed_phones whitelist
+    const allowed = await pool.query('SELECT id FROM allowed_phones WHERE phone = $1', [phone]);
+    if (!allowed.rows.length) {
+      return res.status(403).json({ error: "Bu raqam tizimda ro'yxatdan o'tmagan. Administratorga murojaat qiling." });
+    }
     const code = generateVerificationCode();
     const codeHash = await hashCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60000);
