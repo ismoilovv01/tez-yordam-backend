@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, TextInput, ActivityIndicator,
@@ -15,10 +15,10 @@ const STATUS_COLOR = {
 };
 
 const SERVICES = [
-  { key: 'ambulance', icon: 'рџљ‘', textColor: '#c0392b', bg: '#ffebee' },
-  { key: 'pharmacy',  icon: 'рџЏҐ', textColor: '#3949ab', bg: '#e8eaf6' },
-  { key: 'police',    icon: 'рџ›ЎпёЏ', textColor: '#1565c0', bg: '#e3f2fd' },
-  { key: 'fire',      icon: 'рџ”Ґ', textColor: '#bf360c', bg: '#fff3e0' },
+  { key: 'ambulance', icon: 'РЎР‚РЎСџРЎв„ўРІР‚В', textColor: '#c0392b', bg: '#ffebee' },
+  { key: 'pharmacy',  icon: 'РЎР‚РЎСџР РЏРўС’', textColor: '#3949ab', bg: '#e8eaf6' },
+  { key: 'police',    icon: 'РЎР‚РЎСџРІР‚С”Р Р‹Р С—РЎвЂР РЏ', textColor: '#1565c0', bg: '#e3f2fd' },
+  { key: 'fire',      icon: 'РЎР‚РЎСџРІР‚СњРўС’', textColor: '#bf360c', bg: '#fff3e0' },
 ];
 
 export default function CallerHomeScreen({ user, token, navigation }) {
@@ -84,7 +84,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
   const showComingSoon = (name) => { setComingSoon(name); setTimeout(() => setComingSoon(''), 2500); };
 
   const handleServiceClick = (serviceType) => {
-    // Police and fire are coming soon вЂ” always show modal
+    // Police and fire are coming soon Р Р†Р вЂљРІР‚Сњ always show modal
     if (serviceType === 'police' || serviceType === 'fire' || serviceType === 'pharmacy') {
       const name = serviceType === 'police' ? t.police : serviceType === 'fire' ? t.fire : t.pharmacy;
       showComingSoon(name);
@@ -116,7 +116,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
       <Modal visible={!!comingSoon} transparent animationType="fade">
         <TouchableOpacity style={s.comingOverlay} activeOpacity={1} onPress={() => setComingSoon('')}>
           <View style={[s.comingModal, { backgroundColor: theme.card }]}>
-            <Text style={s.comingEmoji}>рџљЂ</Text>
+            <Text style={s.comingEmoji}>РЎР‚РЎСџРЎв„ўР вЂљ</Text>
             <Text style={[s.comingTitle, { color: theme.text }]}>{comingSoon}</Text>
             <Text style={[s.comingSub, { color: theme.textSub }]}>{t.comingSoonMsg}</Text>
           </View>
@@ -126,16 +126,16 @@ export default function CallerHomeScreen({ user, token, navigation }) {
       <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
         <View style={s.headerTop}>
           <View>
-            <Text style={s.greeting}>{t.hello}, {firstName} рџ‘‹</Text>
-            <Text style={s.locationText}>рџ“Ќ {cityName ? `${cityName}, O'zbekiston` : t.location}</Text>
+            <Text style={s.greeting}>{t.hello}, {firstName} РЎР‚РЎСџРІР‚ВРІР‚в„–</Text>
+            <Text style={s.locationText}>РЎР‚РЎСџРІР‚СљР РЉ {cityName ? `${cityName}, O'zbekiston` : t.location}</Text>
           </View>
           <TouchableOpacity style={s.notifBtn} onPress={() => navigation.navigate('CallerNotifications')}>
-            <Text style={s.notifIcon}>рџ””</Text>
+            <Text style={s.notifIcon}>РЎР‚РЎСџРІР‚СњРІР‚Сњ</Text>
             <View style={s.notifDot} />
           </TouchableOpacity>
         </View>
         <View style={s.searchBar}>
-          <Text style={s.searchIconText}>рџ”Ќ</Text>
+          <Text style={s.searchIconText}>РЎР‚РЎСџРІР‚СњР РЉ</Text>
           <TextInput
             style={s.searchInput}
             placeholder={t.searchPlaceholder}
@@ -157,13 +157,13 @@ export default function CallerHomeScreen({ user, token, navigation }) {
         <View style={s.quickRow}>
           <TouchableOpacity style={s.quickBtn} onPress={() => navigation.navigate('CallerEmergencyNumbers')}>
             <View style={[s.quickIcon, { backgroundColor: '#f0f4ff', borderColor: '#e0e8ff' }]}>
-              <Text style={s.quickIconText}>рџ“ћ</Text>
+              <Text style={s.quickIconText}>РЎР‚РЎСџРІР‚СљРЎвЂє</Text>
             </View>
             <Text style={[s.quickLabel, { color: theme.textSub }]}>{t.call}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.quickBtn}>
             <View style={[s.quickIcon, { backgroundColor: '#fff8f0', borderColor: '#ffe0b2' }]}>
-              <Text style={s.quickIconText}>рџ“Ќ</Text>
+              <Text style={s.quickIconText}>РЎР‚РЎСџРІР‚СљР РЉ</Text>
             </View>
             <Text style={[s.quickLabel, { color: theme.textSub }]}>{t.myLocation}</Text>
           </TouchableOpacity>
@@ -200,25 +200,25 @@ export default function CallerHomeScreen({ user, token, navigation }) {
 
         {lastEmergency && (
           <TouchableOpacity style={[s.lastCall, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]} onPress={() => { if (!['completed', 'cancelled'].includes(lastEmergency.status)) navigation.navigate('CallerConfirmation', { emergencyId: lastEmergency.id }); }}>
-            <Text style={s.lastCallIcon}>рџљ‘</Text>
+            <Text style={s.lastCallIcon}>РЎР‚РЎСџРЎв„ўРІР‚В</Text>
             <View style={s.lastCallInfo}>
               <Text style={[s.lastCallTitle, { color: theme.text }]}>{t.lastCall} #{lastEmergency.id}</Text>
               <Text style={[s.lastCallSub, { color: STATUS_COLOR[lastEmergency.status] || '#aaa' }]}>
                 {STATUS_LABEL[lastEmergency.status] || lastEmergency.status}
               </Text>
-            </View>
-            <Text style={s.lastCallArrow}>вЂє</Text>
-          </View>
+            <Text style={s.lastCallArrow}>›</Text>
+          </TouchableOpacity>
+
         )}
       </ScrollView>
 
       <View style={[s.bottomNav, { backgroundColor: theme.navBg, borderTopColor: theme.navBorder, paddingBottom: insets.bottom || 16 }]}>
         <TouchableOpacity style={s.navBtn}>
-          <Text style={s.navIcon}>рџЏ </Text>
+          <Text style={s.navIcon}>РЎР‚РЎСџР РЏР’В </Text>
           <Text style={[s.navLabel, s.navLabelActive]}>{t.home}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.navBtn} onPress={() => navigation.navigate('CallerProfile')}>
-          <Text style={s.navIcon}>рџ‘¤</Text>
+          <Text style={s.navIcon}>РЎР‚РЎСџРІР‚ВР’В¤</Text>
           <Text style={[s.navLabel, { color: theme.textSub }]}>{t.profile}</Text>
         </TouchableOpacity>
       </View>
