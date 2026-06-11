@@ -44,13 +44,7 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
-      "expo-location",
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM"
-        }
-      ]
+      "expo-location"
     ],
     "extra": {
       "eas": {
