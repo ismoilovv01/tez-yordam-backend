@@ -206,9 +206,9 @@ export default function CallerHomeScreen({ user, token, navigation }) {
               <Text style={[s.lastCallSub, { color: STATUS_COLOR[lastEmergency.status] || '#aaa' }]}>
                 {STATUS_LABEL[lastEmergency.status] || lastEmergency.status}
               </Text>
+            </View>
             <Text style={s.lastCallArrow}>›</Text>
           </TouchableOpacity>
-
         )}
       </ScrollView>
 
