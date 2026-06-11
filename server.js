@@ -204,6 +204,39 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
       [phone, code, codeHash, expiresAt]
     );
     console.log(`Verification code for ${phone}: ${code}`);
+    // Try to send via Eskiz SMS
+    let sentViaSMS = false;
+    try {
+      const eskizEmail = process.env.ESKIZ_EMAIL || 'diyorbekismoil01@gmail.com';
+      const eskizPassword = process.env.ESKIZ_PASSWORD || 'Qwerty2005120';
+      // Get token
+      const tokenRes = await fetch('https://notify.eskiz.uz/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: eskizEmail, password: eskizPassword })
+      });
+      const tokenData = await tokenRes.json();
+      const eskizToken = tokenData?.data?.token;
+      if (eskizToken) {
+        const smsRes = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${eskizToken}` },
+          body: JSON.stringify({
+            mobile_phone: phone.replace('+', ''),
+            message: `Help Me: Tasdiqlash kodingiz: ${code}. Kod 10 daqiqa amal qiladi.`,
+            from: '4546',
+            callback_url: ''
+          })
+        });
+        const smsData = await smsRes.json();
+        if (smsData?.status === 'waiting') {
+          sentViaSMS = true;
+          console.log(`OTP sent via Eskiz SMS to ${phone}`);
+        } else {
+          console.log('Eskiz SMS response:', JSON.stringify(smsData));
+        }
+      }
+    } catch (e) { console.error('Eskiz SMS error:', e); }
     // Try to send via Telegram
     let sentViaTelegram = false;
     try {
@@ -216,7 +249,7 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
         console.log(`OTP sent via Telegram to ${phone}`);
       }
     } catch (e) { console.error('Telegram OTP error:', e); }
-    res.json({ success: true, message: 'Code sent.', via_telegram: sentViaTelegram });
+    res.json({ success: true, message: 'Code sent.', via_sms: sentViaSMS, via_telegram: sentViaTelegram });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send code' });
