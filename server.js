@@ -84,9 +84,10 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
+    await pool.query("CREATE TABLE IF NOT EXISTS telegram_users (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, chat_id VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
     await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
-    console.log('РІСљвЂ¦ DB migrations done');
-    console.log('РІСљвЂ¦ Migrations complete');
+    console.log('✅ DB migrations done');
+    console.log('✅ Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
 })();
 
@@ -130,7 +131,60 @@ async function checkRole(req, res, next) {
   }
 }
 
-// РІвЂќР‚РІвЂќР‚ AUTH РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── TELEGRAM BOT ─────────────────────────────────────────────────────────────
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8822164884:AAHl1iSW_PeBX2LxQM2cQQ-bhu3CZcnIVgQ';
+const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
+
+async function sendTelegramMessage(chatId, text) {
+  try {
+    await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+  } catch (err) {
+    console.error('Telegram send error:', err);
+  }
+}
+
+// Telegram webhook — handles /start and phone number messages
+app.post('/api/telegram/webhook', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) return res.json({ ok: true });
+    const chatId = message.chat.id;
+    const text = message.text || '';
+    const contact = message.contact;
+
+    if (text === '/start') {
+      await sendTelegramMessage(chatId,
+        '👋 Salom! <b>Help Me</b> ilovasiga xush kelibsiz!\n\n' +
+        'Telefon raqamingizni yuboring (misol: +998901234567) va biz sizni tizimga bog'laymiz.\n\n' +
+        'Keyin ilova orqali kirganingizda OTP kodni Telegram orqali olasiz! 🔐'
+      );
+    } else if (text.match(/^\+?998[0-9]{9}$/)) {
+      const phone = text.startsWith('+') ? text : '+' + text;
+      await pool.query(
+        'INSERT INTO telegram_users (phone, chat_id) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET chat_id = $2',
+        [phone, chatId.toString()]
+      );
+      await sendTelegramMessage(chatId,
+        `✅ Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog'landi!\n\n` +
+        'Endi ilova orqali kirishda OTP kodni shu yerda olasiz. 🎉'
+      );
+    } else {
+      await sendTelegramMessage(chatId,
+        '📱 Telefon raqamingizni yuboring (misol: <code>+998901234567</code>)'
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Telegram webhook error:', err);
+    res.json({ ok: true });
+  }
+});
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
 
 app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
@@ -150,7 +204,19 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
       [phone, code, codeHash, expiresAt]
     );
     console.log(`Verification code for ${phone}: ${code}`);
-    res.json({ success: true, message: 'Code sent.' });
+    // Try to send via Telegram
+    let sentViaTelegram = false;
+    try {
+      const tgUser = await pool.query('SELECT chat_id FROM telegram_users WHERE phone = $1', [phone]);
+      if (tgUser.rows.length) {
+        await sendTelegramMessage(tgUser.rows[0].chat_id,
+          `🔐 <b>Help Me</b> - Tasdiqlash kodi:\n\n<code>${code}</code>\n\nKod 10 daqiqa davomida amal qiladi.`
+        );
+        sentViaTelegram = true;
+        console.log(`OTP sent via Telegram to ${phone}`);
+      }
+    } catch (e) { console.error('Telegram OTP error:', e); }
+    res.json({ success: true, message: 'Code sent.', via_telegram: sentViaTelegram });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send code' });
@@ -324,7 +390,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// РІвЂќР‚РІвЂќР‚ EMERGENCIES РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── EMERGENCIES ───────────────────────────────────────────────────────────
 
 app.post('/api/emergencies', authenticateToken, async (req, res) => {
   try {
@@ -475,7 +541,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
   }
 });
 
-// РІвЂќР‚РІвЂќР‚ AMBULANCES РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── AMBULANCES ────────────────────────────────────────────────────────────
 
 app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -505,7 +571,7 @@ app.get('/api/ambulances/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// РІвЂќР‚РІвЂќР‚ DISPATCH CENTERS РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── DISPATCH CENTERS ──────────────────────────────────────────────────────
 
 app.get('/api/dispatch-centers', async (req, res) => {
   try {
@@ -546,7 +612,7 @@ app.post('/api/admin/seed-dispatch-centers', authenticateToken, checkRole, async
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// РІвЂќР‚РІвЂќР‚ ADMIN РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── ADMIN ─────────────────────────────────────────────────────────────────
 
 app.get('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -620,7 +686,7 @@ app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, r
   }
 });
 
-// РІвЂќР‚РІвЂќР‚ DRIVER РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── DRIVER ────────────────────────────────────────────────────────────────
 
 app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   try {
@@ -829,7 +895,7 @@ io.on('connection', (socket) => {
 
 global.io = io;
 
-// РІвЂќР‚РІвЂќР‚ DISPATCHER HODIM MANAGEMENT РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── DISPATCHER HODIM MANAGEMENT ───────────────────────────────────────────
 
 app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -914,7 +980,7 @@ app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (r
   }
 });
 
-// РІвЂќР‚РІвЂќР‚ DRIVER LOGIN WITH CODE РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
+// ── DRIVER LOGIN WITH CODE ────────────────────────────────────────────────
 
 app.post('/api/auth/driver-login', async (req, res) => {
   try {
@@ -938,7 +1004,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
     let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userR.rows.length) {
-      // New user РІР‚вЂќ create as caller so they can still use app as caller too
+      // New user — create as caller so they can still use app as caller too
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
         [phone, 'caller', firstName, lastName]
@@ -946,7 +1012,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
       user = created.rows[0];
     } else {
       user = userR.rows[0];
-      // NEVER change user_type РІР‚вЂќ caller can also be a hodim
+      // NEVER change user_type — caller can also be a hodim
       // Only update name if user has no name yet
       if (!user.first_name && !user.last_name) {
         await pool.query(
@@ -974,8 +1040,6 @@ app.post('/api/auth/driver-login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
