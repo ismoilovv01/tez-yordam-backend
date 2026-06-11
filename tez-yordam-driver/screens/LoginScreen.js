@@ -200,3 +200,5 @@ const s = StyleSheet.create({
   btnBack: { width: '100%', padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
   btnBackText: { color: '#888', fontSize: 14 },
 });
+/ /   u p d a t e d  
+ 
