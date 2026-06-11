@@ -85,8 +85,8 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
     await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
-    console.log('✅ DB migrations done');
-    console.log('✅ Migrations complete');
+    console.log('вњ… DB migrations done');
+    console.log('вњ… Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
 })();
 
@@ -130,7 +130,7 @@ async function checkRole(req, res, next) {
   }
 }
 
-// ── AUTH ──────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ AUTH в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
@@ -324,7 +324,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// ── EMERGENCIES ───────────────────────────────────────────────────────────
+// в”Ђв”Ђ EMERGENCIES в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.post('/api/emergencies', authenticateToken, async (req, res) => {
   try {
@@ -475,7 +475,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
   }
 });
 
-// ── AMBULANCES ────────────────────────────────────────────────────────────
+// в”Ђв”Ђ AMBULANCES в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -505,7 +505,7 @@ app.get('/api/ambulances/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ── DISPATCH CENTERS ──────────────────────────────────────────────────────
+// в”Ђв”Ђ DISPATCH CENTERS в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.get('/api/dispatch-centers', async (req, res) => {
   try {
@@ -546,7 +546,7 @@ app.post('/api/admin/seed-dispatch-centers', authenticateToken, checkRole, async
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// ── ADMIN ─────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ ADMIN в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.get('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -620,7 +620,7 @@ app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, r
   }
 });
 
-// ── DRIVER ────────────────────────────────────────────────────────────────
+// в”Ђв”Ђ DRIVER в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   try {
@@ -829,7 +829,7 @@ io.on('connection', (socket) => {
 
 global.io = io;
 
-// ── DISPATCHER HODIM MANAGEMENT ───────────────────────────────────────────
+// в”Ђв”Ђ DISPATCHER HODIM MANAGEMENT в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -914,7 +914,7 @@ app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (r
   }
 });
 
-// ── DRIVER LOGIN WITH CODE ────────────────────────────────────────────────
+// в”Ђв”Ђ DRIVER LOGIN WITH CODE в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
 app.post('/api/auth/driver-login', async (req, res) => {
   try {
@@ -938,7 +938,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
     let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userR.rows.length) {
-      // New user — create as caller so they can still use app as caller too
+      // New user вЂ” create as caller so they can still use app as caller too
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
         [phone, 'caller', firstName, lastName]
@@ -946,7 +946,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
       user = created.rows[0];
     } else {
       user = userR.rows[0];
-      // NEVER change user_type — caller can also be a hodim
+      // NEVER change user_type вЂ” caller can also be a hodim
       // Only update name if user has no name yet
       if (!user.first_name && !user.last_name) {
         await pool.query(
@@ -972,6 +972,42 @@ app.post('/api/auth/driver-login', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+
+app.post('/api/auth/verify-firebase', authLimiter, async (req, res) => {
+  try {
+    const { phone, id_token, role, first_name, last_name } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Phone required' });
+    let userResult = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+    let user;
+    if (!userResult.rows.length) {
+      if (!first_name || !last_name) {
+        return res.status(200).json({ success: true, requires_profile: true });
+      }
+      const created = await pool.query(
+        'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, phone, user_type, dispatch_center_id, first_name, last_name',
+        [phone, 'caller', first_name.trim(), last_name.trim()]
+      );
+      user = created.rows[0];
+    } else {
+      user = userResult.rows[0];
+      if (first_name && last_name) {
+        await pool.query('UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3',
+          [first_name.trim(), last_name.trim(), user.id]);
+        user.first_name = first_name.trim();
+        user.last_name = last_name.trim();
+      }
+    }
+    const token = jwt.sign({ userId: user.id, userType: user.user_type }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    res.json({
+      success: true, token,
+      user: { id: user.id, phone: user.phone, user_type: user.user_type, dispatch_center_id: user.dispatch_center_id, first_name: user.first_name, last_name: user.last_name }
+    });
+  } catch (err) {
+    console.error('Firebase verify error:', err);
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 
