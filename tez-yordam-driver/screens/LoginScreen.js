@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
 } from 'react-native';
+import auth from '@react-native-firebase/auth';
 import { API_URL } from '../constants';
 import { useLanguage } from '../LanguageContext';
 
@@ -16,6 +17,7 @@ export default function LoginScreen({ onLogin, route }) {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [confirm, setConfirm] = useState(null);
 
   const handleSendCode = async () => {
     const clean = phone.replace(/\D/g, '');
@@ -23,16 +25,25 @@ export default function LoginScreen({ onLogin, route }) {
     setLoading(true); setError('');
     try {
       const fullPhone = '+998' + clean;
-      const res = await fetch(`${API_URL}/api/auth/send-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xato');
+      const confirmation = await auth().signInWithPhoneNumber(fullPhone);
+      setConfirm(confirmation);
       setStep('code');
     } catch (err) {
-      setError(err.message);
+      // Fallback to backend OTP
+      try {
+        const fullPhone = '+998' + clean;
+        const res = await fetch(`${API_URL}/api/auth/send-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: fullPhone }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Xato');
+        setConfirm(null); // null = use backend OTP
+        setStep('code');
+      } catch (err2) {
+        setError(err2.message || 'Xato');
+      }
     }
     setLoading(false);
   };
@@ -43,19 +54,38 @@ export default function LoginScreen({ onLogin, route }) {
     try {
       const clean = phone.replace(/\D/g, '');
       const fullPhone = '+998' + clean;
-      const body = { phone: fullPhone, code, role: role || 'caller' };
-      if (fn && ln) { body.first_name = fn; body.last_name = ln; }
-      const res = await fetch(`${API_URL}/api/auth/verify-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Xato');
-      if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
-      onLogin(data.user, data.token);
+
+      if (confirm) {
+        // Firebase verification
+        const result = await confirm.confirm(code);
+        const firebaseToken = await result.user.getIdToken();
+        const body = { phone: fullPhone, id_token: firebaseToken, role: role || 'caller' };
+        if (fn && ln) { body.first_name = fn; body.last_name = ln; }
+        const res = await fetch(`${API_URL}/api/auth/verify-firebase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Xato');
+        if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
+        onLogin(data.user, data.token);
+      } else {
+        // Backend OTP fallback
+        const body = { phone: fullPhone, code, role: role || 'caller' };
+        if (fn && ln) { body.first_name = fn; body.last_name = ln; }
+        const res = await fetch(`${API_URL}/api/auth/verify-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Xato');
+        if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
+        onLogin(data.user, data.token);
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Xato');
     }
     setLoading(false);
   };
@@ -73,7 +103,7 @@ export default function LoginScreen({ onLogin, route }) {
           <View style={[s.pulseRing, s.pulseDelay1]} />
           <View style={[s.pulseRing, s.pulseDelay2]} />
           <Text style={s.heroIcon}>🚑</Text>
-          <Text style={s.heroTitle}>{t.roleTitle || 'Tez Yordam'}</Text>
+          <Text style={s.heroTitle}>{t.roleTitle || 'Help Me'}</Text>
           <Text style={s.heroTagline}>{t.tagline || 'FAVQULODDA TIBBIY YORDAM'}</Text>
         </View>
 
@@ -117,7 +147,7 @@ export default function LoginScreen({ onLogin, route }) {
               <TouchableOpacity style={s.btn} onPress={() => handleVerifyCode()} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t.continue || 'Davom etish'}</Text>}
               </TouchableOpacity>
-              <TouchableOpacity style={s.btnBack} onPress={() => { setStep('phone'); setCode(''); setError(''); }}>
+              <TouchableOpacity style={s.btnBack} onPress={() => { setStep('phone'); setCode(''); setError(''); setConfirm(null); }}>
                 <Text style={s.btnBackText}>{t.back || 'Orqaga'}</Text>
               </TouchableOpacity>
             </>
@@ -125,7 +155,7 @@ export default function LoginScreen({ onLogin, route }) {
 
           {step === 'profile' && (
             <>
-              <Text style={[s.formTitle, { color: theme.text }]}>{t.fillProfile || 'Profilni to\'ldiring'}</Text>
+              <Text style={[s.formTitle, { color: theme.text }]}>{t.fillProfile || "Profilni to'ldiring"}</Text>
               <Text style={[s.formSub, { color: theme.textSub }]}>{t.fillProfileSub || 'Ism va familiyangizni kiriting'}</Text>
               <View style={[s.inputRow, { borderColor: '#ddd' }]}>
                 <TextInput style={[s.input, { color: theme.text }]} placeholder={t.firstName || 'Ism'} placeholderTextColor="#aaa" value={firstName} onChangeText={setFirstName} />
@@ -135,7 +165,7 @@ export default function LoginScreen({ onLogin, route }) {
               </View>
               {!!error && <Text style={s.error}>⚠️ {error}</Text>}
               <TouchableOpacity style={s.btn} onPress={handleProfileSubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>✅ {t.register || 'Ro\'yxatdan o\'tish'}</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>✅ {t.register || "Ro'yxatdan o'tish"}</Text>}
               </TouchableOpacity>
             </>
           )}

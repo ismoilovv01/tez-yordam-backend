@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "962831948651",
+    "project_id": "tez-yordam-3ac8d",
+    "storage_bucket": "tez-yordam-3ac8d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:962831948651:android:06d0ed7b450081c6658a2e",
+        "android_client_info": {
+          "package_name": "com.no_replied.tezyordamdriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBB5MMIuH_8t1DlmrKraFprd5f0gDhgmcE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Tez Yordam",
+    "name": "Help Me",
     "slug": "tez-yordam-driver",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -29,6 +29,7 @@
         "backgroundColor": "#e74c3c"
       },
       "package": "com.no_replied.tezyordamdriver",
+      "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM"
@@ -44,7 +45,9 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
-      "expo-location"
+      "expo-location",
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth"
     ],
     "extra": {
       "eas": {
