@@ -46,9 +46,7 @@
     },
     "plugins": [
       "expo-location",
-      "@react-native-firebase/app",
-      "@react-native-firebase/auth"
-    ],
+      ],
     "extra": {
       "eas": {
         "projectId": "23a37a6a-8317-4a5c-bc1d-22d03f7a54cb"
