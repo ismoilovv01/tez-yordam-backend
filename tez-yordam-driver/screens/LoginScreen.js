@@ -102,7 +102,7 @@ export default function LoginScreen({ onLogin, route }) {
           <View style={s.pulseRing} />
           <View style={[s.pulseRing, s.pulseDelay1]} />
           <View style={[s.pulseRing, s.pulseDelay2]} />
-          <Text style={s.heroIcon}>рџљ‘</Text>
+          <Text style={s.heroIcon}>СЂСџС™вЂ</Text>
           <Text style={s.heroTitle}>{t.roleTitle || 'Help Me'}</Text>
           <Text style={s.heroTagline}>{t.tagline || 'FAVQULODDA TIBBIY YORDAM'}</Text>
         </View>
@@ -125,7 +125,7 @@ export default function LoginScreen({ onLogin, route }) {
                   maxLength={9}
                 />
               </View>
-              {!!error && <Text style={s.error}>вљ пёЏ {error}</Text>}
+              {!!error && <Text style={s.error}>РІС™В РїС‘РЏ {error}</Text>}
               <TouchableOpacity style={s.btn} onPress={handleSendCode} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t.sendCode || 'Kod yuborish'}</Text>}
               </TouchableOpacity>
@@ -143,7 +143,7 @@ export default function LoginScreen({ onLogin, route }) {
                 onChangeText={(v) => { setCode(v.replace(/\D/g, '')); setError(''); }}
                 maxLength={6}
               />
-              {!!error && <Text style={s.error}>вљ пёЏ {error}</Text>}
+              {!!error && <Text style={s.error}>РІС™В РїС‘РЏ {error}</Text>}
               <TouchableOpacity style={s.btn} onPress={() => handleVerifyCode()} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t.continue || 'Davom etish'}</Text>}
               </TouchableOpacity>
@@ -163,9 +163,9 @@ export default function LoginScreen({ onLogin, route }) {
               <View style={[s.inputRow, { borderColor: '#ddd' }]}>
                 <TextInput style={[s.input, { color: theme.text }]} placeholder={t.lastName || 'Familiya'} placeholderTextColor="#aaa" value={lastName} onChangeText={setLastName} />
               </View>
-              {!!error && <Text style={s.error}>вљ пёЏ {error}</Text>}
+              {!!error && <Text style={s.error}>РІС™В РїС‘РЏ {error}</Text>}
               <TouchableOpacity style={s.btn} onPress={handleProfileSubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>вњ… {t.register || "Ro'yxatdan o'tish"}</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>РІСљвЂ¦ {t.register || "Ro'yxatdan o'tish"}</Text>}
               </TouchableOpacity>
             </>
           )}
@@ -200,5 +200,3 @@ const s = StyleSheet.create({
   btnBack: { width: '100%', padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
   btnBackText: { color: '#888', fontSize: 14 },
 });
-/ /   u p d a t e d  
- 
