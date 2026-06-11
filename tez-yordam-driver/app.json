@@ -18,6 +18,9 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Joylashuvingizni aniqlash uchun ruxsat kerak",
         "NSLocationAlwaysUsageDescription": "Fon rejimida joylashuvni kuzatish uchun ruxsat kerak"
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM"
       }
     },
     "android": {
@@ -26,6 +29,11 @@
         "backgroundColor": "#e74c3c"
       },
       "package": "com.no_replied.tezyordamdriver",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM"
+        }
+      },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -37,7 +45,13 @@
     },
     "plugins": [
       "expo-location",
-      ],
+      [
+        "react-native-maps",
+        {
+          "googleMapsApiKey": "AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM"
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "23a37a6a-8317-4a5c-bc1d-22d03f7a54cb"
