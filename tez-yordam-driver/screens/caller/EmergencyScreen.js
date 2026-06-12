@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -18,6 +18,12 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
   const [error, setError] = useState('');
   const mapRef = useRef(null);
 
+  // SOS radar searching animation
+  const ring1 = useRef(new Animated.Value(0)).current;
+  const ring2 = useRef(new Animated.Value(0)).current;
+  const ring3 = useRef(new Animated.Value(0)).current;
+  const animsRef = useRef([]);
+
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -29,6 +35,35 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
       } catch { setLocation(fallback); }
     })();
   }, []);
+
+  useEffect(() => {
+    if (sending) {
+      const makePulse = (anim, delay) => {
+        anim.setValue(0);
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim, { toValue: 1, duration: 1800, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          ])
+        );
+      };
+      const a1 = makePulse(ring1, 0);
+      const a2 = makePulse(ring2, 600);
+      const a3 = makePulse(ring3, 1200);
+      animsRef.current = [a1, a2, a3];
+      a1.start(); a2.start(); a3.start();
+    } else {
+      animsRef.current.forEach(a => a.stop());
+      animsRef.current = [];
+    }
+    return () => { animsRef.current.forEach(a => a.stop()); };
+  }, [sending]);
+
+  const radarRingStyle = (anim) => ({
+    opacity: anim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0.55, 0.2, 0] }),
+    transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] }) }],
+  });
 
   const handleLocate = async () => {
     try {
@@ -53,12 +88,17 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t.error);
-      navigation.replace('CallerConfirmation', {
-        emergencyId: data.id,
-        callerLocation: { lat: location.latitude, lng: location.longitude },
-      });
-    } catch (err) { setError(err.message); }
-    finally { setSending(false); }
+      // Brief delay so the searching animation is visible before navigating
+      setTimeout(() => {
+        navigation.replace('CallerConfirmation', {
+          emergencyId: data.id,
+          callerLocation: { lat: location.latitude, lng: location.longitude },
+        });
+      }, 900);
+    } catch (err) {
+      setError(err.message);
+      setSending(false);
+    }
   };
 
   const serviceTitle = serviceType === 'police' ? `🛡️ ${t.police}`
@@ -72,8 +112,8 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
         {location ? (
           <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE}
             initialRegion={{ ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-            onPress={(e) => setLocation(e.nativeEvent.coordinate)}>
-            <Marker coordinate={location} draggable onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
+            onPress={(e) => !sending && setLocation(e.nativeEvent.coordinate)}>
+            <Marker coordinate={location} draggable={!sending} onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
           </MapView>
         ) : (
           <View style={[s.mapLoading, { backgroundColor: theme.cardBg }]}>
@@ -82,9 +122,11 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
         )}
 
         {/* Back button */}
-        <TouchableOpacity style={[s.backBtn, { backgroundColor: theme.card }]} onPress={() => navigation.goBack()}>
-          <Text style={[s.backBtnText, { color: theme.text }]}>←</Text>
-        </TouchableOpacity>
+        {!sending && (
+          <TouchableOpacity style={[s.backBtn, { backgroundColor: theme.card }]} onPress={() => navigation.goBack()}>
+            <Text style={[s.backBtnText, { color: theme.text }]}>←</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Title */}
         <View style={[s.titleBadge, { backgroundColor: theme.card }]}>
@@ -92,15 +134,34 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
         </View>
 
         {/* Notification bell */}
-        <TouchableOpacity style={s.notifBtn} onPress={() => navigation.navigate('CallerNotifications')}>
-          <Text style={s.notifIcon}>🔔</Text>
-          <View style={s.notifDot} />
-        </TouchableOpacity>
+        {!sending && (
+          <TouchableOpacity style={s.notifBtn} onPress={() => navigation.navigate('CallerNotifications')}>
+            <Text style={s.notifIcon}>🔔</Text>
+            <View style={s.notifDot} />
+          </TouchableOpacity>
+        )}
 
         {/* Locate button */}
-        <TouchableOpacity style={[s.locateBtn, { backgroundColor: theme.card }]} onPress={handleLocate}>
-          <Text style={s.locateIcon}>📍</Text>
-        </TouchableOpacity>
+        {!sending && (
+          <TouchableOpacity style={[s.locateBtn, { backgroundColor: theme.card }]} onPress={handleLocate}>
+            <Text style={s.locateIcon}>📍</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* SOS searching overlay */}
+        {sending && (
+          <View style={s.searchOverlay} pointerEvents="none">
+            <View style={s.radarWrap}>
+              <Animated.View style={[s.radarRing, radarRingStyle(ring1)]} />
+              <Animated.View style={[s.radarRing, radarRingStyle(ring2)]} />
+              <Animated.View style={[s.radarRing, radarRingStyle(ring3)]} />
+              <View style={s.radarCore}>
+                <Text style={s.radarCoreIcon}>🚑</Text>
+              </View>
+            </View>
+            <Text style={s.searchText}>{t.searchingDriver || 'Eng yaqin yordam qidirilmoqda...'}</Text>
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -110,9 +171,17 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
           <TextInput
             style={[s.textarea, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder, color: theme.text }]}
             placeholder={t.additionalInfo} placeholderTextColor={theme.textSub}
-            value={description} onChangeText={setDescription} multiline numberOfLines={2} maxHeight={80} />
-          <TouchableOpacity style={s.sendBtn} onPress={handleSend} disabled={sending}>
-            {sending ? <ActivityIndicator color="#fff" /> : <Text style={s.sendBtnText}>🚑 {btnLabel}</Text>}
+            value={description} onChangeText={setDescription} multiline numberOfLines={2} maxHeight={80}
+            editable={!sending} />
+          <TouchableOpacity style={[s.sendBtn, sending && { opacity: 0.7 }]} onPress={handleSend} disabled={sending}>
+            {sending ? (
+              <View style={s.sendingRow}>
+                <ActivityIndicator color="#fff" style={{ marginRight: 8 }} />
+                <Text style={s.sendBtnText}>{t.searching || 'Qidirilmoqda...'}</Text>
+              </View>
+            ) : (
+              <Text style={s.sendBtnText}>🚑 {btnLabel}</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -141,4 +210,11 @@ const s = StyleSheet.create({
   textarea: { borderWidth: 1.5, borderRadius: 12, padding: 10, paddingHorizontal: 14, fontSize: 14, marginBottom: 10, minHeight: 48, maxHeight: 80, textAlignVertical: 'top' },
   sendBtn: { borderRadius: 14, paddingVertical: 13, alignItems: 'center', backgroundColor: '#e74c3c' },
   sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.5 },
+  sendingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  searchOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(26,26,46,0.55)', justifyContent: 'center', alignItems: 'center', zIndex: 50 },
+  radarWrap: { width: 220, height: 220, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  radarRing: { position: 'absolute', width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#e74c3c', backgroundColor: 'rgba(231,76,60,0.15)' },
+  radarCore: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#e74c3c', justifyContent: 'center', alignItems: 'center', shadowColor: '#e74c3c', shadowOpacity: 0.6, shadowRadius: 16, elevation: 10 },
+  radarCoreIcon: { fontSize: 32 },
+  searchText: { color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center', paddingHorizontal: 32 },
 });

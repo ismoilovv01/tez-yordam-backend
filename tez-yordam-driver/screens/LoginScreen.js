@@ -33,6 +33,7 @@ export default function LoginScreen({ onLogin, route }) {
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(anim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
         ])
       );
     };
@@ -124,8 +125,7 @@ export default function LoginScreen({ onLogin, route }) {
           <Animated.View style={[s.pulseRing, ringStyle(pulse2)]} />
           <Animated.View style={[s.pulseRing, ringStyle(pulse3)]} />
           <Text style={s.heroIcon}>🚑</Text>
-          <Text style={s.heroTitle}>{t.roleTitle || 'Help Mee'}</Text>
-          <Text style={s.heroTagline}>{t.tagline || 'FAVQULODDA TIBBIY YORDAM'}</Text>
+          <Text style={s.heroTitle}>Help Mee</Text>
         </View>
 
         <ScrollView style={[s.card, { backgroundColor: theme.card }]} contentContainerStyle={s.cardContent} keyboardShouldPersistTaps="handled">
@@ -214,7 +214,6 @@ const s = StyleSheet.create({
   pulseRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
   heroIcon: { fontSize: 64, zIndex: 1, marginBottom: 12 },
   heroTitle: { fontSize: 32, fontWeight: '800', color: '#fff', zIndex: 1, letterSpacing: 1 },
-  heroTagline: { fontSize: 13, color: 'rgba(255,255,255,0.8)', zIndex: 1, marginTop: 6, letterSpacing: 2 },
   card: { borderTopLeftRadius: 28, borderTopRightRadius: 28, flexShrink: 0 },
   cardContent: { padding: 28, paddingBottom: 40 },
   formTitle: { fontSize: 22, fontWeight: '700', marginBottom: 4 },
