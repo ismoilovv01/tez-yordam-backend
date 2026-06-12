@@ -245,7 +245,7 @@ export const translations = {
     driverCodeError: 'Введите логин-код',
 
     hello: 'Привет',
-    location: 'Ташкент, Узбекистан',
+    location: 'Узбекистан',
     searchPlaceholder: 'Поиск услуг...',
     call: 'Позвонить',
     myLocation: 'Местоположение',
@@ -276,7 +276,7 @@ export const translations = {
     statusConfirmed: 'Подтверждено',
     statusConfirmedSub: 'Диспетчер подтвердил вызов',
     statusAssigned: 'Водитель принял',
-    statusAssignedSub: 'Машина скорой выезжала',
+    statusAssignedSub: 'Машина скорой выезжает',
     statusOnTheWay: 'В пути',
     statusOnTheWaySub: 'Машина скорой едет к вам',
     statusArrived: 'Прибыл',
