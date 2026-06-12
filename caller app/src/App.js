@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import SplashScreen from './screens/SplashScreen';
 import RoleScreen from './screens/RoleScreen';
@@ -20,6 +20,10 @@ function App() {
   const [emergencyId, setEmergencyId] = useState(null);
   const [callerLocation, setCallerLocation] = useState(null);
   const [role, setRole] = useState(null);
+
+  // Params for a NEW emergency request (set when user taps a service card)
+  const [pendingDispatchCenterId, setPendingDispatchCenterId] = useState(null);
+  const [pendingServiceType, setPendingServiceType] = useState('ambulance');
 
   // Initialize Telegram WebApp SDK if running inside Telegram
   useEffect(() => {
@@ -84,10 +88,34 @@ function App() {
     navigate('home');
   };
 
-  const handleSendEmergency = (dispatchCenterId, serviceType = 'ambulance', lat, lng) => {
-    setEmergencyId(dispatchCenterId);
-    if (lat && lng) setCallerLocation({ lat, lng });
+  // Called from HomeScreen when the user taps a service card (e.g. "Tez Yordam")
+  const handleStartEmergency = (dispatchCenterId, serviceType) => {
+    setPendingDispatchCenterId(dispatchCenterId || null);
+    setPendingServiceType(serviceType || 'ambulance');
     navigate('emergency');
+  };
+
+  // Called from EmergencyScreen after the request is successfully sent
+  const handleSendEmergency = (id, lat, lng) => {
+    setEmergencyId(id);
+    if (lat && lng) setCallerLocation({ lat, lng });
+    navigate('confirmation');
+  };
+
+  // Called when the user taps an "active emergency" banner/card on HomeScreen.
+  // Navigates straight to ConfirmationScreen for that emergency instead of
+  // letting them start a new request.
+  const handleOpenActiveEmergency = (emergency) => {
+    if (!emergency) return;
+    setEmergencyId(emergency.id);
+    const lat = parseFloat(emergency.latitude ?? emergency.lat);
+    const lng = parseFloat(emergency.longitude ?? emergency.lng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setCallerLocation({ lat, lng });
+    } else {
+      setCallerLocation(null);
+    }
+    navigate('confirmation');
   };
 
   const handleLogout = () => {
@@ -121,9 +149,10 @@ function App() {
           <HomeScreen
             user={user}
             token={userToken}
-            onCallEmergency={() => navigate('emergency')}
+            onCallEmergency={handleStartEmergency}
             onProfile={() => navigate('profile')}
             onNotifications={() => navigate('notifications')}
+            onOpenActiveEmergency={handleOpenActiveEmergency}
           />
         )}
 
@@ -134,8 +163,8 @@ function App() {
             onNotifications={() => navigate('notifications')}
             onLogout={handleLogout}
             token={userToken}
-            dispatchCenterId={emergencyId}
-            serviceType={null}
+            dispatchCenterId={pendingDispatchCenterId}
+            serviceType={pendingServiceType}
           />
         )}
 

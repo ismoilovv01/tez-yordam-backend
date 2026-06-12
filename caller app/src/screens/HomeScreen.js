@@ -1,17 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../styles/HomeScreen.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
-function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }) {
+const ACTIVE_STATUSES = ['new', 'confirmed', 'assigned', 'on_the_way', 'arrived'];
+
+function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
   const [lastEmergency, setLastEmergency] = useState(null);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [comingSoonName, setComingSoonName] = useState('');
   const [dispatchCenters, setDispatchCenters] = useState([]);
 
+  const pollRef = useRef(null);
+
   useEffect(() => {
     fetchLastEmergency();
     fetchDispatchCenters();
+    pollRef.current = setInterval(fetchLastEmergency, 5000);
+    return () => clearInterval(pollRef.current);
   }, []);
 
   const fetchDispatchCenters = async () => {
@@ -31,7 +37,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
       });
       if (res.ok) {
         const data = await res.json();
-        setLastEmergency(data);
+        setLastEmergency(data && data.id ? data : null);
       }
     } catch {}
   };
@@ -42,13 +48,24 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
     setTimeout(() => setShowComingSoon(false), 2500);
   };
 
+  const isActiveEmergency = lastEmergency && ACTIVE_STATUSES.includes(lastEmergency.status);
+
   const handleServiceClick = (serviceType) => {
+    // If there's an active emergency, redirect there instead of creating a new one
+    if (isActiveEmergency) {
+      if (onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
+      return;
+    }
     const center = dispatchCenters.find(c => c.service_type === serviceType);
     if (center) {
       onCallEmergency(center.id, serviceType);
     } else {
       handleComingSoon(serviceType === 'police' ? 'Politsiya' : serviceType === 'fire' ? "Yong'in xizmati" : serviceType);
     }
+  };
+
+  const handleLastCallClick = () => {
+    if (lastEmergency && onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
   };
 
   const firstName = user?.first_name || user?.phone || 'Foydalanuvchi';
@@ -105,9 +122,22 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
 
       {/* White content */}
       <div className="home-content">
+
+        {/* Active emergency banner */}
+        {isActiveEmergency && (
+          <button className="home-active-banner" onClick={handleLastCallClick}>
+            <div className="home-active-banner-icon">🚑</div>
+            <div className="home-active-banner-info">
+              <p className="home-active-banner-title">Faol chaqiruv #{lastEmergency.id}</p>
+              <p className="home-active-banner-sub">{statusLabel(lastEmergency.status)} — bosing</p>
+            </div>
+            <span className="home-active-banner-arrow">›</span>
+          </button>
+        )}
+
         {/* Quick icons */}
         <div className="home-quick-icons">
-          <button className="home-quick-btn" onClick={onCallEmergency}>
+          <button className="home-quick-btn" onClick={() => (isActiveEmergency ? handleLastCallClick() : onCallEmergency())}>
             <div className="home-quick-icon blue">📞</div>
             <span className="home-quick-label">Qo'ng'iroq</span>
           </button>
@@ -134,8 +164,8 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
             <p className="home-service-name blue-text">Dorixona</p>
             <p className="home-service-status soon-status">Tez orada</p>
           </button>
-          <button 
-            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'police') ? 'active' : 'inactive'}`} 
+          <button
+            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'police') ? 'active' : 'inactive'}`}
             onClick={() => handleServiceClick('police')}
           >
             <div className="home-service-icon navy">🛡️</div>
@@ -144,8 +174,8 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
               {dispatchCenters.find(c => c.service_type === 'police') ? 'Faol' : 'Tez orada'}
             </p>
           </button>
-          <button 
-            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'fire') ? 'active' : 'inactive'}`} 
+          <button
+            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'fire') ? 'active' : 'inactive'}`}
             onClick={() => handleServiceClick('fire')}
           >
             <div className="home-service-icon fire">🔥</div>
@@ -156,9 +186,9 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications }
           </button>
         </div>
 
-        {/* Last emergency */}
-        {lastEmergency && (
-          <div className="home-last-call">
+        {/* Last emergency (history, only show if not currently active) */}
+        {lastEmergency && !isActiveEmergency && (
+          <div className="home-last-call" onClick={handleLastCallClick}>
             <div className="home-last-call-icon">🚑</div>
             <div className="home-last-call-info">
               <p className="home-last-call-title">Oxirgi chaqiruv #{lastEmergency.id}</p>

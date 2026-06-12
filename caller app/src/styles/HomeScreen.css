@@ -33,6 +33,28 @@
   margin-top: -16px; padding: 20px 16px 0;
   flex: 1; overflow-y: auto;
 }
+
+/* Active emergency banner */
+.home-active-banner {
+  width: 100%;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  border: none; border-radius: 16px;
+  padding: 14px 16px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; text-align: left;
+  box-shadow: 0 4px 14px rgba(231,76,60,0.35);
+  animation: home-banner-pulse 2s ease-in-out infinite;
+}
+@keyframes home-banner-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(231,76,60,0.35); }
+  50% { box-shadow: 0 4px 22px rgba(231,76,60,0.6); }
+}
+.home-active-banner-icon { font-size: 26px; flex-shrink: 0; }
+.home-active-banner-info { flex: 1; min-width: 0; }
+.home-active-banner-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+.home-active-banner-sub { font-size: 12px; color: rgba(255,255,255,0.9); }
+.home-active-banner-arrow { font-size: 22px; color: #fff; flex-shrink: 0; }
+
 .home-quick-icons { display: flex; justify-content: space-around; margin-bottom: 24px; }
 .home-quick-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; }
 .home-quick-icon {
