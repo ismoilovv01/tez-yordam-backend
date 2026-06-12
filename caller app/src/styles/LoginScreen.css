@@ -30,7 +30,6 @@
 }
 .login-ambulance-icon { font-size: 64px; z-index: 1; margin-bottom: 12px; }
 .login-app-name { font-size: 32px; font-weight: 800; color: #fff; z-index: 1; letter-spacing: 1px; }
-.login-tagline { font-size: 13px; color: rgba(255,255,255,0.8); z-index: 1; margin-top: 6px; letter-spacing: 2px; }
 .login-form-card {
   background: #fff; border-radius: 28px 28px 0 0;
   padding: 28px 24px 40px; flex-shrink: 0;
@@ -85,3 +84,14 @@
   color: #888; border: 1px solid #ddd; border-radius: 12px;
   font-size: 14px; cursor: pointer;
 }
+
+/* OTP resend timer */
+.login-timer-text {
+  text-align: center; color: #888; font-size: 13px; margin-bottom: 10px;
+}
+.login-btn-resend {
+  width: 100%; padding: 12px; background: transparent;
+  color: #e74c3c; border: none; border-radius: 12px;
+  font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 10px;
+}
+.login-btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import '../styles/LoginScreen.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const RESEND_SECONDS = 60;
 
 function LoginScreen({ onLogin, onBack, role }) {
   const [tab, setTab] = useState('phone');
@@ -17,8 +18,29 @@ function LoginScreen({ onLogin, onBack, role }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pendingRegisterData, setPendingRegisterData] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  const timerRef = useRef(null);
 
   const isDriver = role === 'driver';
+
+  // OTP resend countdown timer
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [secondsLeft > 0]);
 
   // ── PHONE OTP LOGIN ──────────────────────────────────────────────
   const handleSendCode = async () => {
@@ -33,12 +55,15 @@ function LoginScreen({ onLogin, onBack, role }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Xato yuz berdi');
       setStep('code');
+      setCode('');
+      setSecondsLeft(RESEND_SECONDS);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   };
 
   const handleVerifyCode = async (fn, ln) => {
     if (!code.trim()) return setError('Kodni kiriting');
+    if (secondsLeft <= 0) return setError('Kod muddati tugadi, qaytadan yuboring');
     setLoading(true); setError('');
     try {
       const cleanPhone = phone.replace(/^\+?998/, '').trim();
@@ -80,7 +105,7 @@ function LoginScreen({ onLogin, onBack, role }) {
     finally { setLoading(false); }
   };
 
-  // ── EMAIL REGISTER — Step 1: collect info, send OTP ─────────────
+  // ── EMAIL REGISTER — Step 1: collect info, send OTP ────────────
   const handleEmailRegisterSubmit = async () => {
     const cleanPhone = emailPhone.replace(/^\+?998/, '').trim();
     if (!firstName.trim() || !lastName.trim()) return setError("Ism va familiyangizni kiriting");
@@ -101,6 +126,7 @@ function LoginScreen({ onLogin, onBack, role }) {
       // Save registration data for after OTP verification
       setPendingRegisterData({ email, password, first_name: firstName.trim(), last_name: lastName.trim(), phone: '+998' + cleanPhone });
       setCode('');
+      setSecondsLeft(RESEND_SECONDS);
       setStep('email-otp');
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
@@ -110,6 +136,7 @@ function LoginScreen({ onLogin, onBack, role }) {
   const handleEmailOtpVerify = async () => {
     if (!code.trim()) return setError('Kodni kiriting');
     if (!pendingRegisterData) return setError('Xato. Qaytadan urinib koring');
+    if (secondsLeft <= 0) return setError('Kod muddati tugadi, qaytadan yuboring');
     setLoading(true); setError('');
     try {
       // First verify OTP
@@ -135,6 +162,20 @@ function LoginScreen({ onLogin, onBack, role }) {
   const handleKeyDown = (e, action) => { if (e.key === 'Enter') action(); };
   const switchTab = (t) => { setTab(t); setError(''); setStep('input'); };
 
+  const resendLabel = (action) => {
+    if (secondsLeft > 0) {
+      const ss = secondsLeft < 10 ? `0${secondsLeft}` : secondsLeft;
+      return (
+        <p className="login-timer-text">Qaytadan yuborish 0:{ss}</p>
+      );
+    }
+    return (
+      <button className="login-btn-resend" onClick={action} disabled={loading}>
+        Qayta yuborish
+      </button>
+    );
+  };
+
   return (
     <div className="login-container">
       <div className="login-hero">
@@ -143,8 +184,7 @@ function LoginScreen({ onLogin, onBack, role }) {
         <div className="login-pulse-ring delay2" />
         {onBack && <button className="login-back-btn" onClick={onBack}>←</button>}
         <div className="login-ambulance-icon">🚑</div>
-        <h1 className="login-app-name">Tez Yordam</h1>
-        <p className="login-tagline">FAVQULODDA TIBBIY YORDAM</p>
+        <h1 className="login-app-name">Help Mee</h1>
       </div>
 
       <div className="login-form-card">
@@ -261,7 +301,8 @@ function LoginScreen({ onLogin, onBack, role }) {
             <button className="login-btn" onClick={handleEmailOtpVerify} disabled={loading}>
               {loading ? 'Tekshirilmoqda...' : "✅ Ro'yxatdan o'tish"}
             </button>
-            <button className="login-btn-back" onClick={() => { setStep('email-register'); setCode(''); setError(''); }}>
+            {resendLabel(handleEmailRegisterSubmit)}
+            <button className="login-btn-back" onClick={() => { setStep('email-register'); setCode(''); setError(''); setSecondsLeft(0); }}>
               ← Orqaga
             </button>
           </>
@@ -279,7 +320,8 @@ function LoginScreen({ onLogin, onBack, role }) {
             <button className="login-btn" onClick={() => handleVerifyCode()} disabled={loading}>
               {loading ? 'Tekshirilmoqda...' : 'Davom etish'}
             </button>
-            <button className="login-btn-back" onClick={() => { setStep('input'); setCode(''); setError(''); }}>
+            {resendLabel(handleSendCode)}
+            <button className="login-btn-back" onClick={() => { setStep('input'); setCode(''); setError(''); setSecondsLeft(0); }}>
               ← Orqaga
             </button>
           </>
