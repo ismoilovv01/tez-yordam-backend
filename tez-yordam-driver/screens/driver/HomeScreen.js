@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
-  Modal, Alert, ActivityIndicator, Linking,
+  Modal, Alert, ActivityIndicator, Linking, Animated,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE, AnimatedRegion, MarkerAnimated } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { API_URL, GOOGLE_KEY } from '../../constants';
@@ -24,6 +24,9 @@ const STATUS_LABELS = {
   arrived:    { label: 'Keldi',          color: '#27ae60' },
   completed:  { label: 'Tugatildi',      color: '#9b59b6' },
 };
+
+// How long after a manual map interaction before auto-follow resumes
+const RESUME_FOLLOW_MS = 4000;
 
 function DriverScreen({ token, user, onLogout, navigation, accentColor, markerColor, markerEmoji }) {
   const { t, theme, lang } = useLanguage();
@@ -52,7 +55,20 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const is3DRef            = useRef(true);
   const headingRef         = useRef(0);
   const userInteractingRef = useRef(false);
+  const resumeFollowTimerRef = useRef(null);
   const prevStatusRef      = useRef(null);
+  const mapReadyRef        = useRef(false);
+
+  // Animated marker position for smooth gliding (like Google/Yandex)
+  const animatedCoord = useRef(
+    new AnimatedRegion({
+      latitude: 41.2995,
+      longitude: 69.2401,
+      latitudeDelta: 0,
+      longitudeDelta: 0,
+    })
+  ).current;
+  const animatedHeading = useRef(new Animated.Value(0)).current;
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -65,20 +81,70 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       .catch(() => {});
   }, [token]);
 
+  const animateMarkerTo = (coords, heading) => {
+    // Smoothly glide the marker to the new position instead of snapping
+    animatedCoord.timing({
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+    // Animate heading rotation the shortest way around
+    Animated.timing(animatedHeading, {
+      toValue: heading,
+      duration: 1000,
+      useNativeDriver: false,
+    }).start();
+  };
+
+  const moveCamera = (coords, heading, opts = {}) => {
+    if (!mapRef.current) return;
+    const { pitch, zoom = 17, duration = 1000 } = opts;
+    mapRef.current.animateCamera(
+      {
+        center: coords,
+        heading: heading,
+        pitch: pitch !== undefined ? pitch : (is3DRef.current ? 50 : 0),
+        zoom,
+      },
+      { duration }
+    );
+  };
+
   useEffect(() => {
     let sub;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Xato', 'Joylashuvga ruxsat bering'); return; }
+
+      // Get an initial fix immediately so the map centers correctly on first load
+      try {
+        const initial = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation });
+        const coords = { latitude: initial.coords.latitude, longitude: initial.coords.longitude };
+        const heading = initial.coords.heading || 0;
+        setDriverLocation(coords);
+        setDriverHeading(heading);
+        locationRef.current = coords;
+        headingRef.current = heading;
+        animatedCoord.setValue({ ...coords, latitudeDelta: 0, longitudeDelta: 0 });
+        animatedHeading.setValue(heading);
+      } catch {}
+
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 1000, distanceInterval: 2 },
         (loc) => {
           const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-          const heading = loc.coords.heading || 0;
+          const rawHeading = loc.coords.heading;
+          // Keep previous heading if GPS doesn't report one (e.g. standing still)
+          const heading = (rawHeading !== null && rawHeading !== undefined && rawHeading >= 0) ? rawHeading : headingRef.current;
+
           setDriverLocation(coords);
           setDriverHeading(heading);
           locationRef.current = coords;
           headingRef.current = heading;
+
+          animateMarkerTo(coords, heading);
+
           if (!cityName) {
             fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${GOOGLE_KEY}&language=uz`)
               .then(r => r.json())
@@ -89,8 +155,16 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
                 if (city?.long_name || region?.long_name) setCityName(city?.long_name || region?.long_name);
               }).catch(() => {});
           }
-          if (isFollowingRef.current && activeCallRef.current?.status === 'on_the_way' && mapRef.current && !userInteractingRef.current) {
-            mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 800 });
+
+          // Always follow the driver's position when follow mode is on,
+          // regardless of whether there's an active "on the way" call.
+          if (isFollowingRef.current && !userInteractingRef.current) {
+            const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+            moveCamera(coords, heading, {
+              pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
+              zoom: navigatingNow ? 18 : 17,
+              duration: 900,
+            });
           }
         }
       );
@@ -117,8 +191,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       if (!call) { setRouteInfo(null); setIsNavigating(false); }
       if (call?.status === 'on_the_way') {
         setIsNavigating(true);
-        if (isFollowingRef.current && mapRef.current && locationRef.current && !userInteractingRef.current) {
-          mapRef.current.animateCamera({ center: locationRef.current, heading: headingRef.current, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 1000 });
+        if (isFollowingRef.current && locationRef.current && !userInteractingRef.current) {
+          moveCamera(locationRef.current, headingRef.current, { pitch: is3DRef.current ? 60 : 0, zoom: 18, duration: 1000 });
         }
       } else if (!call || call.status !== 'on_the_way') setIsNavigating(false);
     } catch {}
@@ -129,6 +203,10 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     pollRef.current = setInterval(fetchData, 3000);
     return () => clearInterval(pollRef.current);
   }, [fetchData]);
+
+  useEffect(() => {
+    return () => { if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); };
+  }, []);
 
   const showMsg = (msg) => { setStatusMsg(msg); setTimeout(() => setStatusMsg(''), 3000); };
 
@@ -165,7 +243,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     const ok = await apiAction(`${API_URL}/api/driver/start/${activeCall.id}`);
     if (ok) {
       showMsg(t.statusOnTheWay); setIsNavigating(true); setIsFollowing(true); isFollowingRef.current = true;
-      if (mapRef.current && locationRef.current) mapRef.current.animateCamera({ center: locationRef.current, heading: headingRef.current, pitch: 60, zoom: 18 }, { duration: 1500 });
+      if (locationRef.current) moveCamera(locationRef.current, headingRef.current, { pitch: 60, zoom: 18, duration: 1500 });
     }
   };
 
@@ -173,7 +251,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     const ok = await apiAction(`${API_URL}/api/driver/arrived/${activeCall.id}`);
     if (ok) {
       setRouteInfo(null); setIsNavigating(false); setIsFollowing(true); showMsg(t.statusArrived);
-      if (mapRef.current && locationRef.current) mapRef.current.animateCamera({ center: locationRef.current, pitch: 0, heading: 0, zoom: 15 }, { duration: 1000 });
+      if (locationRef.current) moveCamera(locationRef.current, 0, { pitch: is3DRef.current ? 35 : 0, zoom: 15, duration: 1000 });
     }
   };
 
@@ -207,9 +285,14 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   };
 
   const handleReCenter = () => {
-    setIsFollowing(true); isFollowingRef.current = true;
-    if (mapRef.current && locationRef.current) {
-      mapRef.current.animateCamera({ center: locationRef.current, heading: isNavigating ? headingRef.current : 0, pitch: isNavigating && is3D ? 60 : 0, zoom: 18 }, { duration: 1000 });
+    if (resumeFollowTimerRef.current) { clearTimeout(resumeFollowTimerRef.current); resumeFollowTimerRef.current = null; }
+    setIsFollowing(true); isFollowingRef.current = true; userInteractingRef.current = false;
+    if (locationRef.current) {
+      moveCamera(locationRef.current, isNavigating ? headingRef.current : 0, {
+        pitch: is3DRef.current ? (isNavigating ? 60 : 35) : 0,
+        zoom: isNavigating ? 18 : 17,
+        duration: 1000,
+      });
     }
   };
 
@@ -218,14 +301,36 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     if (mapRef.current) mapRef.current.animateCamera({ pitch: new3D ? 60 : 0, heading: new3D ? headingRef.current : 0 }, { duration: 600 });
   };
 
+  // Only treat real user drags/zooms as "manual interaction" (onPanDrag),
+  // not every touch — and auto-resume following after a short pause.
   const handleMapInteraction = () => {
     userInteractingRef.current = true; setIsFollowing(false); isFollowingRef.current = false;
+    if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+    resumeFollowTimerRef.current = setTimeout(() => {
+      userInteractingRef.current = false;
+      setIsFollowing(true); isFollowingRef.current = true;
+      if (locationRef.current) {
+        const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+        moveCamera(locationRef.current, headingRef.current, {
+          pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
+          zoom: navigatingNow ? 18 : 17,
+          duration: 1000,
+        });
+      }
+    }, RESUME_FOLLOW_MS);
   };
 
   const statusInfo = activeCall ? (STATUS_LABELS[activeCall.status] || { label: activeCall.status, color: '#7f8c8d' }) : null;
   const distanceKm = activeCall && driverLocation ? getDistanceKm(driverLocation.latitude, driverLocation.longitude, parseFloat(activeCall.latitude), parseFloat(activeCall.longitude)).toFixed(1) : null;
   const showRoute = activeCall?.status === 'on_the_way' && driverLocation;
   const initialRegion = driverLocation ? { ...driverLocation, latitudeDelta: 0.05, longitudeDelta: 0.05 } : { latitude: 41.2995, longitude: 69.2401, latitudeDelta: 0.1, longitudeDelta: 0.1 };
+
+  const onMapReady = () => {
+    mapReadyRef.current = true;
+    if (locationRef.current) {
+      moveCamera(locationRef.current, headingRef.current, { pitch: is3DRef.current ? 35 : 0, zoom: 17, duration: 0 });
+    }
+  };
 
   return (
     <View style={[s.safe, { paddingTop: insets.top }]}>
@@ -267,13 +372,15 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       <View style={s.mapContainer}>
         <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE} initialRegion={initialRegion}
           showsUserLocation={false} showsMyLocationButton={false} showsCompass={true} showsTraffic={isNavigating}
-          rotateEnabled={true} pitchEnabled={true} onPanDrag={handleMapInteraction} onTouchStart={handleMapInteraction}>
+          rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
+          onPanDrag={handleMapInteraction} onRegionChangeComplete={() => {}}>
           {driverLocation && (
-            <Marker coordinate={driverLocation} anchor={{ x: 0.5, y: 0.5 }} rotation={driverHeading} flat>
+            <MarkerAnimated coordinate={animatedCoord} anchor={{ x: 0.5, y: 0.5 }} flat
+              rotation={animatedHeading.__getValue ? animatedHeading.__getValue() : driverHeading}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
-            </Marker>
+            </MarkerAnimated>
           )}
           {activeCall && <Marker coordinate={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }} pinColor="red" />}
           {!activeCall && availableCalls.map((call) => (
@@ -327,9 +434,9 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
         <View style={s.rightButtons}>
           {isNavigating && <TouchableOpacity style={s.toggleBtn} onPress={toggle3D}><Text style={s.toggleBtnText}>{is3D ? '2D' : '3D'}</Text></TouchableOpacity>}
-          <TouchableOpacity style={s.locateBtn} onPress={() => {
-            if (driverLocation && mapRef.current) { setIsFollowing(true); isFollowingRef.current = true; mapRef.current.animateToRegion({ ...driverLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }
-          }}><Text style={{ fontSize: 20 }}>📍</Text></TouchableOpacity>
+          <TouchableOpacity style={s.locateBtn} onPress={handleReCenter}>
+            <Text style={{ fontSize: 20 }}>📍</Text>
+          </TouchableOpacity>
         </View>
 
         {!driverLocation && (
