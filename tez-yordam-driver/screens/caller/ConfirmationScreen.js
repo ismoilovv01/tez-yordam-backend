@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Alert, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, Image } from 'react-native';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const COLLAPSED_HEIGHT = 130;
-const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.7;
+const COLLAPSED_HEIGHT = 110;
+const EXPANDED_HEIGHT = SCREEN_HEIGHT * 0.65;
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import { API_URL, GOOGLE_KEY } from '../../constants';
@@ -53,7 +53,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
     new:        { icon: '📋', title: t.statusNew,       subtitle: t.statusNewSub,       color: '#f39c12', step: 1 },
     confirmed:  { icon: '✅', title: t.statusConfirmed,  subtitle: t.statusConfirmedSub, color: '#2980b9', step: 2 },
     assigned:   { icon: '🚑', title: t.statusAssigned,   subtitle: t.statusAssignedSub,  color: '#8e44ad', step: 3 },
-    on_the_way: { icon: '🚗', title: t.statusOnTheWay,   subtitle: t.statusOnTheWaySub,  color: '#e67e22', step: 4 },
+    on_the_way: { icon: '🚑', title: t.statusOnTheWay,   subtitle: t.statusOnTheWaySub,  color: '#e67e22', step: 4 },
     arrived:    { icon: '🏥', title: t.statusArrived,    subtitle: t.statusArrivedSub,   color: '#27ae60', step: 5 },
     completed:  { icon: '🏁', title: t.statusCompleted,  subtitle: t.statusCompletedSub, color: '#27ae60', step: 6 },
     cancelled:  { icon: '❌', title: t.statusCancelled,  subtitle: t.statusCancelledSub, color: '#e74c3c', step: 0 },
@@ -171,7 +171,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
           )}
           {ambulanceLocation && (
             <Marker coordinate={ambulanceLocation} title={`${t.ambulance}${ambulanceInfo ? ` (${ambulanceInfo})` : ''}`}>
-              <View style={s.ambMarker}><Text style={{ fontSize: 24 }}>🚑</Text></View>
+              <Image source={require('../../assets/ambulance-top.png')} style={s.ambMarkerImg} resizeMode="contain" />
             </Marker>
           )}
           {showRoute && (
@@ -281,15 +281,15 @@ const s = StyleSheet.create({
   statusId: { backgroundColor: 'rgba(0,0,0,0.25)', color: '#fff', fontSize: 11, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
   map: { flex: 1 },
-  ambMarker: { backgroundColor: '#fff', borderRadius: 10, padding: 4, elevation: 4 },
-  locateBtn: { position: 'absolute', right: 16, bottom: 200, width: 48, height: 48, borderRadius: 24, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, zIndex: 30 },
+  ambMarkerImg: { width: 36, height: 36 },
+  locateBtn: { position: 'absolute', right: 16, bottom: 180, width: 48, height: 48, borderRadius: 24, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, zIndex: 30 },
   locateBtnIcon: { fontSize: 22 },
-  bottomSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 25, backgroundColor: '#1a1a2e', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 10 },
+  bottomSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 25, backgroundColor: '#1a1a2e', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 10, paddingBottom: 20 },
   bottomSheetExpanded: {},
-  handle: { alignItems: 'center', paddingTop: 12, paddingBottom: 12, minHeight: 44 },
+  handle: { alignItems: 'center', paddingTop: 10, paddingBottom: 8, minHeight: 38 },
   handleBar: { width: 36, height: 4, backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 2, marginBottom: 4 },
   handleHint: { fontSize: 10, color: 'rgba(255,255,255,0.35)', letterSpacing: 0.3 },
-  etaCard: { marginHorizontal: 16, marginBottom: 8, marginTop: 6, backgroundColor: '#0f3460', borderRadius: 12, padding: 10, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  etaCard: { marginHorizontal: 16, marginBottom: 6, marginTop: 2, backgroundColor: '#0f3460', borderRadius: 12, padding: 8, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   etaItem: { alignItems: 'center', flex: 1 },
   etaLabel: { fontSize: 10, color: '#aaa' },
   etaValue: { fontSize: 15, fontWeight: '700', color: '#fff' },
@@ -304,9 +304,9 @@ const s = StyleSheet.create({
   stepLabelDone: { color: '#ecf0f1', fontWeight: '600' },
   stepLine: { position: 'absolute', left: 11, top: 24, width: 2, height: 6, backgroundColor: '#2c2c4a' },
   stepLineDone: { backgroundColor: '#e74c3c' },
-  cancelBtn: { borderWidth: 1, borderColor: '#e74c3c', borderRadius: 8, padding: 10, marginHorizontal: 16, marginTop: 4, alignItems: 'center' },
+  cancelBtn: { borderWidth: 1, borderColor: '#e74c3c', borderRadius: 8, padding: 8, marginHorizontal: 16, marginTop: 2, alignItems: 'center' },
   cancelBtnText: { color: '#e74c3c', fontSize: 13 },
-  waitingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 6 },
+  waitingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 4 },
   waitingText: { color: '#7f8c8d', fontSize: 12 },
   doneBox: { padding: 16, gap: 8 },
   doneThanks: { color: '#27ae60', fontSize: 13, fontWeight: '600', textAlign: 'center' },
