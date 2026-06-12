@@ -73,7 +73,7 @@
 
 /* Collapsed — small, shows only handle + ETA + cancel */
 .conf-bottom.collapsed {
-  max-height: 180px;
+  max-height: 130px;
 }
 
 /* Expanded — shows everything */

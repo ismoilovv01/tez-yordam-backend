@@ -8,7 +8,7 @@ const STATUSES = {
   new:       { icon: '📋', title: 'Chaqiruv yuborildi',         subtitle: "Dispetcher ko'rib chiqmoqda...", color: '#f39c12', step: 1 },
   confirmed: { icon: '✅', title: 'Tasdiqlandi',                 subtitle: 'Dispetcher chaqiruvingizni tasdiqladi', color: '#2980b9', step: 2 },
   assigned:  { icon: '🚑', title: 'Haydovchi qabul qildi',       subtitle: "Tez yordam mashinasi yo'lga chiqmoqda", color: '#8e44ad', step: 3 },
-  on_the_way:{ icon: '🚗', title: "Yo'lda",                      subtitle: 'Tez yordam mashinasi sizga kelmoqda', color: '#e67e22', step: 4 },
+  on_the_way:{ icon: '🚑', title: "Yo'lda",                      subtitle: 'Tez yordam mashinasi sizga kelmoqda', color: '#e67e22', step: 4 },
   arrived:   { icon: '🏥', title: 'Yetib keldi',                 subtitle: 'Tez yordam mashinasi sizning joyingizda', color: '#27ae60', step: 5 },
   completed: { icon: '🏁', title: 'Tugatildi',                   subtitle: 'Chaqiruv muvaffaqiyatli yakunlandi', color: '#27ae60', step: 6 },
   cancelled: { icon: '❌', title: 'Bekor qilindi',               subtitle: 'Chaqiruv bekor qilindi', color: '#e74c3c', step: 0 },
@@ -62,7 +62,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const dragStartY   = useRef(null);
   const dragging     = useRef(false);
 
-  // ── Cancel ───────────────────────────────────────────────────────────────
+  // ── Cancel ─────────────────────────────────────────────────────
   const handleCancel = async () => {
     if (!window.confirm('Chaqiruvni bekor qilmoqchimisiz?')) return;
     try {
@@ -89,7 +89,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     }, 1000);
   };
 
-  // ── ETA ──────────────────────────────────────────────────────────────────
+  // ── ETA ────────────────────────────────────────────────────────
   const fetchEta = (ambLat, ambLng) => {
     if (!callerLocation || !window.google) return;
     if (!directionsServiceRef.current)
@@ -115,7 +115,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     });
   };
 
-  // ── Fetch status every 1s ────────────────────────────────────────────────
+  // ── Fetch status every 1s ──────────────────────────────────────
   const fetchStatus = async () => {
     if (!emergencyId || !userToken) return;
     try {
@@ -149,7 +149,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); };
   }, [emergencyId, userToken]);
 
-  // ── Init map ─────────────────────────────────────────────────────────────
+  // ── Init map ───────────────────────────────────────────────────
   useEffect(() => {
     if (mapInitRef.current || !mapRef.current) return;
     if (window.google) { initMap(); return; }
@@ -183,7 +183,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     }
   };
 
-  // ── Update ambulance marker — NO map snapping after first fit ────────────
+  // ── Update ambulance marker — NO map snapping after first fit ───
   useEffect(() => {
     if (!gMapRef.current || !window.google || !ambulanceLocation) return;
     if (ambulanceMarkRef.current) {
@@ -215,7 +215,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     }
   }, [ambulanceLocation]);
 
-  // ── Bottom sheet drag handlers ────────────────────────────────────────────
+  // ── Bottom sheet drag handlers ──────────────────────────────────
   const handleDragStart = (e) => {
     dragging.current = true;
     dragStartY.current = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
@@ -239,7 +239,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     ? getDistanceKm(ambulanceLocation.lat, ambulanceLocation.lng, callerLocation.lat, callerLocation.lng).toFixed(1)
     : null;
 
-  // ── Cancellation screen ──────────────────────────────────────────────────
+  // ── Cancellation screen ──────────────────────────────────────────
   if (showCancelScreen) {
     const msgs = {
       user:       'Siz chaqiruvni bekor qildingiz.',
