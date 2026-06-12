@@ -86,8 +86,8 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
     await pool.query("CREATE TABLE IF NOT EXISTS telegram_users (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, chat_id VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
     await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
-    console.log('вњ… DB migrations done');
-    console.log('вњ… Migrations complete');
+    console.log('РІСљвЂ¦ DB migrations done');
+    console.log('РІСљвЂ¦ Migrations complete');
   } catch(e) { console.log('Migration:', e.message); }
 })();
 
@@ -131,7 +131,7 @@ async function checkRole(req, res, next) {
   }
 }
 
-// в”Ђв”Ђ TELEGRAM BOT в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ TELEGRAM BOT РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8822164884:AAHl1iSW_PeBX2LxQM2cQQ-bhu3CZcnIVgQ';
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
@@ -147,7 +147,7 @@ async function sendTelegramMessage(chatId, text) {
   }
 }
 
-// Telegram webhook вЂ” handles /start and phone number messages
+// Telegram webhook РІР‚вЂќ handles /start and phone number messages
 app.post('/api/telegram/webhook', async (req, res) => {
   try {
     const { message } = req.body;
@@ -158,9 +158,9 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
     if (text === '/start') {
       await sendTelegramMessage(chatId,
-        'рџ‘‹ Salom! <b>Help Me</b> ilovasiga xush kelibsiz!\n\n' +
+        'СЂСџвЂвЂ№ Salom! <b>Help Me</b> ilovasiga xush kelibsiz!\n\n' +
         'Telefon raqamingizni yuboring (misol: +998901234567) va biz sizni tizimga boglaymiz.\n\n' +
-        'Keyin ilova orqali kirganingizda OTP kodni Telegram orqali olasiz! рџ”ђ'
+        'Keyin ilova orqali kirganingizda OTP kodni Telegram orqali olasiz! СЂСџвЂќС’'
       );
     } else if (text.match(/^\+?998[0-9]{9}$/)) {
       const phone = text.startsWith('+') ? text : '+' + text;
@@ -169,12 +169,12 @@ app.post('/api/telegram/webhook', async (req, res) => {
         [phone, chatId.toString()]
       );
       await sendTelegramMessage(chatId,
-        `вњ… Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog'landi!\n\n` +
-        'Endi ilova orqali kirishda OTP kodni shu yerda olasiz. рџЋ‰'
+        `РІСљвЂ¦ Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog'landi!\n\n` +
+        'Endi ilova orqali kirishda OTP kodni shu yerda olasiz. СЂСџР‹вЂ°'
       );
     } else {
       await sendTelegramMessage(chatId,
-        'рџ“± Telefon raqamingizni yuboring (misol: <code>+998901234567</code>)'
+        'СЂСџвЂњВ± Telefon raqamingizni yuboring (misol: <code>+998901234567</code>)'
       );
     }
     res.json({ ok: true });
@@ -184,18 +184,13 @@ app.post('/api/telegram/webhook', async (req, res) => {
   }
 });
 
-// в”Ђв”Ђ AUTH в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ AUTH РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number format' });
-    // Check if phone is in allowed_phones whitelist
-    const allowed = await pool.query('SELECT id FROM allowed_phones WHERE phone = $1', [phone]);
-    if (!allowed.rows.length) {
-      return res.status(403).json({ error: "Bu raqam tizimda ro'yxatdan o'tmagan. Administratorga murojaat qiling." });
-    }
     const code = generateVerificationCode();
     const codeHash = await hashCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60000);
@@ -243,7 +238,7 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
       const tgUser = await pool.query('SELECT chat_id FROM telegram_users WHERE phone = $1', [phone]);
       if (tgUser.rows.length) {
         await sendTelegramMessage(tgUser.rows[0].chat_id,
-          `рџ”ђ <b>Help Me</b> - Tasdiqlash kodi:\n\n<code>${code}</code>\n\nKod 10 daqiqa davomida amal qiladi.`
+          `СЂСџвЂќС’ <b>Help Me</b> - Tasdiqlash kodi:\n\n<code>${code}</code>\n\nKod 10 daqiqa davomida amal qiladi.`
         );
         sentViaTelegram = true;
         console.log(`OTP sent via Telegram to ${phone}`);
@@ -423,7 +418,7 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
   }
 });
 
-// в”Ђв”Ђ EMERGENCIES в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ EMERGENCIES РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.post('/api/emergencies', authenticateToken, async (req, res) => {
   try {
@@ -574,7 +569,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
   }
 });
 
-// в”Ђв”Ђ AMBULANCES в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ AMBULANCES РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -604,7 +599,7 @@ app.get('/api/ambulances/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// в”Ђв”Ђ DISPATCH CENTERS в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ DISPATCH CENTERS РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.get('/api/dispatch-centers', async (req, res) => {
   try {
@@ -645,7 +640,7 @@ app.post('/api/admin/seed-dispatch-centers', authenticateToken, checkRole, async
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// в”Ђв”Ђ ADMIN в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ ADMIN РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.get('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -719,7 +714,7 @@ app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, r
   }
 });
 
-// в”Ђв”Ђ DRIVER в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ DRIVER РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   try {
@@ -928,7 +923,7 @@ io.on('connection', (socket) => {
 
 global.io = io;
 
-// в”Ђв”Ђ DISPATCHER HODIM MANAGEMENT в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ DISPATCHER HODIM MANAGEMENT РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.post('/api/dispatcher/create-driver-code', authenticateToken, checkRole, async (req, res) => {
   try {
@@ -1013,7 +1008,7 @@ app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (r
   }
 });
 
-// в”Ђв”Ђ DRIVER LOGIN WITH CODE в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РІвЂќР‚РІвЂќР‚ DRIVER LOGIN WITH CODE РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚РІвЂќР‚
 
 app.post('/api/auth/driver-login', async (req, res) => {
   try {
@@ -1037,7 +1032,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
     let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
     let user;
     if (!userR.rows.length) {
-      // New user вЂ” create as caller so they can still use app as caller too
+      // New user РІР‚вЂќ create as caller so they can still use app as caller too
       const created = await pool.query(
         'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
         [phone, 'caller', firstName, lastName]
@@ -1045,7 +1040,7 @@ app.post('/api/auth/driver-login', async (req, res) => {
       user = created.rows[0];
     } else {
       user = userR.rows[0];
-      // NEVER change user_type вЂ” caller can also be a hodim
+      // NEVER change user_type РІР‚вЂќ caller can also be a hodim
       // Only update name if user has no name yet
       if (!user.first_name && !user.last_name) {
         await pool.query(
