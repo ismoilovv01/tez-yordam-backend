@@ -37,11 +37,12 @@ export default function App() {
         const savedToken = await AsyncStorage.getItem('app_token');
         const savedUser = await AsyncStorage.getItem('app_user');
         const savedServiceType = await AsyncStorage.getItem('app_service_type');
+        const savedRole = await AsyncStorage.getItem('app_role');
         if (savedToken && savedUser) {
           const userData = JSON.parse(savedUser);
           setToken(savedToken);
           setUser(userData);
-          setRole(userData.user_type === 'driver' ? 'driver' : 'caller');
+          setRole(savedRole === 'driver' ? 'driver' : 'caller');
           setServiceType(savedServiceType || 'ambulance');
         }
       } catch {}
@@ -53,15 +54,17 @@ export default function App() {
   const handleLogin = async (userData, authToken) => {
     await AsyncStorage.setItem('app_token', authToken);
     await AsyncStorage.setItem('app_user', JSON.stringify(userData));
+    await AsyncStorage.setItem('app_role', 'caller');
     setToken(authToken);
     setUser(userData);
-    setRole(userData.user_type === 'driver' ? 'driver' : 'caller');
+    setRole('caller');
   };
 
   const handleDriverLogin = async (authToken, userData, svcType) => {
     await AsyncStorage.setItem('app_token', authToken);
     await AsyncStorage.setItem('app_user', JSON.stringify(userData));
     await AsyncStorage.setItem('app_service_type', svcType || 'ambulance');
+    await AsyncStorage.setItem('app_role', 'driver');
     setToken(authToken);
     setUser(userData);
     setRole('driver');
@@ -72,6 +75,7 @@ export default function App() {
     await AsyncStorage.removeItem('app_token');
     await AsyncStorage.removeItem('app_user');
     await AsyncStorage.removeItem('app_service_type');
+    await AsyncStorage.removeItem('app_role');
     setToken(null);
     setUser(null);
     setRole(null);
