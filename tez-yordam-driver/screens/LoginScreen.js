@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView,
+  ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Animated,
 } from 'react-native';
-import auth from '@react-native-firebase/auth';
 import { API_URL } from '../constants';
 import { useLanguage } from '../LanguageContext';
+
+const RESEND_SECONDS = 60;
 
 export default function LoginScreen({ onLogin, route }) {
   const { t, theme } = useLanguage();
@@ -17,73 +18,93 @@ export default function LoginScreen({ onLogin, route }) {
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [confirm, setConfirm] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
 
-  const handleSendCode = async () => {
+  const timerRef = useRef(null);
+
+  const pulse1 = useRef(new Animated.Value(0)).current;
+  const pulse2 = useRef(new Animated.Value(0)).current;
+  const pulse3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const makePulse = (anim, delay) => {
+      anim.setValue(0);
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(anim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+        ])
+      );
+    };
+    const a1 = makePulse(pulse1, 0);
+    const a2 = makePulse(pulse2, 650);
+    const a3 = makePulse(pulse3, 1300);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+    timerRef.current = setInterval(() => {
+      setSecondsLeft((s) => {
+        if (s <= 1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [secondsLeft > 0]);
+
+  const ringStyle = (anim) => ({
+    opacity: anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.6, 0.2, 0] }),
+    transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] }) }],
+  });
+
+  const sendCode = async () => {
     const clean = phone.replace(/\D/g, '');
     if (clean.length < 9) return setError(t.loginSub || "To'liq raqam kiriting");
     setLoading(true); setError('');
     try {
       const fullPhone = '+998' + clean;
-      const confirmation = await auth().signInWithPhoneNumber(fullPhone);
-      setConfirm(confirmation);
+      const res = await fetch(`${API_URL}/api/auth/send-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Xato');
       setStep('code');
+      setCode('');
+      setSecondsLeft(RESEND_SECONDS);
     } catch (err) {
-      // Fallback to backend OTP
-      try {
-        const fullPhone = '+998' + clean;
-        const res = await fetch(`${API_URL}/api/auth/send-code`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: fullPhone }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Xato');
-        setConfirm(null); // null = use backend OTP
-        setStep('code');
-      } catch (err2) {
-        setError(err2.message || 'Xato');
-      }
+      setError(err.message || 'Xato');
     }
     setLoading(false);
   };
 
   const handleVerifyCode = async (fn, ln) => {
     if (!code || code.length < 6) return setError(t.enterCode || '6 xonali kod kiriting');
+    if (secondsLeft <= 0) return setError(t.codeExpired || 'Kod muddati tugadi, qaytadan yuboring');
     setLoading(true); setError('');
     try {
       const clean = phone.replace(/\D/g, '');
       const fullPhone = '+998' + clean;
-
-      if (confirm) {
-        // Firebase verification
-        const result = await confirm.confirm(code);
-        const firebaseToken = await result.user.getIdToken();
-        const body = { phone: fullPhone, id_token: firebaseToken, role: role || 'caller' };
-        if (fn && ln) { body.first_name = fn; body.last_name = ln; }
-        const res = await fetch(`${API_URL}/api/auth/verify-firebase`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Xato');
-        if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
-        onLogin(data.user, data.token);
-      } else {
-        // Backend OTP fallback
-        const body = { phone: fullPhone, code, role: role || 'caller' };
-        if (fn && ln) { body.first_name = fn; body.last_name = ln; }
-        const res = await fetch(`${API_URL}/api/auth/verify-code`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Xato');
-        if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
-        onLogin(data.user, data.token);
-      }
+      const body = { phone: fullPhone, code, role: role || 'caller' };
+      if (fn && ln) { body.first_name = fn; body.last_name = ln; }
+      const res = await fetch(`${API_URL}/api/auth/verify-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Xato');
+      if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
+      onLogin(data.user, data.token);
     } catch (err) {
       setError(err.message || 'Xato');
     }
@@ -99,11 +120,11 @@ export default function LoginScreen({ onLogin, route }) {
     <SafeAreaView style={[s.safe, { backgroundColor: '#c0392b' }]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={s.hero}>
-          <View style={s.pulseRing} />
-          <View style={[s.pulseRing, s.pulseDelay1]} />
-          <View style={[s.pulseRing, s.pulseDelay2]} />
+          <Animated.View style={[s.pulseRing, ringStyle(pulse1)]} />
+          <Animated.View style={[s.pulseRing, ringStyle(pulse2)]} />
+          <Animated.View style={[s.pulseRing, ringStyle(pulse3)]} />
           <Text style={s.heroIcon}>🚑</Text>
-          <Text style={s.heroTitle}>{t.roleTitle || 'Help Me'}</Text>
+          <Text style={s.heroTitle}>{t.roleTitle || 'Help Mee'}</Text>
           <Text style={s.heroTagline}>{t.tagline || 'FAVQULODDA TIBBIY YORDAM'}</Text>
         </View>
 
@@ -126,7 +147,7 @@ export default function LoginScreen({ onLogin, route }) {
                 />
               </View>
               {!!error && <Text style={s.error}>⚠️ {error}</Text>}
-              <TouchableOpacity style={s.btn} onPress={handleSendCode} disabled={loading}>
+              <TouchableOpacity style={s.btn} onPress={sendCode} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t.sendCode || 'Kod yuborish'}</Text>}
               </TouchableOpacity>
             </>
@@ -147,7 +168,18 @@ export default function LoginScreen({ onLogin, route }) {
               <TouchableOpacity style={s.btn} onPress={() => handleVerifyCode()} disabled={loading}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>{t.continue || 'Davom etish'}</Text>}
               </TouchableOpacity>
-              <TouchableOpacity style={s.btnBack} onPress={() => { setStep('phone'); setCode(''); setError(''); setConfirm(null); }}>
+
+              {secondsLeft > 0 ? (
+                <Text style={s.timerText}>
+                  {(t.resendIn || 'Qaytadan yuborish')} 0:{secondsLeft < 10 ? `0${secondsLeft}` : secondsLeft}
+                </Text>
+              ) : (
+                <TouchableOpacity style={s.btnResend} onPress={sendCode} disabled={loading}>
+                  <Text style={s.btnResendText}>{t.resendCode || "Qayta yuborish"}</Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity style={s.btnBack} onPress={() => { setStep('phone'); setCode(''); setError(''); setSecondsLeft(0); }}>
                 <Text style={s.btnBackText}>{t.back || 'Orqaga'}</Text>
               </TouchableOpacity>
             </>
@@ -179,9 +211,7 @@ export default function LoginScreen({ onLogin, route }) {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e74c3c', position: 'relative', minHeight: 220 },
-  pulseRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  pulseDelay1: { width: 200, height: 200, borderRadius: 100 },
-  pulseDelay2: { width: 240, height: 240, borderRadius: 120 },
+  pulseRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
   heroIcon: { fontSize: 64, zIndex: 1, marginBottom: 12 },
   heroTitle: { fontSize: 32, fontWeight: '800', color: '#fff', zIndex: 1, letterSpacing: 1 },
   heroTagline: { fontSize: 13, color: 'rgba(255,255,255,0.8)', zIndex: 1, marginTop: 6, letterSpacing: 2 },
@@ -199,4 +229,7 @@ const s = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   btnBack: { width: '100%', padding: 12, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#ddd' },
   btnBackText: { color: '#888', fontSize: 14 },
+  timerText: { textAlign: 'center', color: '#888', fontSize: 13, marginBottom: 10 },
+  btnResend: { width: '100%', padding: 12, borderRadius: 12, alignItems: 'center', marginBottom: 10 },
+  btnResendText: { color: '#e74c3c', fontSize: 14, fontWeight: '700' },
 });
