@@ -1,0 +1,34 @@
+.notif-container {
+  height: 100vh; display: flex; flex-direction: column;
+  background: #f0f4ff; font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto;
+}
+.notif-header {
+  background: linear-gradient(135deg, #4fc3f7, #81c784);
+  padding: 40px 20px 40px; text-align: center;
+}
+.notif-title { font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.notif-sub { font-size: 13px; color: rgba(255,255,255,0.8); }
+.notif-content {
+  background: #fff; border-radius: 24px 24px 0 0;
+  margin-top: -16px; padding: 20px 16px 0; flex: 1; overflow-y: auto;
+}
+.notif-card {
+  display: flex; align-items: center; gap: 12px;
+  background: #f8f9ff; border-radius: 14px; padding: 14px 16px;
+  border: 1px solid #e8ecff; margin-bottom: 10px;
+}
+.notif-card-icon { font-size: 24px; }
+.notif-card-info { flex: 1; }
+.notif-card-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin: 0 0 3px; }
+.notif-card-time { font-size: 11px; color: #aaa; margin: 0; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 12px; }
+.notif-empty-icon { font-size: 48px; }
+.notif-empty-text { font-size: 14px; color: #aaa; }
+.notif-bottom-nav {
+  background: #fff; padding: 12px 20px 20px;
+  display: flex; justify-content: space-around;
+  border-top: 1px solid #f0f0f0; flex-shrink: 0;
+}
+.notif-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; font-size: 22px; }
+.notif-nav-label { font-size: 11px; color: #bbb; }

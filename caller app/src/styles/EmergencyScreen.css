@@ -1,0 +1,92 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.em-container {
+  height: 100vh; display: flex; flex-direction: column;
+  font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto; background: #f0f4ff;
+}
+.em-map-wrapper { flex: 1; position: relative; min-height: 0; }
+.em-map { width: 100%; height: 100%; }
+
+/* Hide all Google Maps UI */
+.em-map .gmnoprint,
+.em-map .gm-bundled-control,
+.em-map .gm-control-active,
+.em-map .gm-fullscreen-control,
+.em-map .gm-svpc,
+.em-map .gm-style-cc { display: none !important; }
+
+/* Back button */
+.em-back-btn {
+  position: absolute; top: 12px; left: 12px; z-index: 10;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: #fff; border: none; cursor: pointer;
+  font-size: 20px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+/* Title */
+.em-map-title {
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10;
+  background: #fff; border-radius: 20px; padding: 8px 16px;
+  font-size: 13px; font-weight: 600; color: #333;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1); white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+}
+
+/* Notification bell top right */
+.em-notif-btn {
+  position: absolute; top: 12px; right: 12px; z-index: 10;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: linear-gradient(135deg, #4fc3f7, #81c784);
+  border: none; cursor: pointer; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+.em-notif-dot {
+  position: absolute; top: 6px; right: 6px;
+  width: 8px; height: 8px; background: #e74c3c;
+  border-radius: 50%; border: 1.5px solid #fff;
+}
+
+/* Locate button bottom right */
+.em-locate-btn {
+  position: absolute; bottom: 14px; right: 12px; z-index: 10;
+  width: 40px; height: 40px; border-radius: 12px;
+  background: #fff; border: none; cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+/* Bottom panel */
+.em-bottom {
+  background: #fff; border-radius: 24px 24px 0 0;
+  padding: 8px 16px 28px; flex-shrink: 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+}
+.em-bottom::before {
+  content: ''; display: block;
+  width: 36px; height: 4px; background: #e0e0e0;
+  border-radius: 2px; margin: 8px auto 14px;
+}
+.em-error {
+  background: #fff5f5; border: 1px solid #ffcdd2;
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 13px; color: #e74c3c; margin-bottom: 12px;
+}
+.em-textarea {
+  width: 100%; background: #f8f9ff; border: 1.5px solid #e8ecff;
+  border-radius: 12px; padding: 12px 14px; font-size: 14px;
+  color: #333; resize: none; outline: none; margin-bottom: 12px;
+  font-family: 'Segoe UI', sans-serif;
+}
+.em-textarea:focus { border-color: #4fc3f7; }
+.em-send-btn {
+  width: 100%; padding: 16px; border: none; border-radius: 14px;
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+  color: #fff; font-size: 15px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; gap: 10px; letter-spacing: 0.5px;
+  transition: opacity 0.2s;
+}
+.em-send-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.em-send-btn:hover:not(:disabled) { opacity: 0.9; }

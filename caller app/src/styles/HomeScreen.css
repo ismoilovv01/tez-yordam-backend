@@ -1,0 +1,105 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.home-container {
+  height: 100vh; display: flex; flex-direction: column;
+  background: #f0f4ff; font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto; overflow: hidden;
+}
+.home-header {
+  background: linear-gradient(135deg, #4fc3f7, #81c784);
+  padding: 20px 20px 32px; flex-shrink: 0;
+}
+.home-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.home-greeting { font-size: 17px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.home-location { display: flex; align-items: center; gap: 4px; }
+.home-location-icon { font-size: 12px; }
+.home-location-text { font-size: 12px; color: rgba(255,255,255,0.85); }
+.home-notif-btn {
+  position: relative; width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(255,255,255,0.25); border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.home-notif-dot {
+  position: absolute; top: 6px; right: 6px; width: 9px; height: 9px;
+  background: #e74c3c; border-radius: 50%; border: 1.5px solid #81c784;
+}
+.home-search {
+  background: rgba(255,255,255,0.9); border-radius: 14px;
+  padding: 12px 16px; display: flex; align-items: center; gap: 8px;
+}
+.home-search-icon { font-size: 16px; }
+.home-search-placeholder { font-size: 14px; color: #aaa; }
+.home-content {
+  background: #fff; border-radius: 24px 24px 0 0;
+  margin-top: -16px; padding: 20px 16px 0;
+  flex: 1; overflow-y: auto;
+}
+.home-quick-icons { display: flex; justify-content: space-around; margin-bottom: 24px; }
+.home-quick-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; }
+.home-quick-icon {
+  width: 52px; height: 52px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.home-quick-icon.blue { background: #f0f4ff; border: 1px solid #e0e8ff; }
+.home-quick-icon.orange { background: #fff8f0; border: 1px solid #ffe0b2; }
+.home-quick-label { font-size: 11px; color: #888; }
+.home-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.home-section-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
+.home-section-all { font-size: 12px; color: #4fc3f7; }
+.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.home-service-card {
+  border-radius: 18px; padding: 18px 14px; border: 1.5px solid;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 10px; min-height: 120px;
+  cursor: pointer; background: none; transition: transform 0.1s;
+}
+.home-service-card:active { transform: scale(0.96); }
+.home-service-card.active { background: #fff0f0; border-color: #ffcdd2; }
+.home-service-card.inactive { background: #f8f9ff; border-color: #e8ecff; opacity: 0.85; }
+.home-service-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.home-service-icon.red { background: #ffebee; }
+.home-service-icon.blue-dark { background: #e8eaf6; }
+.home-service-icon.navy { background: #e3f2fd; }
+.home-service-icon.fire { background: #fff3e0; }
+.home-service-name { font-size: 13px; font-weight: 600; text-align: center; }
+.red-text { color: #c0392b; }
+.blue-text { color: #3949ab; }
+.navy-text { color: #1565c0; }
+.fire-text { color: #bf360c; }
+.home-service-status { font-size: 11px; text-align: center; }
+.active-status { color: #e57373; }
+.soon-status { color: #f39c12; }
+.home-last-call {
+  background: #f8f9ff; border-radius: 16px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid #e8ecff; margin-bottom: 20px; cursor: pointer;
+}
+.home-last-call-icon { font-size: 24px; }
+.home-last-call-info { flex: 1; }
+.home-last-call-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
+.home-last-call-sub { font-size: 12px; }
+.home-last-call-arrow { font-size: 20px; color: #ccc; }
+.home-bottom-nav {
+  background: #fff; padding: 12px 20px 20px;
+  display: flex; justify-content: space-around;
+  border-top: 1px solid #f0f0f0; flex-shrink: 0;
+}
+.home-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; }
+.home-nav-icon { font-size: 22px; }
+.home-nav-label { font-size: 11px; color: #bbb; }
+.home-nav-label.active { color: #4fc3f7; font-weight: 600; }
+/* Coming soon modal */
+.coming-soon-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.coming-soon-modal {
+  background: #fff; border-radius: 20px; padding: 32px 40px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.coming-soon-emoji { font-size: 48px; }
+.coming-soon-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
+.coming-soon-sub { font-size: 14px; color: #888; }

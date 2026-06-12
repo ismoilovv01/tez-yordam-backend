@@ -1,0 +1,187 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.confirmation-container {
+  height: 100vh;
+  background: #1a1a2e;
+  color: #ecf0f1;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', sans-serif;
+  max-width: 480px;
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Status bar */
+.conf-status-bar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  transition: background 0.5s;
+}
+.conf-pulse-container {
+  position: relative;
+  width: 44px; height: 44px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.conf-pulse-ring {
+  position: absolute;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  animation: conf-pulse 2.5s ease-out infinite;
+}
+.conf-pulse-ring.delay1 { animation-delay: 0.8s; }
+.conf-pulse-ring.delay2 { animation-delay: 1.6s; }
+@keyframes conf-pulse {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.conf-center-icon { font-size: 26px; z-index: 1; position: relative; }
+.conf-status-text { flex: 1; min-width: 0; }
+.conf-title { font-size: 15px; font-weight: 700; color: #fff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.conf-subtitle { font-size: 11px; color: rgba(255,255,255,0.85); margin: 0; }
+.conf-id { background: rgba(0,0,0,0.25); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 20px; font-family: monospace; flex-shrink: 0; }
+
+/* Map */
+.conf-map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; }
+.conf-map { width: 100%; height: 100%; }
+.conf-map-legend {
+  position: absolute; bottom: 8px; left: 8px;
+  display: flex; gap: 12px; padding: 4px 10px;
+  background: rgba(0,0,0,0.65); border-radius: 8px;
+  font-size: 11px; color: #fff; z-index: 30;
+}
+
+/* Bottom sheet */
+.conf-bottom {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 25;
+  background: #1a1a2e;
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* Collapsed — small, shows only handle + ETA + cancel */
+.conf-bottom.collapsed {
+  max-height: 180px;
+}
+
+/* Expanded — shows everything */
+.conf-bottom.expanded {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Drag handle */
+.sheet-handle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.sheet-handle-bar {
+  width: 36px; height: 4px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+.sheet-handle-hint {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  letter-spacing: 0.3px;
+}
+
+/* ETA card */
+.eta-card {
+  margin: 6px 16px 8px;
+  background: #0f3460;
+  border-radius: 12px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.eta-item { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+.eta-label { font-size: 10px; color: #aaa; }
+.eta-value { font-size: 15px; font-weight: 700; color: #fff; }
+.eta-divider { width: 1px; height: 32px; background: rgba(255,255,255,0.1); }
+
+/* Progress steps */
+.progress-steps { padding: 6px 16px 4px; display: flex; flex-direction: column; }
+.step-row { display: flex; align-items: center; gap: 10px; position: relative; min-height: 30px; }
+.step-circle {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #2c2c4a; border: 2px solid #3d3d66;
+  color: #7f8c8d; font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all 0.3s;
+}
+.step-circle.done { background: #e74c3c; border-color: #e74c3c; color: #fff; }
+.step-circle.active { background: #c0392b; border-color: #c0392b; color: #fff; box-shadow: 0 0 10px rgba(192,57,43,0.6); }
+.step-label { font-size: 13px; color: #7f8c8d; flex: 1; }
+.step-label.done { color: #ecf0f1; font-weight: 600; }
+.step-line { position: absolute; left: 11px; top: 24px; width: 2px; height: 6px; background: #2c2c4a; transition: background 0.3s; }
+.step-line.done { background: #e74c3c; }
+
+/* Cancel button */
+.btn-cancel-request {
+  background: transparent;
+  border: 1px solid #e74c3c; color: #e74c3c;
+  padding: 10px; border-radius: 8px; font-size: 13px;
+  cursor: pointer; margin: 4px 16px 0;
+  width: calc(100% - 32px); transition: all 0.2s;
+}
+.btn-cancel-request:hover { background: #e74c3c; color: #fff; }
+
+/* Waiting */
+.conf-waiting { display: flex; align-items: center; gap: 8px; padding: 6px 16px 10px; color: #7f8c8d; font-size: 12px; }
+.waiting-dots { display: flex; gap: 5px; }
+.waiting-dots span { width: 6px; height: 6px; border-radius: 50%; background: #e74c3c; animation: dot-bounce 1.2s ease-in-out infinite; }
+.waiting-dots span:nth-child(2) { animation-delay: 0.2s; }
+.waiting-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Actions */
+.conf-actions { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.conf-thanks { text-align: center; color: #27ae60; font-size: 13px; font-weight: 600; }
+
+.btn-new { background: #e74c3c; border: none; color: #fff; padding: 13px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-new:hover { background: #c0392b; }
+.btn-logout-conf { background: transparent; border: 1px solid #e74c3c; color: #e74c3c; padding: 10px; border-radius: 10px; font-size: 13px; cursor: pointer; }
+.btn-logout-conf:hover { background: #e74c3c; color: #fff; }
+
+/* Cancellation screen */
+.cancel-screen {
+  height: 100vh; background: #1a1a2e;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px; padding: 32px;
+  font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto;
+}
+.cancel-icon { font-size: 72px; }
+.cancel-title { color: #fff; font-size: 22px; font-weight: 700; text-align: center; }
+.cancel-msg { color: #aaa; font-size: 15px; text-align: center; line-height: 1.5; }
+.cancel-countdown { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cancel-countdown-circle {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: #e74c3c; color: #fff;
+  font-size: 28px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.cancel-countdown p { color: #aaa; font-size: 13px; }

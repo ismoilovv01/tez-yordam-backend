@@ -1,0 +1,52 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+.role-container {
+  height: 100vh; display: flex; flex-direction: column;
+  background: #c0392b; font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto; overflow: hidden;
+}
+.role-hero {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative;
+  background: linear-gradient(160deg, #e74c3c 0%, #c0392b 100%);
+}
+.role-pulse-ring {
+  position: absolute; width: 160px; height: 160px;
+  border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);
+  animation: role-pulse 2.5s ease-out infinite;
+}
+.role-pulse-ring.delay1 { animation-delay: 0.8s; }
+.role-pulse-ring.delay2 { animation-delay: 1.6s; }
+@keyframes role-pulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.role-logo { font-size: 64px; z-index: 1; margin-bottom: 12px; }
+.role-app-name { font-size: 32px; font-weight: 800; color: #fff; z-index: 1; letter-spacing: 1px; }
+.role-tagline { font-size: 11px; color: rgba(255,255,255,0.7); z-index: 1; margin-top: 6px; letter-spacing: 2px; }
+.role-form-card {
+  background: #fff; border-radius: 28px 28px 0 0;
+  padding: 28px 24px 40px; flex-shrink: 0;
+}
+.role-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+.role-sub { font-size: 13px; color: #888; margin-bottom: 20px; }
+.role-btn {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  border-radius: 16px; padding: 16px; border: 1.5px solid;
+  cursor: pointer; margin-bottom: 12px; background: transparent;
+  transition: transform 0.1s;
+}
+.role-btn:active { transform: scale(0.98); }
+.role-btn-user { border-color: #ffcdd2; background: #fff0f0; }
+.role-btn-driver { border-color: #b3d9ff; background: #f0f8ff; }
+.role-btn-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.role-btn-icon.user { background: #e74c3c; }
+.role-btn-icon.driver { background: #1976d2; }
+.role-btn-text { display: flex; flex-direction: column; flex: 1; text-align: left; }
+.role-btn-label { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+.role-btn-desc { font-size: 12px; color: #888; margin-top: 2px; }
+.role-btn-arrow { font-size: 22px; color: #ccc; }
+.role-note { font-size: 11px; color: #aaa; text-align: center; margin-top: 4px; }
