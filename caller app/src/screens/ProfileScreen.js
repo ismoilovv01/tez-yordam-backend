@@ -215,7 +215,7 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications }) {
         <div className="profile-card">
           <span className="profile-card-icon">ℹ️</span>
           <div className="profile-card-info">
-            <p className="profile-card-value">Tez Yordam v1.0.0</p>
+            <p className="profile-card-value">Help Mee v1.0.0</p>
             <p className="profile-card-label">Ilova versiyasi</p>
           </div>
         </div>
