@@ -240,10 +240,14 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     const navigatingNow = activeCallRef.current?.status === 'on_the_way';
     const pos = { lat: coords.latitude, lng: coords.longitude };
 
+    // The camera itself rotates to match the driver's heading (Google-Maps-
+    // navigator style), so the nav arrow icon should always point straight
+    // up on screen — rotating the icon image too would double-apply the
+    // rotation and desync it from the camera's smooth animation.
     const iconSvg = navigatingNow
       ? `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
            <circle cx="22" cy="22" r="20" fill="${accentColor}" stroke="#fff" stroke-width="3"/>
-           <path d="M22 8 L30 30 L22 25 L14 30 Z" fill="#fff" transform="rotate(${heading || 0} 22 22)"/>
+           <path d="M22 8 L30 30 L22 25 L14 30 Z" fill="#fff"/>
          </svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
            <circle cx="20" cy="20" r="18" fill="#fff" stroke="${accentColor}" stroke-width="2"/>
