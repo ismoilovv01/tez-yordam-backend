@@ -112,7 +112,6 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     const interactionHandler = () => handleMapInteractionRef.current();
     mapDivRef.current.addEventListener('mousedown', interactionHandler, { passive: true });
     mapDivRef.current.addEventListener('touchstart', interactionHandler, { passive: true });
-    mapDivRef.current.addEventListener('wheel', interactionHandler, { passive: true });
 
     directionsServiceRef.current = new window.google.maps.DirectionsService();
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
@@ -220,11 +219,14 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
             }).catch(() => { cityFetchedRef.current = false; });
         }
 
-        if (isFollowingRef.current && !userInteractingRef.current) {
-          const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+        // Only auto-follow the driver's position while actively navigating
+        // to a call ("on_the_way"). When idle, the map behaves like a normal
+        // free map — no camera snapping — matching Google/Yandex driver apps.
+        const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+        if (navigatingNow && isFollowingRef.current && !userInteractingRef.current) {
           moveCamera(coords, heading, {
-            pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
-            zoom: navigatingNow ? 18 : 17,
+            pitch: is3DRef.current ? 60 : 0,
+            zoom: 18,
           });
         }
       },
@@ -284,14 +286,20 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     userInteractingRef.current = true;
     setIsFollowing(false); isFollowingRef.current = false;
     if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+
+    // Only auto-resume following if actively navigating to a call.
+    // When idle, manual pan/zoom stays free indefinitely — tap
+    // "Markazga" to recenter manually, like Google/Yandex driver apps.
+    const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+    if (!navigatingNow) return;
+
     resumeFollowTimerRef.current = setTimeout(() => {
       userInteractingRef.current = false;
       setIsFollowing(true); isFollowingRef.current = true;
       if (locationRef.current) {
-        const navigatingNow = activeCallRef.current?.status === 'on_the_way';
         moveCamera(locationRef.current, headingRef.current, {
-          pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
-          zoom: navigatingNow ? 18 : 17,
+          pitch: is3DRef.current ? 60 : 0,
+          zoom: 18,
         });
       }
     }, RESUME_FOLLOW_MS);
