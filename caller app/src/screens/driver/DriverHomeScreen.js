@@ -58,6 +58,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   const headingRef = useRef(0);
   const userInteractingRef = useRef(false);
   const resumeFollowTimerRef = useRef(null);
+  const handleMapInteractionRef = useRef(() => {});
   const prevStatusRef = useRef(null);
   const watchIdRef = useRef(null);
   const cityFetchedRef = useRef(false);
@@ -101,12 +102,16 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     });
     gMapRef.current = map;
 
-    // Mark user-driven interaction (drag/zoom) — but not programmatic camera moves
-    map.addListener('dragstart', handleMapInteraction);
-    map.addListener('zoom_changed', () => {
-      // zoom_changed also fires on programmatic moves; only treat as
-      // interaction if the user is actively dragging
-    });
+    // Detect manual user interaction via direct touch/mouse listeners on
+    // the map container. This fires immediately on touch-start, before
+    // Google Maps' internal drag detection — and avoids stale-closure
+    // issues with map.addListener('dragstart', ...) which can fail to
+    // fire reliably once moveCamera() is being called frequently from
+    // the GPS watch loop (e.g. during active navigation).
+    const interactionHandler = () => handleMapInteractionRef.current();
+    mapDivRef.current.addEventListener('mousedown', interactionHandler, { passive: true });
+    mapDivRef.current.addEventListener('touchstart', interactionHandler, { passive: true });
+    mapDivRef.current.addEventListener('wheel', interactionHandler, { passive: true });
 
     directionsServiceRef.current = new window.google.maps.DirectionsService();
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
@@ -289,6 +294,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       }
     }, RESUME_FOLLOW_MS);
   };
+  handleMapInteractionRef.current = handleMapInteraction;
 
   const handleReCenter = () => {
     if (resumeFollowTimerRef.current) { clearTimeout(resumeFollowTimerRef.current); resumeFollowTimerRef.current = null; }
