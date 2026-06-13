@@ -96,6 +96,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       zoom: 17,
       tilt: is3DRef.current ? 45 : 0,
       heading: 0,
+      mapId: 'f12f7e536f33ab1d4a3fa19d',
       disableDefaultUI: true,
       gestureHandling: 'greedy',
       mapTypeControl: false,
