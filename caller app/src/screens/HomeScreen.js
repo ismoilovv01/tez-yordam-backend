@@ -7,10 +7,10 @@ const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 const ACTIVE_STATUSES = ['new', 'confirmed', 'assigned', 'on_the_way', 'arrived'];
 
 const SERVICES = [
-  { key: 'ambulance', icon: '🚑', name: 'Tez Yordam',  textColor: '#c0392b', bg: '#ffebee',  cardClass: 'red'      },
-  { key: 'pharmacy',  icon: '🏥', name: 'Dorixona',    textColor: '#3949ab', bg: '#e8eaf6',  cardClass: 'blue-dark' },
-  { key: 'police',    icon: '🛡️', name: 'Politsiya',   textColor: '#1565c0', bg: '#e3f2fd',  cardClass: 'navy'     },
-  { key: 'fire',      icon: '🔥', name: "Yong'in",     textColor: '#bf360c', bg: '#fff3e0',  cardClass: 'fire'     },
+  { key: 'ambulance', icon: '🚑', name: 'Tez Yordam',  textColor: '#c0392b', bg: '#ffebee'  },
+  { key: 'pharmacy',  icon: '🏥', name: 'Dorixona',    textColor: '#3949ab', bg: '#e8eaf6'  },
+  { key: 'police',    icon: '🛡️', name: 'Politsiya',   textColor: '#1565c0', bg: '#e3f2fd'  },
+  { key: 'fire',      icon: '🔥', name: "Yong'in",     textColor: '#bf360c', bg: '#fff3e0'  },
 ];
 
 const CENTERS_CACHE_KEY = 'dispatch_centers_cache';
@@ -95,18 +95,19 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
   const isActiveEmergency = lastEmergency && ACTIVE_STATUSES.includes(lastEmergency.status);
 
+  // Only ambulance is a live service for now — everything else shows
+  // "Tez orada" (coming soon), matching mobile's hardcoded behavior.
+  // This intentionally ignores dispatch_centers data for non-ambulance
+  // services so police/fire/pharmacy stay gated even if centers exist.
+  const isActive = (key) => key === 'ambulance';
+
   const handleServiceClick = (serviceType) => {
     // If there's an active emergency, redirect there instead of creating a new one
     if (isActiveEmergency) {
       if (onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
       return;
     }
-    if (serviceType !== 'ambulance') {
-      const center = dispatchCenters.find(c => c.service_type === serviceType);
-      if (center) {
-        onCallEmergency(center.id, serviceType);
-        return;
-      }
+    if (!isActive(serviceType)) {
       const name = serviceType === 'police' ? 'Politsiya' : serviceType === 'fire' ? "Yong'in xizmati" : 'Dorixona';
       handleComingSoon(name);
       return;
@@ -135,13 +136,6 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
       on_the_way: "Yo'lda", arrived: 'Keldi', completed: 'Tugatildi', cancelled: 'Bekor qilindi'
     };
     return labels[status] || status;
-  };
-
-  // Only ambulance is currently a live service — everything else shows "coming soon"
-  // unless a dispatch center has been configured for it.
-  const isActive = (key) => {
-    if (key === 'ambulance') return true;
-    return !!dispatchCenters.find(c => c.service_type === key);
   };
 
   const q = searchQuery.trim().toLowerCase();
