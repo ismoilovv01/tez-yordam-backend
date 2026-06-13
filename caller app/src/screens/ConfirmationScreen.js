@@ -132,7 +132,12 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         return;
       }
 
-      if (data.unit_number) setAmbulanceInfo(data.unit_number);
+      if (data.unit_number) {
+        const plateLabel = data.plate_region
+          ? `${data.plate_region} ${data.unit_number}`
+          : data.unit_number;
+        setAmbulanceInfo(plateLabel);
+      }
 
       if (data.amb_lat && data.amb_lng) {
         const ambLat = parseFloat(data.amb_lat);

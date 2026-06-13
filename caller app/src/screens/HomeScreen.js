@@ -2,30 +2,75 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../styles/HomeScreen.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 
 const ACTIVE_STATUSES = ['new', 'confirmed', 'assigned', 'on_the_way', 'arrived'];
+
+const SERVICES = [
+  { key: 'ambulance', icon: '🚑', name: 'Tez Yordam',  textColor: '#c0392b', bg: '#ffebee',  cardClass: 'red'      },
+  { key: 'pharmacy',  icon: '🏥', name: 'Dorixona',    textColor: '#3949ab', bg: '#e8eaf6',  cardClass: 'blue-dark' },
+  { key: 'police',    icon: '🛡️', name: 'Politsiya',   textColor: '#1565c0', bg: '#e3f2fd',  cardClass: 'navy'     },
+  { key: 'fire',      icon: '🔥', name: "Yong'in",     textColor: '#bf360c', bg: '#fff3e0',  cardClass: 'fire'     },
+];
+
+const CENTERS_CACHE_KEY = 'dispatch_centers_cache';
 
 function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
   const [lastEmergency, setLastEmergency] = useState(null);
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [comingSoonName, setComingSoonName] = useState('');
   const [dispatchCenters, setDispatchCenters] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [cityName, setCityName] = useState('');
 
   const pollRef = useRef(null);
 
   useEffect(() => {
     fetchLastEmergency();
     fetchDispatchCenters();
+    fetchCityName();
     pollRef.current = setInterval(fetchLastEmergency, 5000);
     return () => clearInterval(pollRef.current);
   }, []);
 
+  // Resolve a human-readable city/region name from the browser's geolocation,
+  // via the Google Geocoding API — mirrors the mobile HomeScreen behavior.
+  const fetchCityName = () => {
+    if (!navigator.geolocation || !GOOGLE_KEY) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_KEY}&language=uz`)
+          .then(r => r.json())
+          .then(data => {
+            const components = data.results?.[0]?.address_components || [];
+            const city = components.find(c => c.types.includes('locality'));
+            const region = components.find(c => c.types.includes('administrative_area_level_1'));
+            setCityName(city?.long_name || region?.long_name || '');
+          })
+          .catch(() => {});
+      },
+      () => {}, // silently ignore — fall back to default location text
+      { timeout: 4000 }
+    );
+  };
+
   const fetchDispatchCenters = async () => {
     try {
+      const cached = localStorage.getItem(CENTERS_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.length > 0) setDispatchCenters(parsed);
+        } catch {}
+      }
       const res = await fetch(`${API_URL}/api/dispatch-centers`);
       if (res.ok) {
         const data = await res.json();
-        setDispatchCenters(data);
+        if (data && data.length > 0) {
+          setDispatchCenters(data);
+          localStorage.setItem(CENTERS_CACHE_KEY, JSON.stringify(data));
+        }
       }
     } catch {}
   };
@@ -56,12 +101,18 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
       if (onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
       return;
     }
-    const center = dispatchCenters.find(c => c.service_type === serviceType);
-    if (center) {
-      onCallEmergency(center.id, serviceType);
-    } else {
-      handleComingSoon(serviceType === 'police' ? 'Politsiya' : serviceType === 'fire' ? "Yong'in xizmati" : serviceType);
+    if (serviceType !== 'ambulance') {
+      const center = dispatchCenters.find(c => c.service_type === serviceType);
+      if (center) {
+        onCallEmergency(center.id, serviceType);
+        return;
+      }
+      const name = serviceType === 'police' ? 'Politsiya' : serviceType === 'fire' ? "Yong'in xizmati" : 'Dorixona';
+      handleComingSoon(name);
+      return;
     }
+    const center = dispatchCenters.find(c => c.service_type === 'ambulance');
+    onCallEmergency(center?.id || 1, 'ambulance');
   };
 
   const handleLastCallClick = () => {
@@ -86,6 +137,16 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
     return labels[status] || status;
   };
 
+  // Only ambulance is currently a live service — everything else shows "coming soon"
+  // unless a dispatch center has been configured for it.
+  const isActive = (key) => {
+    if (key === 'ambulance') return true;
+    return !!dispatchCenters.find(c => c.service_type === key);
+  };
+
+  const q = searchQuery.trim().toLowerCase();
+  const filteredServices = q ? SERVICES.filter(s => s.name.toLowerCase().includes(q)) : SERVICES;
+
   return (
     <div className="home-container">
       {/* Coming soon modal */}
@@ -106,7 +167,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
             <p className="home-greeting">Salom, {firstName} 👋</p>
             <div className="home-location">
               <span className="home-location-icon">📍</span>
-              <span className="home-location-text">Toshkent, O'zbekiston</span>
+              <span className="home-location-text">{cityName ? `${cityName}, O'zbekiston` : "Toshkent, O'zbekiston"}</span>
             </div>
           </div>
           <button className="home-notif-btn" onClick={onNotifications}>
@@ -116,7 +177,18 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
         </div>
         <div className="home-search">
           <span className="home-search-icon">🔍</span>
-          <span className="home-search-placeholder">Xizmat qidirish...</span>
+          <input
+            className="home-search-input"
+            type="text"
+            placeholder="Xizmat qidirish..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoCorrect="off"
+            spellCheck="false"
+          />
+          {searchQuery && (
+            <button className="home-search-clear" onClick={() => setSearchQuery('')}>×</button>
+          )}
         </div>
       </div>
 
@@ -154,36 +226,27 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
         </div>
 
         <div className="home-grid">
-          <button className="home-service-card active" onClick={() => handleServiceClick('ambulance')}>
-            <div className="home-service-icon red">🚑</div>
-            <p className="home-service-name red-text">Tez Yordam</p>
-            <p className="home-service-status active-status">Faol</p>
-          </button>
-          <button className="home-service-card inactive" onClick={() => handleComingSoon('Dorixona')}>
-            <div className="home-service-icon blue-dark">🏥</div>
-            <p className="home-service-name blue-text">Dorixona</p>
-            <p className="home-service-status soon-status">Tez orada</p>
-          </button>
-          <button
-            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'police') ? 'active' : 'inactive'}`}
-            onClick={() => handleServiceClick('police')}
-          >
-            <div className="home-service-icon navy">🛡️</div>
-            <p className="home-service-name navy-text">Politsiya</p>
-            <p className={`home-service-status ${dispatchCenters.find(c => c.service_type === 'police') ? 'active-status' : 'soon-status'}`}>
-              {dispatchCenters.find(c => c.service_type === 'police') ? 'Faol' : 'Tez orada'}
-            </p>
-          </button>
-          <button
-            className={`home-service-card ${dispatchCenters.find(c => c.service_type === 'fire') ? 'active' : 'inactive'}`}
-            onClick={() => handleServiceClick('fire')}
-          >
-            <div className="home-service-icon fire">🔥</div>
-            <p className="home-service-name fire-text">Yong'in</p>
-            <p className={`home-service-status ${dispatchCenters.find(c => c.service_type === 'fire') ? 'active-status' : 'soon-status'}`}>
-              {dispatchCenters.find(c => c.service_type === 'fire') ? 'Faol' : 'Tez orada'}
-            </p>
-          </button>
+          {filteredServices.map((svc) => {
+            const active = isActive(svc.key);
+            return (
+              <button
+                key={svc.key}
+                className={`home-service-card ${active ? 'active' : 'inactive'}`}
+                onClick={() => handleServiceClick(svc.key)}
+              >
+                <div className="home-service-icon" style={{ background: svc.bg }}>
+                  {svc.icon}
+                </div>
+                <p className="home-service-name" style={{ color: svc.textColor }}>{svc.name}</p>
+                <p className={`home-service-status ${active ? 'active-status' : 'soon-status'}`}>
+                  {active ? 'Faol' : 'Tez orada'}
+                </p>
+              </button>
+            );
+          })}
+          {filteredServices.length === 0 && (
+            <p className="home-no-results">Hech narsa topilmadi</p>
+          )}
         </div>
 
         {/* Last emergency (history, only show if not currently active) */}
