@@ -155,19 +155,57 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   };
 
   // ── Camera control ──────────────────────────────────────────────
+  const cameraAnimRef = useRef(null);
+
   const moveCamera = (coords, heading, opts = {}) => {
     if (!gMapRef.current) return;
-    const { pitch, zoom = 17 } = opts;
-    // Apply center, zoom, heading, and tilt together in a single call so
-    // they animate in sync — calling panTo/setZoom/setHeading/setTilt
-    // separately causes the heading rotation to visibly lag behind the
-    // position/zoom change on vector maps.
+    const { pitch, zoom = 17, instant = false } = opts;
+    const targetTilt = pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0);
+    const targetHeading = ((heading || 0) % 360 + 360) % 360;
+
+    if (cameraAnimRef.current) {
+      clearInterval(cameraAnimRef.current);
+      cameraAnimRef.current = null;
+    }
+
+    if (instant) {
+      gMapRef.current.moveCamera({
+        center: { lat: coords.latitude, lng: coords.longitude },
+        zoom, heading: targetHeading, tilt: targetTilt,
+      });
+      return;
+    }
+
+    // Animate heading rotation smoothly across the shortest arc, in small
+    // steps, while center/zoom/tilt update immediately. This avoids the
+    // "teleporting" jump every ~1s when the GPS heading updates — matching
+    // how Google/Yandex smoothly rotate the camera to follow direction of
+    // travel.
+    const startHeading = gMapRef.current.getHeading() || 0;
+    let delta = targetHeading - startHeading;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+
+    const STEPS = 10;
+    const STEP_MS = 50;
+    let step = 0;
+
     gMapRef.current.moveCamera({
       center: { lat: coords.latitude, lng: coords.longitude },
-      zoom,
-      heading: heading || 0,
-      tilt: pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0),
+      zoom, tilt: targetTilt,
     });
+
+    if (Math.abs(delta) < 0.5) return; // no meaningful rotation needed
+
+    cameraAnimRef.current = setInterval(() => {
+      step++;
+      const h = ((startHeading + (delta * step) / STEPS) % 360 + 360) % 360;
+      if (gMapRef.current) gMapRef.current.setHeading(h);
+      if (step >= STEPS) {
+        clearInterval(cameraAnimRef.current);
+        cameraAnimRef.current = null;
+      }
+    }, STEP_MS);
   };
 
   // ── Driver marker (with rotation for nav arrow) ──────────────────
