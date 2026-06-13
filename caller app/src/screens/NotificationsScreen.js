@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/NotificationsScreen.css';
-
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-
 function NotificationsScreen({ token, onBack }) {
   const [notifications, setNotifications] = useState([]);
-
   useEffect(() => {
     fetchNotifications();
   }, []);
-
   const fetchNotifications = async () => {
     try {
       const res = await fetch(`${API_URL}/api/emergencies/my/history`, {
@@ -21,17 +17,14 @@ function NotificationsScreen({ token, onBack }) {
       }
     } catch {}
   };
-
   const statusEmoji = (status) => {
     const map = { completed: '✅', cancelled: '❌', on_the_way: '🚑', arrived: '📍', confirmed: '✔️', new: '🆕', assigned: '👨‍✈️' };
     return map[status] || '📋';
   };
-
   const statusLabel = (status) => {
     const map = { new: 'Yangi', confirmed: 'Tasdiqlandi', assigned: 'Haydovchi tayinlandi', on_the_way: "Yo'lda", arrived: 'Keldi', completed: 'Tugatildi', cancelled: 'Bekor qilindi' };
     return map[status] || status;
   };
-
   const timeAgo = (dateStr) => {
     const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
@@ -40,10 +33,10 @@ function NotificationsScreen({ token, onBack }) {
     if (hours < 24) return `${hours} soat oldin`;
     return `${Math.floor(hours / 24)} kun oldin`;
   };
-
   return (
     <div className="notif-container">
       <div className="notif-header">
+        <button className="notif-back-btn" onClick={onBack}>←</button>
         <p className="notif-title">Bildirishnomalar</p>
         <p className="notif-sub">Oxirgi yangiliklar</p>
       </div>
@@ -78,5 +71,4 @@ function NotificationsScreen({ token, onBack }) {
     </div>
   );
 }
-
 export default NotificationsScreen;
