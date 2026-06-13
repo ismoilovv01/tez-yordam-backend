@@ -15,7 +15,7 @@ import SoundNotification from './components/SoundNotification';
 
 const SCREEN_ORDER = [
   'splash', 'role', 'login', 'home', 'emergency', 'confirmation', 'notifications', 'profile',
-  'driver-home', 'driver-history',
+  'driver-home', 'driver-history', 'driver-profile',
 ];
 
 function App() {
@@ -238,10 +238,20 @@ function App() {
             token={driverToken}
             user={driverUser}
             onLogout={handleDriverLogout}
-            onProfile={() => navigate('driver-history')}
+            onProfile={() => navigate('driver-profile')}
             onNotifications={() => navigate('driver-history')}
             accentColor={driverVariant.accentColor}
             markerEmoji={driverVariant.markerEmoji}
+          />
+        )}
+
+        {screen === 'driver-profile' && (
+          <ProfileScreen
+            user={driverUser}
+            token={driverToken}
+            onBack={() => navigate('driver-home')}
+            onLogout={handleDriverLogout}
+            onNotifications={() => navigate('driver-history')}
           />
         )}
 
