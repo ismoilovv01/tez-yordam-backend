@@ -110,7 +110,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       return () => clearInterval(wait);
     }
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz&libraries=geometry`;
     script.async = true;
     script.onload = initMap;
     document.head.appendChild(script);
@@ -141,12 +141,6 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     mapDivRef.current.addEventListener('touchstart', interactionHandler, { passive: true });
 
     directionsServiceRef.current = new window.google.maps.DirectionsService();
-    directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-      map,
-      suppressMarkers: true,
-      preserveViewport: true,
-      polylineOptions: { strokeColor: accentColor, strokeWeight: 5 },
-    });
 
     setMapReady(true);
 
@@ -447,7 +441,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       availableMarkersRef.current = {};
     } else {
       if (activeCallMarkerRef.current) { activeCallMarkerRef.current.setMap(null); activeCallMarkerRef.current = null; }
-      if (directionsRendererRef.current) directionsRendererRef.current.setDirections({ routes: [] });
+      if (directionsRendererRef.current) { directionsRendererRef.current.setMap(null); directionsRendererRef.current = null; }
       // Draw available-call markers
       const currentIds = new Set(availableCalls.map(c => String(c.id)));
       Object.keys(availableMarkersRef.current).forEach(id => {
@@ -474,23 +468,41 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   useEffect(() => {
     if (!gMapRef.current || !directionsServiceRef.current || !window.google) return;
     const showRoute = activeCall?.status === 'on_the_way' && driverLocation;
-    if (!showRoute) {
-      directionsRendererRef.current?.setDirections({ routes: [] });
-      return;
+
+    // Clear existing route polyline
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
     }
+
+    if (!showRoute) return;
+
     directionsServiceRef.current.route({
       origin: { lat: driverLocation.latitude, lng: driverLocation.longitude },
       destination: { lat: parseFloat(activeCall.latitude), lng: parseFloat(activeCall.longitude) },
       travelMode: window.google.maps.TravelMode.DRIVING,
     }, (result, status) => {
-      if (status === 'OK') {
-        const leg = result.routes[0].legs[0];
-        setRouteInfo({ distance: leg.distance.text, duration: leg.duration.text });
-        directionsRendererRef.current.setOptions({
-          polylineOptions: { strokeColor: isNavigating ? accentColor : '#e74c3c', strokeWeight: isNavigating ? 8 : 5 },
-        });
-        directionsRendererRef.current.setDirections(result);
-      }
+      if (status !== 'OK') return;
+      const leg = result.routes[0].legs[0];
+      setRouteInfo({ distance: leg.distance.text, duration: leg.duration.text });
+
+      // Draw route as a plain Polyline instead of using DirectionsRenderer —
+      // DirectionsRenderer.setDirections() calls fitBounds() on the first
+      // render regardless of preserveViewport, which zooms the camera out to
+      // show the entire route (even 900+ km routes). A Polyline is drawn
+      // without any camera movement.
+      const path = window.google.maps.geometry
+        ? window.google.maps.geometry.encoding.decodePath(result.routes[0].overview_polyline)
+        : result.routes[0].legs.flatMap(l => l.steps.flatMap(s => [s.start_location, s.end_location]));
+
+      const polyline = new window.google.maps.Polyline({
+        path,
+        map: gMapRef.current,
+        strokeColor: isNavigating ? accentColor : '#e74c3c',
+        strokeWeight: isNavigating ? 8 : 5,
+        strokeOpacity: 0.85,
+      });
+      directionsRendererRef.current = polyline;
     });
   }, [activeCall?.status, driverLocation, isNavigating]);
 
