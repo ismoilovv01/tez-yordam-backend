@@ -118,6 +118,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
       map,
       suppressMarkers: true,
+      preserveViewport: true,
       polylineOptions: { strokeColor: accentColor, strokeWeight: 5 },
     });
 
