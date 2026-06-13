@@ -9,8 +9,7 @@ function RoleScreen({ onSelectRole }) {
         <div className="role-pulse-ring delay1" />
         <div className="role-pulse-ring delay2" />
         <div className="role-logo">🚑</div>
-        <h1 className="role-app-name">Tez Yordam</h1>
-        <p className="role-tagline">FAVQULODDA TIBBIY YORDAM</p>
+        <h1 className="role-app-name">Help Mee</h1>
       </div>
       <div className="role-form-card">
         <h2 className="role-title">Xush kelibsiz!</h2>
