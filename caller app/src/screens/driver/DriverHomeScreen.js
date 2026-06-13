@@ -158,12 +158,16 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   const moveCamera = (coords, heading, opts = {}) => {
     if (!gMapRef.current) return;
     const { pitch, zoom = 17 } = opts;
-    gMapRef.current.panTo({ lat: coords.latitude, lng: coords.longitude });
-    gMapRef.current.setZoom(zoom);
-    if (window.google.maps.event) {
-      gMapRef.current.setTilt(pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0));
-      gMapRef.current.setHeading(heading || 0);
-    }
+    // Apply center, zoom, heading, and tilt together in a single call so
+    // they animate in sync — calling panTo/setZoom/setHeading/setTilt
+    // separately causes the heading rotation to visibly lag behind the
+    // position/zoom change on vector maps.
+    gMapRef.current.moveCamera({
+      center: { lat: coords.latitude, lng: coords.longitude },
+      zoom,
+      heading: heading || 0,
+      tilt: pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0),
+    });
   };
 
   // ── Driver marker (with rotation for nav arrow) ──────────────────
