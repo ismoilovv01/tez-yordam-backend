@@ -8,17 +8,32 @@ import EmergencyScreen from './screens/EmergencyScreen';
 import ConfirmationScreen from './screens/ConfirmationScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
+import DriverHomeScreen from './screens/driver/DriverHomeScreen';
+import DriverCallHistoryScreen from './screens/driver/DriverCallHistoryScreen';
+import LocationTracker from './components/LocationTracker';
+import SoundNotification from './components/SoundNotification';
 
-const SCREEN_ORDER = ['splash', 'role', 'login', 'home', 'emergency', 'confirmation', 'notifications', 'profile'];
+const SCREEN_ORDER = [
+  'splash', 'role', 'login', 'home', 'emergency', 'confirmation', 'notifications', 'profile',
+  'driver-home', 'driver-history',
+];
 
 function App() {
   const [screen, setScreen] = useState('splash');
   const [direction, setDirection] = useState('forward');
   const [animating, setAnimating] = useState(false);
+
+  // Caller auth state
   const [userToken, setUserToken] = useState(localStorage.getItem('userToken'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));
   const [emergencyId, setEmergencyId] = useState(null);
   const [callerLocation, setCallerLocation] = useState(null);
+
+  // Driver auth state
+  const [driverToken, setDriverToken] = useState(localStorage.getItem('driver_token'));
+  const [driverUser, setDriverUser] = useState(JSON.parse(localStorage.getItem('driver_user') || 'null'));
+  const [driverServiceType, setDriverServiceType] = useState(localStorage.getItem('driver_service_type') || 'ambulance');
+
   const [role, setRole] = useState(null);
 
   // Params for a NEW emergency request (set when user taps a service card)
@@ -29,35 +44,23 @@ function App() {
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
     if (!tg) return;
-
     try {
       tg.ready();
       tg.expand();
-
-      // Prevent accidental swipe-to-close while interacting with the app
-      if (typeof tg.disableVerticalSwipes === 'function') {
-        tg.disableVerticalSwipes();
-      }
-
-      // Match the app background to Telegram's theme where possible
+      if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes();
       const bg = tg.themeParams?.bg_color;
-      if (bg) {
-        document.body.style.background = bg;
-      }
-
-      // Reflect our brand color in Telegram's header/background chrome
-      if (typeof tg.setHeaderColor === 'function') {
-        try { tg.setHeaderColor('#e74c3c'); } catch {}
-      }
-      if (typeof tg.setBackgroundColor === 'function') {
-        try { tg.setBackgroundColor('#f0f4ff'); } catch {}
-      }
+      if (bg) document.body.style.background = bg;
+      if (typeof tg.setHeaderColor === 'function') { try { tg.setHeaderColor('#e74c3c'); } catch {} }
+      if (typeof tg.setBackgroundColor === 'function') { try { tg.setBackgroundColor('#f0f4ff'); } catch {} }
     } catch {}
   }, []);
 
+  // Initial routing: restore caller or driver session
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (localStorage.getItem('userToken')) {
+      if (localStorage.getItem('driver_token')) {
+        navigate('driver-home');
+      } else if (localStorage.getItem('userToken')) {
         navigate('home');
       } else {
         navigate('role');
@@ -78,6 +81,7 @@ function App() {
     }, 10);
   };
 
+  // ── Caller handlers ────────────────────────────────────────────
   const handleLogin = (userData, token) => {
     localStorage.setItem('userToken', token);
     localStorage.setItem('userId', userData.id);
@@ -88,23 +92,18 @@ function App() {
     navigate('home');
   };
 
-  // Called from HomeScreen when the user taps a service card (e.g. "Tez Yordam")
   const handleStartEmergency = (dispatchCenterId, serviceType) => {
     setPendingDispatchCenterId(dispatchCenterId || null);
     setPendingServiceType(serviceType || 'ambulance');
     navigate('emergency');
   };
 
-  // Called from EmergencyScreen after the request is successfully sent
   const handleSendEmergency = (id, lat, lng) => {
     setEmergencyId(id);
     if (lat && lng) setCallerLocation({ lat, lng });
     navigate('confirmation');
   };
 
-  // Called when the user taps an "active emergency" banner/card on HomeScreen.
-  // Navigates straight to ConfirmationScreen for that emergency instead of
-  // letting them start a new request.
   const handleOpenActiveEmergency = (emergency) => {
     if (!emergency) return;
     setEmergencyId(emergency.id);
@@ -119,17 +118,52 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userPhone');
+    localStorage.removeItem('user');
     setUserToken(null);
     setUser(null);
     setEmergencyId(null);
     navigate('role');
   };
 
+  // ── Driver handlers ────────────────────────────────────────────
+  const handleDriverLogin = (userData, token, serviceType) => {
+    const st = serviceType || 'ambulance';
+    localStorage.setItem('driver_token', token);
+    localStorage.setItem('driver_user', JSON.stringify(userData));
+    localStorage.setItem('driver_service_type', st);
+    setDriverToken(token);
+    setDriverUser(userData);
+    setDriverServiceType(st);
+    navigate('driver-home');
+  };
+
+  const handleDriverLogout = () => {
+    localStorage.removeItem('driver_token');
+    localStorage.removeItem('driver_user');
+    localStorage.removeItem('driver_service_type');
+    setDriverToken(null);
+    setDriverUser(null);
+    navigate('role');
+  };
+
+  // Visual accent + marker per driver service type
+  const driverVariant = {
+    ambulance: { accentColor: '#4fc3f7', markerEmoji: '🚑' },
+    police:    { accentColor: '#1565c0', markerEmoji: '👮' },
+    fire:      { accentColor: '#e67e22', markerEmoji: '🚒' },
+  }[driverServiceType] || { accentColor: '#4fc3f7', markerEmoji: '🚑' };
+
   const screenClass = `screen-wrapper ${direction === 'forward' ? 'slide-in-right' : 'slide-in-left'} ${animating ? 'animating' : ''}`;
 
   return (
     <div className="app">
+      {/* Driver background tasks */}
+      {driverToken && <LocationTracker token={driverToken} />}
+      {driverToken && screen === 'driver-home' && <SoundNotification token={driverToken} />}
+
       <div className={screenClass} key={screen}>
         {screen === 'splash' && <SplashScreen />}
 
@@ -141,10 +175,12 @@ function App() {
           <LoginScreen
             role={role}
             onLogin={handleLogin}
+            onDriverLogin={handleDriverLogin}
             onBack={() => navigate('role')}
           />
         )}
 
+        {/* ── Caller screens ── */}
         {screen === 'home' && (
           <HomeScreen
             user={user}
@@ -193,6 +229,27 @@ function App() {
           <NotificationsScreen
             token={userToken}
             onBack={() => navigate('home')}
+          />
+        )}
+
+        {/* ── Driver screens ── */}
+        {screen === 'driver-home' && (
+          <DriverHomeScreen
+            token={driverToken}
+            user={driverUser}
+            onLogout={handleDriverLogout}
+            onProfile={() => navigate('driver-history')}
+            onNotifications={() => navigate('driver-history')}
+            accentColor={driverVariant.accentColor}
+            markerEmoji={driverVariant.markerEmoji}
+          />
+        )}
+
+        {screen === 'driver-history' && (
+          <DriverCallHistoryScreen
+            token={driverToken}
+            onBack={() => navigate('driver-home')}
+            onLogout={handleDriverLogout}
           />
         )}
       </div>

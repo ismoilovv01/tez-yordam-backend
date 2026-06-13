@@ -4,7 +4,7 @@ import '../styles/LoginScreen.css';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 const RESEND_SECONDS = 60;
 
-function LoginScreen({ onLogin, onBack, role }) {
+function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
   const [tab, setTab] = useState('phone');
   const [step, setStep] = useState('input'); // input | code | profile | email-register | email-otp
   const [phone, setPhone] = useState('');
@@ -19,6 +19,10 @@ function LoginScreen({ onLogin, onBack, role }) {
   const [error, setError] = useState('');
   const [pendingRegisterData, setPendingRegisterData] = useState(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+
+  // Driver login fields
+  const [driverPhone, setDriverPhone] = useState('');
+  const [driverCode, setDriverCode] = useState('');
 
   const timerRef = useRef(null);
 
@@ -41,6 +45,24 @@ function LoginScreen({ onLogin, onBack, role }) {
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [secondsLeft > 0]);
+
+  // ── DRIVER LOGIN (8-character code) ───────────────────────────────
+  const handleDriverLogin = async () => {
+    const cleanPhone = driverPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 9) return setError("Telefon raqamini to'liq kiriting");
+    if (driverCode.length < 6) return setError("Kodni to'liq kiriting");
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/auth/driver-login`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: '+998' + cleanPhone, login_code: driverCode.toUpperCase() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Xato yuz berdi');
+      onDriverLogin(data.user, data.token, data.service_type);
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
 
   // ── PHONE OTP LOGIN ──────────────────────────────────────────────
   const handleSendCode = async () => {
@@ -76,9 +98,6 @@ function LoginScreen({ onLogin, onBack, role }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Noto'g'ri kod");
       if (data.requires_profile) { setStep('profile'); setLoading(false); return; }
-      if (isDriver && data.user.user_type !== 'driver') {
-        throw new Error("Siz haydovchi sifatida ro'yxatdan o'tilmagan. Admin bilan bog'laning.");
-      }
       onLogin(data.user, data.token);
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
@@ -116,14 +135,12 @@ function LoginScreen({ onLogin, onBack, role }) {
     if (password !== confirmPassword) return setError("Parollar mos kelmadi");
     setLoading(true); setError('');
     try {
-      // Send OTP to their phone
       const res = await fetch(`${API_URL}/api/auth/send-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: '+998' + cleanPhone }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'SMS yuborishda xato');
-      // Save registration data for after OTP verification
       setPendingRegisterData({ email, password, first_name: firstName.trim(), last_name: lastName.trim(), phone: '+998' + cleanPhone });
       setCode('');
       setSecondsLeft(RESEND_SECONDS);
@@ -139,7 +156,6 @@ function LoginScreen({ onLogin, onBack, role }) {
     if (secondsLeft <= 0) return setError('Kod muddati tugadi, qaytadan yuboring');
     setLoading(true); setError('');
     try {
-      // First verify OTP
       const otpRes = await fetch(`${API_URL}/api/auth/verify-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: pendingRegisterData.phone, code, skip_user_create: true }),
@@ -147,7 +163,6 @@ function LoginScreen({ onLogin, onBack, role }) {
       const otpData = await otpRes.json();
       if (!otpRes.ok) throw new Error(otpData.error || "Noto'g'ri kod");
 
-      // Then register with email
       const regRes = await fetch(`${API_URL}/api/auth/email-register`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(pendingRegisterData),
@@ -165,9 +180,7 @@ function LoginScreen({ onLogin, onBack, role }) {
   const resendLabel = (action) => {
     if (secondsLeft > 0) {
       const ss = secondsLeft < 10 ? `0${secondsLeft}` : secondsLeft;
-      return (
-        <p className="login-timer-text">Qaytadan yuborish 0:{ss}</p>
-      );
+      return <p className="login-timer-text">Qaytadan yuborish 0:{ss}</p>;
     }
     return (
       <button className="login-btn-resend" onClick={action} disabled={loading}>
@@ -176,6 +189,63 @@ function LoginScreen({ onLogin, onBack, role }) {
     );
   };
 
+  // ── DRIVER LOGIN FORM ────────────────────────────────────────────
+  if (isDriver) {
+    return (
+      <div className="login-container dlogin-variant">
+        <div className="login-hero">
+          <div className="login-pulse-ring" />
+          <div className="login-pulse-ring delay1" />
+          <div className="login-pulse-ring delay2" />
+          {onBack && <button className="login-back-btn" onClick={onBack}>←</button>}
+          <div className="login-ambulance-icon">👮</div>
+          <h1 className="login-app-name">Haydovchi</h1>
+        </div>
+
+        <div className="login-form-card">
+          <h2 className="login-form-title">Haydovchi kirishi</h2>
+          <p className="login-form-sub">Telefon raqam va login kodingizni kiriting</p>
+
+          <label className="dlogin-label">Telefon raqam</label>
+          <div className="login-input-row">
+            <span className="login-prefix">+998</span>
+            <input
+              className="login-input"
+              type="tel"
+              placeholder="90 123 45 67"
+              value={driverPhone}
+              onChange={(e) => setDriverPhone(e.target.value.replace(/\D/g, ''))}
+              onKeyDown={(e) => handleKeyDown(e, handleDriverLogin)}
+              maxLength={9}
+              autoFocus
+            />
+          </div>
+
+          <label className="dlogin-label" style={{ marginTop: 16 }}>Login kod</label>
+          <p className="dlogin-hint">Admin tomonidan berilgan 8 xonali kod</p>
+          <input
+            className="login-input code-input"
+            style={{ letterSpacing: 6, fontSize: 22 }}
+            type="text"
+            placeholder="XXXXXXXX"
+            value={driverCode}
+            onChange={(e) => setDriverCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            onKeyDown={(e) => handleKeyDown(e, handleDriverLogin)}
+            maxLength={8}
+            autoCapitalize="characters"
+          />
+
+          {error && <p className="login-error">⚠️ {error}</p>}
+
+          <button className="login-btn" onClick={handleDriverLogin} disabled={loading}>
+            {loading ? 'Yuklanmoqda...' : 'Kirish'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── CALLER LOGIN FORM ────────────────────────────────────────────
   return (
     <div className="login-container">
       <div className="login-hero">
@@ -190,15 +260,13 @@ function LoginScreen({ onLogin, onBack, role }) {
       <div className="login-form-card">
 
         {/* ── PHONE LOGIN ── */}
-        {step === 'input' && (tab === 'phone' || isDriver) && (
+        {step === 'input' && tab === 'phone' && (
           <>
-            {!isDriver && (
-              <div className="login-tabs">
-                <button className={`login-tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => switchTab('phone')}>📱 Telefon</button>
-                <button className={`login-tab ${tab === 'email' ? 'active' : ''}`} onClick={() => switchTab('email')}>📧 Email</button>
-              </div>
-            )}
-            <h2 className="login-form-title">{isDriver ? 'Haydovchi kirishi' : 'Kirish'}</h2>
+            <div className="login-tabs">
+              <button className={`login-tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => switchTab('phone')}>📱 Telefon</button>
+              <button className={`login-tab ${tab === 'email' ? 'active' : ''}`} onClick={() => switchTab('email')}>📧 Email</button>
+            </div>
+            <h2 className="login-form-title">Kirish</h2>
             <p className="login-form-sub">Telefon raqamingizni kiriting</p>
             <div className="login-input-row">
               <span className="login-prefix">+998</span>
@@ -210,16 +278,14 @@ function LoginScreen({ onLogin, onBack, role }) {
             <button className="login-btn" onClick={handleSendCode} disabled={loading}>
               {loading ? 'Yuklanmoqda...' : 'Kod yuborish'}
             </button>
-            {!isDriver && (
-              <button className="login-btn-back" onClick={() => setStep('email-register')}>
-                Hisobingiz yo'qmi? Ro'yxatdan o'tish →
-              </button>
-            )}
+            <button className="login-btn-back" onClick={() => setStep('email-register')}>
+              Hisobingiz yo'qmi? Ro'yxatdan o'tish →
+            </button>
           </>
         )}
 
         {/* ── EMAIL LOGIN ── */}
-        {step === 'input' && tab === 'email' && !isDriver && (
+        {step === 'input' && tab === 'email' && (
           <>
             <div className="login-tabs">
               <button className={`login-tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => switchTab('phone')}>📱 Telefon</button>
@@ -248,7 +314,7 @@ function LoginScreen({ onLogin, onBack, role }) {
         )}
 
         {/* ── EMAIL REGISTER FORM ── */}
-        {step === 'email-register' && !isDriver && (
+        {step === 'email-register' && (
           <>
             <h2 className="login-form-title">Ro'yxatdan o'tish</h2>
             <p className="login-form-sub">Barcha maydonlarni to'ldiring</p>

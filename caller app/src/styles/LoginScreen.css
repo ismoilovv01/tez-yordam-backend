@@ -95,3 +95,7 @@
   font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 10px;
 }
 .login-btn-resend:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Driver login form labels */
+.dlogin-label { display: block; font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+.dlogin-hint { font-size: 11px; color: #888; margin-bottom: 8px; margin-top: -4px; }
