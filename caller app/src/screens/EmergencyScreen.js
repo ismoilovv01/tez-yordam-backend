@@ -161,7 +161,12 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
         <button className="em-notif-btn" onClick={onNotifications}>
           🔔<div className="em-notif-dot" />
         </button>
-        <button className="em-locate-btn" onClick={handleGetLocation}>📍</button>
+        <button className="em-locate-btn" onClick={handleGetLocation} aria-label="Joylashuvni aniqlash">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="3" fill="#4285F4"/>
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="#4285F4" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </button>
       </div>
       <div className="em-bottom">
         {error && <div className="em-error">⚠️ {error}</div>}
