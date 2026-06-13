@@ -9,10 +9,17 @@ import * as Location from 'expo-location';
 import { API_URL } from '../../constants';
 import { useLanguage } from '../../LanguageContext';
 
+const DEFAULT_REGION = { latitude: 41.2995, longitude: 69.2401 };
+
 export default function CallerEmergencyScreen({ token, navigation, route }) {
   const { t, theme } = useLanguage();
   const { dispatchCenterId = 1, serviceType = 'ambulance' } = route?.params || {};
-  const [location, setLocation] = useState(null);
+  // Show the map immediately with a default region instead of waiting for
+  // GPS — this fixes the slow initial map load. `location` is the
+  // draggable destination pin; it's updated to the real GPS fix as soon
+  // as it resolves.
+  const [location, setLocation] = useState(DEFAULT_REGION);
+  const [mapReady, setMapReady] = useState(false);
   const [description, setDescription] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -27,12 +34,21 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      const fallback = { latitude: 41.2995, longitude: 69.2401 };
-      if (status !== 'granted') { setLocation(fallback); return; }
+      if (status !== 'granted') return;
       try {
+        // Try a fast/cached fix first so the marker snaps to the real
+        // location quickly, then refine with a high-accuracy fix.
+        const quick = await Location.getLastKnownPositionAsync();
+        if (quick) {
+          const coords = { latitude: quick.coords.latitude, longitude: quick.coords.longitude };
+          setLocation(coords);
+          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
+        }
         const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-      } catch { setLocation(fallback); }
+        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+        setLocation(coords);
+        mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
+      } catch {}
     })();
   }, []);
 
@@ -80,7 +96,9 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
       const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
       setLocation(coords);
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
-    } catch {}
+    } catch {
+      setError(t.locationError || "Joylashuvni aniqlab bo'lmadi");
+    }
   };
 
   const handleSend = async () => {
@@ -118,13 +136,14 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: theme.bg }]} edges={['top', 'left', 'right', 'bottom']}>
       <View style={s.mapWrapper}>
-        {location ? (
-          <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE}
-            initialRegion={{ ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-            onPress={(e) => !sending && setLocation(e.nativeEvent.coordinate)}>
-            <Marker coordinate={location} draggable={!sending} onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
-          </MapView>
-        ) : (
+        <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE}
+          initialRegion={{ ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+          showsUserLocation showsMyLocationButton={false}
+          onMapReady={() => setMapReady(true)}
+          onPress={(e) => !sending && setLocation(e.nativeEvent.coordinate)}>
+          <Marker coordinate={location} draggable={!sending} onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
+        </MapView>
+        {!mapReady && (
           <View style={[s.mapLoading, { backgroundColor: theme.cardBg }]}>
             <ActivityIndicator size="large" color="#e74c3c" />
           </View>
@@ -202,7 +221,7 @@ const s = StyleSheet.create({
   safe: { flex: 1 },
   mapWrapper: { flex: 1, position: 'relative' },
   map: { flex: 1 },
-  mapLoading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  mapLoading: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   backBtn: { position: 'absolute', top: 12, left: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   backBtnText: { fontSize: 20 },
   titleBadge: { position: 'absolute', top: 12, left: 60, right: 60, zIndex: 10, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 3 },
@@ -210,7 +229,7 @@ const s = StyleSheet.create({
   notifBtn: { position: 'absolute', top: 12, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, backgroundColor: '#4fc3f7', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   notifIcon: { fontSize: 18 },
   notifDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, backgroundColor: '#e74c3c', borderRadius: 4, borderWidth: 1.5, borderColor: '#4fc3f7' },
-  locateBtn: { position: 'absolute', bottom: 14, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
+  locateBtn: { position: 'absolute', top: 60, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   locateIcon: { fontSize: 18 },
   bottom: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 12, paddingBottom: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 20, elevation: 8 },
   handle: { width: 36, height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, alignSelf: 'center', marginBottom: 10 },
