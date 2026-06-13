@@ -28,6 +28,21 @@ const STATUS_LABELS = {
 // How long after a manual map interaction before auto-follow resumes
 const RESUME_FOLLOW_MS = 4000;
 
+// Google-Maps-navigator-style camera constants. Tilt is fixed during
+// active navigation, and zoom eases based on current speed — matches
+// the web driver app's camera behavior.
+const NAV_TILT = 60;
+const NAV_ZOOM_SLOW = 18.5;  // when stopped / very slow
+const NAV_ZOOM_FAST = 16.5;  // at higher speed, zoom out a bit
+const SPEED_FAST_MS = 12;    // m/s (~43 km/h) considered "fast"
+
+const speedToZoom = (speedMs) => {
+  if (speedMs === null || speedMs === undefined || isNaN(speedMs)) return NAV_ZOOM_SLOW;
+  const clamped = Math.max(0, Math.min(speedMs, SPEED_FAST_MS));
+  const t = clamped / SPEED_FAST_MS;
+  return NAV_ZOOM_SLOW + (NAV_ZOOM_FAST - NAV_ZOOM_SLOW) * t;
+};
+
 function DriverScreen({ token, user, onLogout, navigation, accentColor, markerColor, markerEmoji }) {
   const { t, theme, lang } = useLanguage();
   const insets = useSafeAreaInsets();
@@ -97,15 +112,18 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     }).start();
   };
 
+  // pitch/zoom: if not provided, falls back to is3D toggle (idle) values.
+  // Pass `speed` (m/s) during navigation for speed-based zoom easing.
   const moveCamera = (coords, heading, opts = {}) => {
     if (!mapRef.current) return;
-    const { pitch, zoom = 17, duration = 1000 } = opts;
+    const { pitch, zoom, duration = 1000, speed } = opts;
+    const resolvedZoom = zoom !== undefined ? zoom : speedToZoom(speed);
     mapRef.current.animateCamera(
       {
         center: coords,
         heading: heading,
         pitch: pitch !== undefined ? pitch : (is3DRef.current ? 50 : 0),
-        zoom,
+        zoom: resolvedZoom,
       },
       { duration }
     );
@@ -124,7 +142,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         const heading = initial.coords.heading || 0;
         setDriverLocation(coords);
         setDriverHeading(heading);
-        locationRef.current = coords;
+        locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
         animatedCoord.setValue({ ...coords, latitudeDelta: 0, longitudeDelta: 0 });
         animatedHeading.setValue(heading);
@@ -137,10 +155,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           const rawHeading = loc.coords.heading;
           // Keep previous heading if GPS doesn't report one (e.g. standing still)
           const heading = (rawHeading !== null && rawHeading !== undefined && rawHeading >= 0) ? rawHeading : headingRef.current;
+          const rawSpeed = loc.coords.speed;
+          const speed = (rawSpeed !== null && rawSpeed !== undefined && !isNaN(rawSpeed) && rawSpeed >= 0) ? rawSpeed : 0;
 
           setDriverLocation(coords);
           setDriverHeading(heading);
-          locationRef.current = coords;
+          locationRef.current = { ...coords, speed };
           headingRef.current = heading;
 
           animateMarkerTo(coords, heading);
@@ -156,15 +176,14 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
               }).catch(() => {});
           }
 
-          // Always follow the driver's position when follow mode is on,
-          // regardless of whether there's an active "on the way" call.
-          if (isFollowingRef.current && !userInteractingRef.current) {
-            const navigatingNow = activeCallRef.current?.status === 'on_the_way';
-            moveCamera(coords, heading, {
-              pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
-              zoom: navigatingNow ? 18 : 17,
-              duration: 900,
-            });
+          // Only auto-follow the driver's position while actively navigating
+          // to a call ("on_the_way"). When idle, the map behaves like a
+          // normal free map — no camera snapping — matching Google/Yandex
+          // driver apps. During navigation, tilt is fixed and zoom eases
+          // based on current speed (Google Maps navigator style).
+          const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+          if (navigatingNow && isFollowingRef.current && !userInteractingRef.current) {
+            moveCamera(coords, heading, { pitch: NAV_TILT, speed, duration: 900 });
           }
         }
       );
@@ -192,7 +211,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       if (call?.status === 'on_the_way') {
         setIsNavigating(true);
         if (isFollowingRef.current && locationRef.current && !userInteractingRef.current) {
-          moveCamera(locationRef.current, headingRef.current, { pitch: is3DRef.current ? 60 : 0, zoom: 18, duration: 1000 });
+          moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed, duration: 1000 });
         }
       } else if (!call || call.status !== 'on_the_way') setIsNavigating(false);
     } catch {}
@@ -243,7 +262,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     const ok = await apiAction(`${API_URL}/api/driver/start/${activeCall.id}`);
     if (ok) {
       showMsg(t.statusOnTheWay); setIsNavigating(true); setIsFollowing(true); isFollowingRef.current = true;
-      if (locationRef.current) moveCamera(locationRef.current, headingRef.current, { pitch: 60, zoom: 18, duration: 1500 });
+      if (locationRef.current) moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed, duration: 1500 });
     }
   };
 
@@ -288,11 +307,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     if (resumeFollowTimerRef.current) { clearTimeout(resumeFollowTimerRef.current); resumeFollowTimerRef.current = null; }
     setIsFollowing(true); isFollowingRef.current = true; userInteractingRef.current = false;
     if (locationRef.current) {
-      moveCamera(locationRef.current, isNavigating ? headingRef.current : 0, {
-        pitch: is3DRef.current ? (isNavigating ? 60 : 35) : 0,
-        zoom: isNavigating ? 18 : 17,
-        duration: 1000,
-      });
+      if (isNavigating) {
+        moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed, duration: 1000 });
+      } else {
+        moveCamera(locationRef.current, 0, { pitch: is3DRef.current ? 35 : 0, zoom: 17, duration: 1000 });
+      }
     }
   };
 
@@ -302,18 +321,24 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   };
 
   // Only treat real user drags/zooms as "manual interaction" (onPanDrag),
-  // not every touch — and auto-resume following after a short pause.
+  // not every touch. When idle (no active "on the way" call), manual
+  // pan/zoom stays free indefinitely — tap "Markazga" to recenter, like
+  // Google/Yandex driver apps. When navigating, auto-resume following
+  // after a short pause.
   const handleMapInteraction = () => {
     userInteractingRef.current = true; setIsFollowing(false); isFollowingRef.current = false;
     if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+
+    const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+    if (!navigatingNow) return;
+
     resumeFollowTimerRef.current = setTimeout(() => {
       userInteractingRef.current = false;
       setIsFollowing(true); isFollowingRef.current = true;
       if (locationRef.current) {
-        const navigatingNow = activeCallRef.current?.status === 'on_the_way';
         moveCamera(locationRef.current, headingRef.current, {
-          pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
-          zoom: navigatingNow ? 18 : 17,
+          pitch: NAV_TILT,
+          speed: locationRef.current.speed,
           duration: 1000,
         });
       }
@@ -433,7 +458,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         )}
 
         <View style={s.rightButtons}>
-          {isNavigating && <TouchableOpacity style={s.toggleBtn} onPress={toggle3D}><Text style={s.toggleBtnText}>{is3D ? '2D' : '3D'}</Text></TouchableOpacity>}
+          {!isNavigating && <TouchableOpacity style={s.toggleBtn} onPress={toggle3D}><Text style={s.toggleBtnText}>{is3D ? '2D' : '3D'}</Text></TouchableOpacity>}
           <TouchableOpacity style={s.locateBtn} onPress={handleReCenter}>
             <Text style={{ fontSize: 20 }}>📍</Text>
           </TouchableOpacity>
