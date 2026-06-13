@@ -17,6 +17,7 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
   const mapRef = useRef(null);
   const gMapRef = useRef(null);
   const markerRef = useRef(null);
+  const userLocationMarkerRef = useRef(null);
   const mapInitRef = useRef(false);
 
   // Fetch dispatch center id if not provided
@@ -59,6 +60,18 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
     document.head.appendChild(script);
   }, [markerLocation]);
 
+  // Blue dot SVG icon for "you are here" — separate from the draggable
+  // red destination pin, matching Google Maps' own user-location marker.
+  const userLocationIcon = () => ({
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+         <circle cx="11" cy="11" r="8" fill="#4285F4" stroke="#fff" stroke-width="3"/>
+       </svg>`
+    ),
+    scaledSize: new window.google.maps.Size(22, 22),
+    anchor: new window.google.maps.Point(11, 11),
+  });
+
   const initMap = (lat, lng) => {
     if (!mapRef.current || mapInitRef.current) return;
     mapInitRef.current = true;
@@ -68,6 +81,8 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
       gestureHandling: 'greedy',
     });
     gMapRef.current = map;
+
+    // Draggable destination pin (where the emergency will be reported)
     const marker = new window.google.maps.Marker({
       position: { lat, lng }, map, draggable: true,
       icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
@@ -82,6 +97,17 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
       marker.setPosition(pos);
       setMarkerLocation(pos);
     });
+
+    // Blue "you are here" dot — static at the user's actual GPS position,
+    // separate from the draggable red destination pin so the user can
+    // still see where they really are even after dragging the pin.
+    const userMarker = new window.google.maps.Marker({
+      position: { lat, lng }, map,
+      icon: userLocationIcon(),
+      clickable: false,
+      zIndex: 1,
+    });
+    userLocationMarkerRef.current = userMarker;
   };
 
   const handleGetLocation = () => {
@@ -91,6 +117,7 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
       setMarkerLocation(loc);
       if (gMapRef.current) { gMapRef.current.setCenter(loc); gMapRef.current.setZoom(16); }
       if (markerRef.current) markerRef.current.setPosition(loc);
+      if (userLocationMarkerRef.current) userLocationMarkerRef.current.setPosition(loc);
     });
   };
 
