@@ -60,6 +60,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const [driverName, setDriverName]         = useState([user?.first_name, user?.last_name].filter(Boolean).join(' ') || '');
   const [cityName, setCityName]             = useState('');
   const [cancelledPopup, setCancelledPopup] = useState(false);
+  const [completedPopup, setCompletedPopup] = useState(false);
   const [navModal, setNavModal]             = useState(false);
 
   const mapRef             = useRef(null);
@@ -200,9 +201,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       const assignedData  = await assignedRes.json();
       const availableData = await availableRes.json();
       const call = assignedData.call || null;
-      if (prevStatusRef.current && !['cancelled','completed',null].includes(prevStatusRef.current)) {
+      const prev = prevStatusRef.current;
+      if (prev && !['cancelled', 'completed', null].includes(prev)) {
         if (!call || call.status === 'cancelled') setCancelledPopup(true);
       }
+      if (prev === 'arrived' && (!call || call.status === 'completed')) setCompletedPopup(true);
       prevStatusRef.current = call?.status || null;
       setActiveCall(call);
       activeCallRef.current = call;
@@ -365,9 +368,23 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         <View style={s.cancelOverlay}>
           <View style={s.cancelCard}>
             <Text style={s.cancelIcon}>❌</Text>
-            <Text style={s.cancelTitle}>Chaqiruv bekor qilindi</Text>
-            <Text style={s.cancelSub}>Chaqiruv bekor qilindi. Yangi chaqiruvlarni kuting.</Text>
+            <Text style={s.cancelTitle}>{t.cancelledDriverTitle || 'Chaqiruv bekor qilindi'}</Text>
+            <Text style={s.cancelSub}>{t.cancelledDriverMsg || 'Chaqiruv bekor qilindi. Yangi chaqiruvlarni kuting.'}</Text>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: accentColor }]} onPress={() => setCancelledPopup(false)}>
+              <Text style={s.cancelBtnText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Completion Success Popup */}
+      <Modal visible={completedPopup} transparent animationType="fade">
+        <View style={s.cancelOverlay}>
+          <View style={s.cancelCard}>
+            <Text style={s.cancelIcon}>✅</Text>
+            <Text style={[s.cancelTitle, { color: '#27ae60' }]}>{t.completedTitle || 'Muvaffaqiyatli yakunlandi!'}</Text>
+            <Text style={s.cancelSub}>{t.completedMsg || 'Chaqiruv muvaffaqiyatli yakunlandi. Yangi chaqiruvlarni kuting.'}</Text>
+            <TouchableOpacity style={[s.cancelBtn, { backgroundColor: '#27ae60' }]} onPress={() => setCompletedPopup(false)}>
               <Text style={s.cancelBtnText}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -512,7 +529,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         {!activeCall && (
           <>
             <View style={s.availableHeader}>
-              <Text style={[s.availableTitle, { color: theme.text }]}>📋 {t.callHistory}</Text>
+              <Text style={[s.availableTitle, { color: theme.text }]}>📋 {t.availableCalls || 'Mavjud chaqiruvlar'}</Text>
               <View style={[s.countBadge, { backgroundColor: accentColor }]}><Text style={s.countText}>{availableCalls.length}</Text></View>
             </View>
             {availableCalls.length === 0 ? (

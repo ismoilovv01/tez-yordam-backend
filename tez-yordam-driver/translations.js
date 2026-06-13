@@ -76,6 +76,10 @@ export const translations = {
     home: 'Asosiy',
     profile: 'Profil',
     noResults: 'Hech narsa topilmadi',
+    locationPickerTitle: 'Joylashuvni tanlang',
+    locationPickerSave: 'Shu joyni saqlash',
+    locationError: "Joylashuvni aniqlab bo'lmadi",
+    locationChanged: 'Joylashuv yangilandi',
 
     // Services
     ambulance: 'Tez Yordam',
@@ -90,6 +94,7 @@ export const translations = {
     callFire: "YONG'IN CHAQIRISH",
     waitingGps: 'Joylashuvni kutmoqda...',
     sending: 'Yuborilmoqda...',
+    searchingDriver: 'Eng yaqin yordam qidirilmoqda...',
 
     // Confirmation
     statusNew: 'Chaqiruv yuborildi',
@@ -129,6 +134,14 @@ export const translations = {
     stepArrived: 'Keldi',
     stepDone: 'Tugatildi',
     yourLocation: 'Sizning joyingiz',
+
+    // Driver home
+    availableCalls: 'Mavjud chaqiruvlar',
+    statusOnTheWayLabel: "Yo'lda",
+    completedTitle: 'Muvaffaqiyatli yakunlandi!',
+    completedMsg: 'Chaqiruv muvaffaqiyatli yakunlandi. Yangi chaqiruvlarni kuting.',
+    cancelledDriverTitle: 'Chaqiruv bekor qilindi',
+    cancelledDriverMsg: 'Chaqiruv bekor qilindi. Yangi chaqiruvlarni kuting.',
 
     // Notifications
     notifications: 'Bildirishnomalar',
@@ -183,6 +196,20 @@ export const translations = {
     emergencyNumbersSubtitle: "Raqamga bosing — avtomatik qo'ng'iroq",
     emergencyNumbersNote: "Bu raqamlar O'zbekiston Respublikasining rasmiy favqulodda xizmat raqamlari",
     callConfirm: "raqamiga qo'ng'iroq qilmoqchimisiz?",
+
+    // Feedback
+    feedbackTitle: 'Fikr bildirish',
+    feedbackSub: 'Xizmat haqida fikringizni qoldiring',
+    feedbackPlaceholder: 'Fikringizni yozing...',
+    feedbackRating: 'Baholang',
+    feedbackSend: 'Yuborish',
+    feedbackSent: 'Fikringiz qabul qilindi! Rahmat 🙏',
+    feedbackError: "Fikr yuborishda xato. Qayta urinib ko'ring.",
+    feedbackRequired: 'Iltimos fikr yozing',
+    feedbackSection: 'Fikr va takliflar',
+    feedbackSectionSub: "Ilovani yaxshilashga yordam bering",
+    rateApp: 'Ilovani baholash',
+    rateCall: 'Chaqiruvni baholash',
   },
 
   ru: {
@@ -232,7 +259,6 @@ export const translations = {
     registering: 'Регистрируемся...',
     tagline: 'ЭКСТРЕННАЯ МЕДИЦИНСКАЯ ПОМОЩЬ',
 
-    // Driver Login (Hodim)
     driverLoginTitle: 'Вход сотрудника',
     driverLoginSubtitle: 'ВХОД В СИСТЕМУ ОБСЛУЖИВАНИЯ',
     driverLoginFormTitle: 'Войти',
@@ -258,6 +284,10 @@ export const translations = {
     home: 'Главная',
     profile: 'Профиль',
     noResults: 'Ничего не найдено',
+    locationPickerTitle: 'Выберите местоположение',
+    locationPickerSave: 'Сохранить это место',
+    locationError: 'Не удалось определить местоположение',
+    locationChanged: 'Местоположение обновлено',
 
     ambulance: 'Скорая помощь',
     pharmacy: 'Аптека',
@@ -270,6 +300,7 @@ export const translations = {
     callFire: 'ВЫЗВАТЬ ПОЖАРНЫХ',
     waitingGps: 'Ожидание местоположения...',
     sending: 'Отправляем...',
+    searchingDriver: 'Ищем ближайшую помощь...',
 
     statusNew: 'Вызов отправлен',
     statusNewSub: 'Диспетчер рассматривает...',
@@ -308,6 +339,13 @@ export const translations = {
     stepArrived: 'Прибыл',
     stepDone: 'Завершён',
     yourLocation: 'Ваше местоположение',
+
+    availableCalls: 'Доступные вызовы',
+    statusOnTheWayLabel: 'В пути',
+    completedTitle: 'Успешно завершено!',
+    completedMsg: 'Вызов успешно завершён. Ожидайте новых вызовов.',
+    cancelledDriverTitle: 'Вызов отменён',
+    cancelledDriverMsg: 'Вызов отменён. Ожидайте новых вызовов.',
 
     notifications: 'Уведомления',
     noHistory: 'История вызовов пуста',
@@ -360,6 +398,19 @@ export const translations = {
     emergencyNumbersSubtitle: 'Нажмите на номер — автоматический звонок',
     emergencyNumbersNote: 'Официальные номера экстренных служб Республики Узбекистан',
     callConfirm: 'позвонить?',
+
+    feedbackTitle: 'Оставить отзыв',
+    feedbackSub: 'Оставьте ваш отзыв об услуге',
+    feedbackPlaceholder: 'Напишите ваш отзыв...',
+    feedbackRating: 'Оцените',
+    feedbackSend: 'Отправить',
+    feedbackSent: 'Ваш отзыв принят! Спасибо 🙏',
+    feedbackError: 'Ошибка при отправке. Попробуйте снова.',
+    feedbackRequired: 'Пожалуйста, напишите отзыв',
+    feedbackSection: 'Отзывы и предложения',
+    feedbackSectionSub: 'Помогите нам улучшить приложение',
+    rateApp: 'Оценить приложение',
+    rateCall: 'Оценить вызов',
   },
 
   en: {
@@ -409,7 +460,6 @@ export const translations = {
     registering: 'Registering...',
     tagline: 'EMERGENCY MEDICAL ASSISTANCE',
 
-    // Driver Login (Hodim)
     driverLoginTitle: 'Staff Login',
     driverLoginSubtitle: 'SIGN IN TO SERVICE SYSTEM',
     driverLoginFormTitle: 'Sign In',
@@ -435,6 +485,10 @@ export const translations = {
     home: 'Home',
     profile: 'Profile',
     noResults: 'Nothing found',
+    locationPickerTitle: 'Select Location',
+    locationPickerSave: 'Save this location',
+    locationError: 'Could not determine location',
+    locationChanged: 'Location updated',
 
     ambulance: 'Ambulance',
     pharmacy: 'Pharmacy',
@@ -447,6 +501,7 @@ export const translations = {
     callFire: 'CALL FIRE DEPT',
     waitingGps: 'Getting location...',
     sending: 'Sending...',
+    searchingDriver: 'Finding nearest help...',
 
     statusNew: 'Call Sent',
     statusNewSub: 'Dispatcher is reviewing...',
@@ -485,6 +540,13 @@ export const translations = {
     stepArrived: 'Arrived',
     stepDone: 'Done',
     yourLocation: 'Your location',
+
+    availableCalls: 'Available Calls',
+    statusOnTheWayLabel: 'On the Way',
+    completedTitle: 'Successfully Completed!',
+    completedMsg: 'Call successfully completed. Waiting for new calls.',
+    cancelledDriverTitle: 'Call Cancelled',
+    cancelledDriverMsg: 'Call was cancelled. Waiting for new calls.',
 
     notifications: 'Notifications',
     noHistory: 'No call history',
@@ -537,6 +599,19 @@ export const translations = {
     emergencyNumbersSubtitle: 'Tap a number — automatic call',
     emergencyNumbersNote: 'Official emergency service numbers of the Republic of Uzbekistan',
     callConfirm: 'call this number?',
+
+    feedbackTitle: 'Leave Feedback',
+    feedbackSub: 'Share your thoughts about the service',
+    feedbackPlaceholder: 'Write your feedback...',
+    feedbackRating: 'Rate',
+    feedbackSend: 'Submit',
+    feedbackSent: 'Feedback received! Thank you 🙏',
+    feedbackError: 'Error sending feedback. Please try again.',
+    feedbackRequired: 'Please write your feedback',
+    feedbackSection: 'Feedback & Suggestions',
+    feedbackSectionSub: 'Help us improve the app',
+    rateApp: 'Rate the App',
+    rateCall: 'Rate this Call',
   },
 };
 

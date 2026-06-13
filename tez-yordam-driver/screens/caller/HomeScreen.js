@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, TextInput, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { API_URL } from '../../constants';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import * as Location from 'expo-location';
+import { API_URL, GOOGLE_KEY } from '../../constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../LanguageContext';
 
@@ -30,36 +32,67 @@ export default function CallerHomeScreen({ user, token, navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingCenters, setLoadingCenters] = useState(true);
   const [cityName, setCityName] = useState('');
+  const [userCoords, setUserCoords] = useState(null);
+
+  // Location picker modal
+  const [locationModal, setLocationModal] = useState(false);
+  const [pickerLocation, setPickerLocation] = useState(null);
+  const [pickerCity, setPickerCity] = useState('');
+  const mapRef = useRef(null);
 
   useEffect(() => {
     fetchLastEmergency();
     fetchDispatchCenters();
     const interval = setInterval(fetchDispatchCenters, 10000);
-    import('expo-location').then(Location => {
-      Location.requestForegroundPermissionsAsync().then(({ status }) => {
-        if (status === 'granted') {
-          Location.getCurrentPositionAsync({}).then(pos => {
-            const { latitude, longitude } = pos.coords;
-            fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM&language=uz`)
-              .then(r => r.json())
-              .then(data => {
-                const components = data.results?.[0]?.address_components || [];
-                const city = components.find(c => c.types.includes('locality'));
-                const region = components.find(c => c.types.includes('administrative_area_level_1'));
-                setCityName(city?.long_name || region?.long_name || '');
-              }).catch(() => {});
-          }).catch(() => {});
-        }
-      });
-    });
+    fetchCurrentLocation();
     return () => clearInterval(interval);
   }, []);
 
-  // Refresh last emergency every 5 seconds when there's an active one
   useEffect(() => {
     const interval = setInterval(fetchLastEmergency, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchCurrentLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const pos = await Location.getCurrentPositionAsync({});
+      const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      setUserCoords(coords);
+      setPickerLocation(coords);
+      reverseGeocode(coords.latitude, coords.longitude, setCityName);
+    } catch {}
+  };
+
+  const reverseGeocode = async (lat, lng, setter) => {
+    try {
+      const res = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=AIzaSyBZcFRlN-fA4eempYCxNItSuAKykUsSoRM&language=uz`
+      );
+      const data = await res.json();
+      const components = data.results?.[0]?.address_components || [];
+      const city = components.find(c => c.types.includes('locality'));
+      const region = components.find(c => c.types.includes('administrative_area_level_1'));
+      const name = city?.long_name || region?.long_name || '';
+      if (name) setter(name);
+    } catch {}
+  };
+
+  const handleOpenLocationPicker = () => {
+    setPickerLocation(userCoords || { latitude: 41.2995, longitude: 69.2401 });
+    setLocationModal(true);
+  };
+
+  const handleSaveLocation = async () => {
+    if (!pickerLocation) return;
+    setUserCoords(pickerLocation);
+    await reverseGeocode(pickerLocation.latitude, pickerLocation.longitude, (name) => {
+      setCityName(name);
+      setPickerCity(name);
+    });
+    setLocationModal(false);
+  };
 
   const fetchLastEmergency = async () => {
     try {
@@ -83,7 +116,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
           await AsyncStorage.setItem('dispatch_centers', JSON.stringify(data));
         }
       }
-    } catch (e) { console.log('fetchDispatchCenters error:', e); }
+    } catch (e) {}
     finally { setLoadingCenters(false); }
   };
 
@@ -92,18 +125,15 @@ export default function CallerHomeScreen({ user, token, navigation }) {
   const isActiveEmergency = lastEmergency && !['completed', 'cancelled'].includes(lastEmergency.status);
 
   const handleServiceClick = (serviceType) => {
-    // If there is an active emergency, go to confirmation screen
     if (isActiveEmergency) {
       navigation.navigate('CallerConfirmation', { emergencyId: lastEmergency.id });
       return;
     }
-    // Police and fire are coming soon
     if (serviceType === 'police' || serviceType === 'fire' || serviceType === 'pharmacy') {
       const name = serviceType === 'police' ? t.police : serviceType === 'fire' ? t.fire : t.pharmacy;
       showComingSoon(name);
       return;
     }
-    // Ambulance only
     const center = dispatchCenters.find(c => c.service_type === serviceType);
     navigation.navigate('CallerEmergency', { dispatchCenterId: center?.id || 1, serviceType });
   };
@@ -114,7 +144,6 @@ export default function CallerHomeScreen({ user, token, navigation }) {
     }
   };
 
-  // Only ambulance is active, everything else is coming soon
   const isActive = (key) => key === 'ambulance';
 
   const firstName = user?.first_name || user?.phone || t.roleCaller;
@@ -132,6 +161,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
 
   return (
     <View style={[s.safe, { backgroundColor: theme.bg }]}>
+      {/* Coming soon modal */}
       <Modal visible={!!comingSoon} transparent animationType="fade">
         <TouchableOpacity style={s.comingOverlay} activeOpacity={1} onPress={() => setComingSoon('')}>
           <View style={[s.comingModal, { backgroundColor: theme.card }]}>
@@ -140,6 +170,53 @@ export default function CallerHomeScreen({ user, token, navigation }) {
             <Text style={[s.comingSub, { color: theme.textSub }]}>{t.comingSoonMsg}</Text>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Location picker modal */}
+      <Modal visible={locationModal} transparent animationType="slide" onRequestClose={() => setLocationModal(false)}>
+        <View style={s.locationModalOverlay}>
+          <View style={[s.locationModalCard, { backgroundColor: theme.card }]}>
+            <View style={s.locationModalHeader}>
+              <Text style={[s.locationModalTitle, { color: theme.text }]}>📍 {t.locationPickerTitle || "Joylashuvni tanlang"}</Text>
+              <TouchableOpacity onPress={() => setLocationModal(false)}>
+                <Text style={{ fontSize: 22, color: '#999' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={[s.locationModalSub, { color: theme.textSub }]}>
+              Xaritada o'z joyingizni belgilang
+            </Text>
+            {pickerLocation && (
+              <MapView
+                ref={mapRef}
+                style={s.locationMap}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={{ ...pickerLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+                onPress={(e) => {
+                  const coords = e.nativeEvent.coordinate;
+                  setPickerLocation(coords);
+                  reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
+                }}
+              >
+                <Marker
+                  coordinate={pickerLocation}
+                  draggable
+                  onDragEnd={(e) => {
+                    const coords = e.nativeEvent.coordinate;
+                    setPickerLocation(coords);
+                    reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
+                  }}
+                  pinColor="red"
+                />
+              </MapView>
+            )}
+            {pickerCity ? (
+              <Text style={[s.locationModalCity, { color: theme.text }]}>📍 {pickerCity}, O'zbekiston</Text>
+            ) : null}
+            <TouchableOpacity style={[s.locationSaveBtn, { backgroundColor: '#4fc3f7' }]} onPress={handleSaveLocation}>
+              <Text style={s.locationSaveBtnText}>{t.locationPickerSave || 'Shu joyni saqlash'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
 
       <LinearGradient colors={gradColors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -166,7 +243,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
           />
           {!!searchQuery && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Text style={s.clearBtn}>x</Text>
+              <Text style={s.clearBtn}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -174,7 +251,6 @@ export default function CallerHomeScreen({ user, token, navigation }) {
 
       <ScrollView style={[s.content, { backgroundColor: theme.card }]} contentContainerStyle={s.contentInner} showsVerticalScrollIndicator={false}>
 
-        {/* Active emergency banner */}
         {isActiveEmergency && (
           <TouchableOpacity
             style={s.activeBanner}
@@ -196,7 +272,7 @@ export default function CallerHomeScreen({ user, token, navigation }) {
             </View>
             <Text style={[s.quickLabel, { color: theme.textSub }]}>{t.call}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.quickBtn}>
+          <TouchableOpacity style={s.quickBtn} onPress={handleOpenLocationPicker}>
             <View style={[s.quickIcon, { backgroundColor: '#fff8f0', borderColor: '#ffe0b2' }]}>
               <Text style={s.quickIconText}>📍</Text>
             </View>
@@ -275,7 +351,7 @@ const s = StyleSheet.create({
   notifDot: { position: 'absolute', top: 6, right: 6, width: 9, height: 9, backgroundColor: '#e74c3c', borderRadius: 5, borderWidth: 1.5, borderColor: '#81c784' },
   searchBar: { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 14, padding: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 },
   searchIconText: { fontSize: 16 },
-  searchInput: { flex: 1, fontSize: 14, color: '#333', padding: 0, letterSpacing: 0 },
+  searchInput: { flex: 1, fontSize: 14, color: '#333', padding: 0 },
   clearBtn: { color: '#aaa', fontSize: 16, paddingHorizontal: 4 },
   content: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -16 },
   contentInner: { padding: 20, paddingBottom: 100 },
@@ -317,4 +393,14 @@ const s = StyleSheet.create({
   comingEmoji: { fontSize: 48 },
   comingTitle: { fontSize: 20, fontWeight: '700' },
   comingSub: { fontSize: 14 },
+  // Location picker
+  locationModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  locationModalCard: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 },
+  locationModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  locationModalTitle: { fontSize: 17, fontWeight: '700' },
+  locationModalSub: { fontSize: 12, marginBottom: 14 },
+  locationMap: { width: '100%', height: 280, borderRadius: 16, marginBottom: 12 },
+  locationModalCity: { fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 14 },
+  locationSaveBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
+  locationSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
