@@ -1,0 +1,70 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.dlogin-container {
+  min-height: 100vh; display: flex; flex-direction: column;
+  background: #e74c3c; font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto;
+}
+
+/* Red hero with concentric circles */
+.dlogin-hero {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 48px 20px 40px; background: #e74c3c; flex-shrink: 0;
+}
+.dlogin-circle {
+  position: absolute; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.15);
+  top: 50%; left: 50%;
+}
+.dlogin-circle.c1 { width: 200px; height: 200px; margin: -100px 0 0 -100px; border-color: rgba(255,255,255,0.2); }
+.dlogin-circle.c2 { width: 280px; height: 280px; margin: -140px 0 0 -140px; }
+.dlogin-circle.c3 { width: 360px; height: 360px; margin: -180px 0 0 -180px; border-color: rgba(255,255,255,0.1); }
+.dlogin-hero-icon { font-size: 64px; margin-bottom: 8px; z-index: 1; }
+.dlogin-hero-title { font-size: 28px; font-weight: 700; color: #fff; z-index: 1; margin: 0; }
+.dlogin-hero-sub { font-size: 12px; color: rgba(255,255,255,0.8); letter-spacing: 2px; margin-top: 4px; z-index: 1; }
+
+/* Form card */
+.dlogin-card {
+  flex: 1; background: #fff; border-radius: 28px 28px 0 0;
+  margin-top: -20px; padding: 24px 24px 40px;
+}
+.dlogin-form-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+.dlogin-form-sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+.dlogin-label { display: block; font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+.dlogin-hint { font-size: 11px; color: #888; margin-bottom: 8px; margin-top: -4px; }
+
+.dlogin-input-row {
+  display: flex; align-items: center; border: 1.5px solid #ddd;
+  border-radius: 12px; overflow: hidden;
+}
+.dlogin-input-row:focus-within { border-color: #e74c3c; }
+.dlogin-prefix {
+  background: #f9f9f9; padding: 0 14px; display: flex; align-items: center;
+  border-right: 1px solid #ddd; font-size: 15px; color: #555; font-weight: 600;
+}
+.dlogin-input {
+  flex: 1; border: none; outline: none; padding: 14px; font-size: 15px;
+  color: #000; background: #fff;
+}
+
+.dlogin-code-input {
+  width: 100%; border: 1.5px solid #ddd; border-radius: 12px;
+  padding: 14px; font-size: 22px; font-weight: 700; text-align: center;
+  letter-spacing: 6px; margin-top: 4px; color: #000; background: #fff;
+  outline: none; transition: border-color 0.2s;
+}
+.dlogin-code-input:focus { border-color: #e74c3c; }
+
+.dlogin-error {
+  background: #fff5f5; border: 1px solid #ffcdd2; border-radius: 10px;
+  padding: 10px; margin-top: 10px; color: #e74c3c; font-size: 13px;
+}
+
+.dlogin-btn {
+  width: 100%; background: #e74c3c; border: none; border-radius: 14px;
+  padding: 16px; color: #fff; font-weight: 700; font-size: 16px;
+  cursor: pointer; margin-top: 24px; transition: opacity 0.2s;
+}
+.dlogin-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.dlogin-btn:hover:not(:disabled) { opacity: 0.9; }

@@ -1,0 +1,229 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+.dh-safe {
+  height: 100vh; display: flex; flex-direction: column;
+  background: #f5f5f5; font-family: 'Segoe UI', sans-serif;
+  max-width: 480px; margin: 0 auto; overflow: hidden; position: relative;
+}
+
+/* Map */
+.dh-map-container { flex: 1; position: relative; min-height: 0; }
+.dh-map { width: 100%; height: 100%; }
+
+/* Header pills */
+.dh-header-pill-wrapper {
+  position: absolute; top: 16px; left: 60px; right: 60px;
+  display: flex; justify-content: center; z-index: 10;
+}
+.dh-header-pill {
+  background: #fff; border-radius: 20px; padding: 8px 14px;
+  text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.dh-header-pill-text { font-size: 12px; font-weight: 600; color: #1a1a1a; margin: 0; }
+.dh-header-pill-sub { font-size: 10px; color: #888; margin: 1px 0 0; }
+
+.dh-eta-pill {
+  background: rgba(255,255,255,0.95); border-radius: 20px;
+  padding: 8px 16px; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 12px; font-weight: 600; color: #333;
+}
+.dh-eta-sep { color: #ccc; }
+
+/* Bell button */
+.dh-bell-btn {
+  position: absolute; top: 16px; right: 16px; z-index: 10;
+  width: 36px; height: 36px; border-radius: 10px; border: none;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.dh-bell-dot {
+  position: absolute; top: 5px; right: 5px; width: 8px; height: 8px;
+  background: #e74c3c; border-radius: 50%; border: 1.5px solid #fff;
+}
+
+/* Nav external button */
+.dh-nav-ext-btn {
+  position: absolute; top: 60px; right: 16px; z-index: 10;
+  width: 36px; height: 36px; border-radius: 10px; border: none;
+  background: #fff; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Re-center button (left) */
+.dh-left-buttons {
+  position: absolute; bottom: 20px; left: 16px; z-index: 10;
+}
+.dh-recenter-btn {
+  background: #fff; border: none; border-radius: 28px;
+  padding: 12px 18px; display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.dh-recenter-icon { font-size: 16px; font-weight: bold; }
+
+/* Right-side controls */
+.dh-right-buttons {
+  position: absolute; bottom: 20px; right: 16px; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+.dh-toggle-btn {
+  width: 56px; height: 56px; background: #fff; border: none; border-radius: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; color: #333; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+.dh-locate-btn {
+  width: 44px; height: 44px; background: #fff; border: none; border-radius: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* GPS loading overlay */
+.dh-gps-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.45);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20;
+}
+.dh-spinner {
+  width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.3);
+  border-top-color: #4fc3f7; border-radius: 50%; animation: dh-spin 0.8s linear infinite;
+}
+@keyframes dh-spin { to { transform: rotate(360deg); } }
+.dh-gps-text { color: #fff; margin-top: 12px; font-size: 15px; }
+
+/* Bottom panel */
+.dh-bottom-panel {
+  background: #fff; border-radius: 20px 20px 0 0;
+  padding: 8px 16px 16px; box-shadow: 0 -4px 16px rgba(0,0,0,0.08);
+  flex-shrink: 0; max-height: 50vh; overflow-y: auto;
+}
+.dh-sheet-handle {
+  width: 36px; height: 4px; background: #e0e0e0; border-radius: 2px;
+  margin: 0 auto 12px;
+}
+.dh-success-msg {
+  background: #81c784; border-radius: 10px; padding: 10px; margin-bottom: 10px;
+  color: #fff; text-align: center; font-weight: bold; font-size: 14px;
+}
+
+/* Active call info card */
+.dh-call-info-card { border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+.dh-call-info-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.dh-call-info-id { color: #fff; font-size: 14px; font-weight: bold; }
+.dh-status-badge {
+  background: rgba(255,255,255,0.25); color: #fff; font-size: 12px; font-weight: 600;
+  border-radius: 8px; padding: 4px 10px;
+}
+.dh-call-info-phone { color: rgba(255,255,255,0.9); font-size: 13px; text-decoration: none; display: block; }
+
+/* Action buttons */
+.dh-btn-primary {
+  width: 100%; border: none; border-radius: 28px; padding: 14px;
+  color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; margin-bottom: 8px;
+}
+.dh-btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+.dh-btn-cancel {
+  width: 100%; border: 1.5px solid #e74c3c; border-radius: 28px; padding: 13px;
+  background: transparent; color: #e74c3c; font-size: 15px; cursor: pointer; margin-bottom: 8px;
+}
+.dh-btn-spinner {
+  display: inline-block; width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.4); border-top-color: #fff;
+  border-radius: 50%; animation: dh-spin 0.8s linear infinite; vertical-align: middle;
+}
+
+/* Available calls */
+.dh-available-header { display: flex; align-items: center; margin-bottom: 10px; }
+.dh-available-title { font-weight: bold; font-size: 14px; color: #1a1a1a; flex: 1; margin: 0; }
+.dh-count-badge { border-radius: 12px; padding: 2px 8px; color: #fff; font-weight: bold; font-size: 12px; }
+.dh-no-calls-row { display: flex; align-items: center; padding: 12px 0; gap: 8px; }
+.dh-no-calls-text { font-size: 13px; color: #888; }
+.dh-spinner-small {
+  display: inline-block; width: 16px; height: 16px;
+  border: 2px solid rgba(0,0,0,0.1); border-top-color: #4fc3f7;
+  border-radius: 50%; animation: dh-spin 0.8s linear infinite; flex-shrink: 0;
+}
+.dh-available-list { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+.dh-available-card {
+  display: flex; align-items: center; gap: 10px; border-radius: 12px;
+  padding: 12px; border: 0.5px solid #eee; background: #f8f9ff;
+  cursor: pointer; text-align: left; width: 100%;
+}
+.dh-available-card-icon {
+  width: 36px; height: 36px; border-radius: 10px; background: #e3f2fd;
+  display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+}
+.dh-available-card-info { flex: 1; min-width: 0; }
+.dh-available-card-id { font-weight: 600; font-size: 13px; color: #1a1a1a; margin: 0; }
+.dh-available-card-dist { font-size: 11px; color: #888; margin: 2px 0 0; }
+.dh-qabul-btn {
+  border-radius: 10px; padding: 7px 14px; color: #fff; font-weight: bold; font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Bottom nav */
+.dh-bottom-nav {
+  display: flex; justify-content: space-around; border-top: 0.5px solid #eee;
+  padding-top: 10px; margin-top: 8px;
+}
+.dh-nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: none; cursor: pointer;
+}
+.dh-nav-icon { font-size: 22px; }
+.dh-nav-label { font-size: 10px; color: #888; }
+.dh-nav-label.active { font-weight: 600; }
+
+/* Selected call modal */
+.dh-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.dh-modal-close { background: none; border: none; font-size: 22px; color: #666; cursor: pointer; line-height: 1; }
+.dh-modal-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #e0e0e0;
+}
+.dh-modal-label { font-size: 13px; color: #888; }
+.dh-modal-value { font-weight: bold; font-size: 13px; max-width: 55%; text-align: right; color: #1a1a1a; }
+.dh-modal-value.link { color: #3498db; text-decoration: none; }
+.dh-accept-full {
+  width: 100%; border: none; border-radius: 12px; padding: 14px;
+  color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 18px;
+}
+
+/* Cancellation popup */
+.dh-cancel-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center; padding: 32px; z-index: 200;
+  max-width: 480px; margin: 0 auto;
+}
+.dh-cancel-card {
+  background: #fff; border-radius: 20px; padding: 28px; text-align: center; width: 100%;
+}
+.dh-cancel-icon { font-size: 48px; margin-bottom: 12px; }
+.dh-cancel-title { font-size: 20px; font-weight: 700; color: #e74c3c; margin-bottom: 8px; }
+.dh-cancel-sub { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 20px; }
+.dh-cancel-btn {
+  border: none; border-radius: 12px; padding: 12px 40px; color: #fff; font-weight: 700; font-size: 16px; cursor: pointer;
+}
+
+/* Navigation app modal */
+.dh-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 200;
+  max-width: 480px; margin: 0 auto;
+}
+.dh-modal-card {
+  background: #fff; border-radius: 20px 20px 0 0; padding: 24px; width: 100%;
+  animation: dh-slideUp 0.25s ease;
+}
+@keyframes dh-slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.dh-modal-title { font-size: 17px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px; }
+.dh-nav-app-btn {
+  width: 100%; background: #e8f5e9; border: none; border-radius: 12px;
+  padding: 16px; display: flex; align-items: center; gap: 12px;
+  margin-bottom: 10px; cursor: pointer; text-align: left;
+}
+.dh-nav-app-btn.yellow { background: #fff9c4; }
+.dh-nav-app-text { font-size: 16px; font-weight: 600; color: #333; }
+.dh-modal-btn-ghost {
+  width: 100%; border: 1px solid #ddd; border-radius: 12px; padding: 13px;
+  background: transparent; color: #888; font-size: 14px; cursor: pointer; margin-top: 4px;
+}
