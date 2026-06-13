@@ -67,6 +67,32 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
   useEffect(() => { headingRef.current = driverHeading; }, [driverHeading]);
 
+  // Re-center the camera on the driver's last known position whenever the
+  // app/tab becomes visible again (e.g. after closing and reopening
+  // Telegram). Without this, the map can be left showing a stale view
+  // while the driver marker itself keeps updating in the background.
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState !== 'visible') return;
+      if (!gMapRef.current || !locationRef.current) return;
+      const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+      moveCamera(locationRef.current, headingRef.current, {
+        pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
+        zoom: navigatingNow ? 18 : 17,
+        duration: 0,
+      });
+      if (navigatingNow) {
+        setIsFollowing(true); isFollowingRef.current = true; userInteractingRef.current = false;
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
+  }, []);
+
   // Fetch driver's own profile name
   useEffect(() => {
     fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
