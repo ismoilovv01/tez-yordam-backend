@@ -64,12 +64,13 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
   // red destination pin, matching Google Maps' own user-location marker.
   const userLocationIcon = () => ({
     url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-         <circle cx="11" cy="11" r="8" fill="#4285F4" stroke="#fff" stroke-width="3"/>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+         <circle cx="16" cy="16" r="14" fill="#4285F4" opacity="0.18"/>
+         <circle cx="16" cy="16" r="8" fill="#4285F4" stroke="#fff" stroke-width="3"/>
        </svg>`
     ),
-    scaledSize: new window.google.maps.Size(22, 22),
-    anchor: new window.google.maps.Point(11, 11),
+    scaledSize: new window.google.maps.Size(32, 32),
+    anchor: new window.google.maps.Point(16, 16),
   });
 
   const initMap = (lat, lng) => {
