@@ -77,9 +77,10 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       if (!gMapRef.current || !locationRef.current) return;
       const navigatingNow = activeCallRef.current?.status === 'on_the_way';
       moveCamera(locationRef.current, headingRef.current, {
-        pitch: navigatingNow && is3DRef.current ? 60 : (is3DRef.current ? 35 : 0),
-        zoom: navigatingNow ? 18 : 17,
-        duration: 0,
+        pitch: navigatingNow ? NAV_TILT : (is3DRef.current ? 35 : 0),
+        zoom: navigatingNow ? undefined : 17,
+        speed: navigatingNow ? locationRef.current.speed : undefined,
+        instant: true,
       });
       if (navigatingNow) {
         setIsFollowing(true); isFollowingRef.current = true; userInteractingRef.current = false;
@@ -150,62 +151,87 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     setMapReady(true);
 
     if (locationRef.current) {
-      moveCamera(locationRef.current, headingRef.current, { duration: 0 });
+      moveCamera(locationRef.current, headingRef.current, { instant: true, zoom: 17 });
     }
   };
 
   // ── Camera control ──────────────────────────────────────────────
+  // Google-Maps-navigator-style camera: center always tracks GPS position,
+  // heading follows direction of travel (not device compass), tilt is a
+  // fixed ~60° during active navigation, zoom eases based on speed, and
+  // everything is interpolated smoothly via requestAnimationFrame instead
+  // of jumping on each ~1s GPS update.
   const cameraAnimRef = useRef(null);
+  const cameraStateRef = useRef({ lat: 41.2995, lng: 69.2401, heading: 0, tilt: 0, zoom: 17 });
+
+  const NAV_TILT = 60;
+  const NAV_ZOOM_SLOW = 18.5;   // when stopped / very slow
+  const NAV_ZOOM_FAST = 16.5;   // at higher speed, zoom out a bit
+  const SPEED_FAST_MS = 12;     // m/s (~43 km/h) considered "fast"
+
+  const speedToZoom = (speedMs) => {
+    if (speedMs === null || speedMs === undefined || isNaN(speedMs)) return NAV_ZOOM_SLOW;
+    const clamped = Math.max(0, Math.min(speedMs, SPEED_FAST_MS));
+    const t = clamped / SPEED_FAST_MS;
+    return NAV_ZOOM_SLOW + (NAV_ZOOM_FAST - NAV_ZOOM_SLOW) * t;
+  };
 
   const moveCamera = (coords, heading, opts = {}) => {
     if (!gMapRef.current) return;
-    const { pitch, zoom = 17, instant = false } = opts;
+    const { pitch, zoom, instant = false, speed } = opts;
     const targetTilt = pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0);
+    const targetZoom = zoom !== undefined ? zoom : speedToZoom(speed);
     const targetHeading = ((heading || 0) % 360 + 360) % 360;
 
-    if (cameraAnimRef.current) {
-      clearInterval(cameraAnimRef.current);
-      cameraAnimRef.current = null;
-    }
-
     if (instant) {
+      if (cameraAnimRef.current) { cancelAnimationFrame(cameraAnimRef.current); cameraAnimRef.current = null; }
+      cameraStateRef.current = { lat: coords.latitude, lng: coords.longitude, heading: targetHeading, tilt: targetTilt, zoom: targetZoom };
       gMapRef.current.moveCamera({
         center: { lat: coords.latitude, lng: coords.longitude },
-        zoom, heading: targetHeading, tilt: targetTilt,
+        zoom: targetZoom, heading: targetHeading, tilt: targetTilt,
       });
       return;
     }
 
-    // Animate heading rotation smoothly across the shortest arc, in small
-    // steps, while center/zoom/tilt update immediately. This avoids the
-    // "teleporting" jump every ~1s when the GPS heading updates — matching
-    // how Google/Yandex smoothly rotate the camera to follow direction of
-    // travel.
-    const startHeading = gMapRef.current.getHeading() || 0;
-    let delta = targetHeading - startHeading;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
+    const start = { ...cameraStateRef.current };
+    let headingDelta = targetHeading - start.heading;
+    if (headingDelta > 180) headingDelta -= 360;
+    if (headingDelta < -180) headingDelta += 360;
 
-    const STEPS = 10;
-    const STEP_MS = 50;
-    let step = 0;
+    const target = {
+      lat: coords.latitude,
+      lng: coords.longitude,
+      heading: start.heading + headingDelta,
+      tilt: targetTilt,
+      zoom: targetZoom,
+    };
 
-    gMapRef.current.moveCamera({
-      center: { lat: coords.latitude, lng: coords.longitude },
-      zoom, tilt: targetTilt,
-    });
+    if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
 
-    if (Math.abs(delta) < 0.5) return; // no meaningful rotation needed
+    const DURATION_MS = 900; // matches ~1s GPS update interval for continuous smooth motion
+    const startTime = performance.now();
+    const from = { ...start };
 
-    cameraAnimRef.current = setInterval(() => {
-      step++;
-      const h = ((startHeading + (delta * step) / STEPS) % 360 + 360) % 360;
-      if (gMapRef.current) gMapRef.current.setHeading(h);
-      if (step >= STEPS) {
-        clearInterval(cameraAnimRef.current);
+    const tick = (now) => {
+      const t = Math.min(1, (now - startTime) / DURATION_MS);
+      const ease = t; // linear — keeps pace with steady GPS updates
+      const lat = from.lat + (target.lat - from.lat) * ease;
+      const lng = from.lng + (target.lng - from.lng) * ease;
+      const tilt = from.tilt + (target.tilt - from.tilt) * ease;
+      const zm = from.zoom + (target.zoom - from.zoom) * ease;
+      const hd = ((from.heading + (target.heading - from.heading) * ease) % 360 + 360) % 360;
+
+      cameraStateRef.current = { lat, lng, heading: hd, tilt, zoom: zm };
+      gMapRef.current.moveCamera({ center: { lat, lng }, zoom: zm, heading: hd, tilt });
+
+      if (t < 1) {
+        cameraAnimRef.current = requestAnimationFrame(tick);
+      } else {
         cameraAnimRef.current = null;
+        cameraStateRef.current = { lat: target.lat, lng: target.lng, heading: ((target.heading % 360) + 360) % 360, tilt: target.tilt, zoom: target.zoom };
       }
-    }, STEP_MS);
+    };
+    cameraAnimRef.current = requestAnimationFrame(tick);
   };
 
   // ── Driver marker (with rotation for nav arrow) ──────────────────
@@ -251,11 +277,11 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
         const heading = pos.coords.heading || 0;
         setDriverLocation(coords);
         setDriverHeading(heading);
-        locationRef.current = coords;
+        locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
         if (gMapRef.current) {
           updateDriverMarker(coords, heading);
-          moveCamera(coords, heading, { duration: 0 });
+          moveCamera(coords, heading, { instant: true, zoom: 17 });
         }
       },
       () => {},
@@ -267,10 +293,11 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
         const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
         const rawHeading = pos.coords.heading;
         const heading = (rawHeading !== null && rawHeading !== undefined && !isNaN(rawHeading)) ? rawHeading : headingRef.current;
+        const speed = (pos.coords.speed !== null && pos.coords.speed !== undefined && !isNaN(pos.coords.speed)) ? pos.coords.speed : 0;
 
         setDriverLocation(coords);
         setDriverHeading(heading);
-        locationRef.current = coords;
+        locationRef.current = { ...coords, speed };
         headingRef.current = heading;
 
         if (gMapRef.current) updateDriverMarker(coords, heading);
@@ -292,10 +319,9 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
         // free map — no camera snapping — matching Google/Yandex driver apps.
         const navigatingNow = activeCallRef.current?.status === 'on_the_way';
         if (navigatingNow && isFollowingRef.current && !userInteractingRef.current) {
-          moveCamera(coords, heading, {
-            pitch: is3DRef.current ? 60 : 0,
-            zoom: 18,
-          });
+          // Fixed ~60° tilt and speed-based zoom during active navigation —
+          // matches Google Maps navigator camera behavior.
+          moveCamera(coords, heading, { pitch: NAV_TILT, speed });
         }
       },
       () => {},
@@ -331,7 +357,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       if (call?.status === 'on_the_way') {
         setIsNavigating(true);
         if (isFollowingRef.current && locationRef.current && !userInteractingRef.current) {
-          moveCamera(locationRef.current, headingRef.current, { pitch: is3DRef.current ? 60 : 0, zoom: 18 });
+          moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed });
         }
       } else if (!call || call.status !== 'on_the_way') {
         setIsNavigating(false);
@@ -346,7 +372,10 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   }, [fetchData]);
 
   useEffect(() => {
-    return () => { if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); };
+    return () => {
+      if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+      if (cameraAnimRef.current) cancelAnimationFrame(cameraAnimRef.current);
+    };
   }, []);
 
   // ── Map interaction handling (manual pan/zoom pauses follow mode) ─
@@ -366,8 +395,8 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       setIsFollowing(true); isFollowingRef.current = true;
       if (locationRef.current) {
         moveCamera(locationRef.current, headingRef.current, {
-          pitch: is3DRef.current ? 60 : 0,
-          zoom: 18,
+          pitch: NAV_TILT,
+          speed: locationRef.current.speed,
         });
       }
     }, RESUME_FOLLOW_MS);
@@ -379,8 +408,10 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     setIsFollowing(true); isFollowingRef.current = true; userInteractingRef.current = false;
     if (locationRef.current) {
       moveCamera(locationRef.current, isNavigating ? headingRef.current : 0, {
-        pitch: is3DRef.current ? (isNavigating ? 60 : 35) : 0,
-        zoom: isNavigating ? 18 : 17,
+        pitch: isNavigating ? NAV_TILT : (is3DRef.current ? 35 : 0),
+        zoom: isNavigating ? undefined : 17,
+        speed: isNavigating ? locationRef.current.speed : undefined,
+        instant: true,
       });
     }
   };
@@ -495,7 +526,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
     const ok = await apiAction(`${API_URL}/api/driver/start/${activeCall.id}`);
     if (ok) {
       showMsg("Yo'lda"); setIsNavigating(true); setIsFollowing(true); isFollowingRef.current = true;
-      if (locationRef.current) moveCamera(locationRef.current, headingRef.current, { pitch: 60, zoom: 18 });
+      if (locationRef.current) moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed, instant: true });
     }
   };
 
@@ -610,7 +641,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
         )}
 
         <div className="dh-right-buttons">
-          {isNavigating && (
+          {!isNavigating && (
             <button className="dh-toggle-btn" onClick={toggle3D}>{is3D ? '2D' : '3D'}</button>
           )}
           <button className="dh-locate-btn" onClick={handleReCenter}>📍</button>
