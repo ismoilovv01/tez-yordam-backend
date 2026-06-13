@@ -38,6 +38,10 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
 
   useEffect(() => {
     if (sending) {
+      // Each ring runs a full 0 -> 1 -> 0 cycle on a continuous loop.
+      // Going back to 0 over a real duration (instead of an instant
+      // duration:0 snap) is what makes the loop restart cleanly every
+      // time instead of freezing after the first pass.
       const makePulse = (anim, delay) => {
         anim.setValue(0);
         return Animated.loop(
@@ -45,7 +49,9 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
             Animated.delay(delay),
             Animated.timing(anim, { toValue: 1, duration: 1800, useNativeDriver: true }),
             Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
-          ])
+            Animated.delay(0),
+          ]),
+          { resetBeforeIteration: true }
         );
       };
       const a1 = makePulse(ring1, 0);
@@ -56,6 +62,9 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
     } else {
       animsRef.current.forEach(a => a.stop());
       animsRef.current = [];
+      ring1.setValue(0);
+      ring2.setValue(0);
+      ring3.setValue(0);
     }
     return () => { animsRef.current.forEach(a => a.stop()); };
   }, [sending]);
