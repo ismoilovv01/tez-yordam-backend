@@ -190,7 +190,7 @@ function Dashboard({ token }) {
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
-const EMPTY_USER = { first_name: '', last_name: '', phone: '', user_type: 'dispatcher', dispatch_center_id: '' };
+const EMPTY_USER = { first_name: '', last_name: '', phone: '', user_type: 'dispatcher', dispatch_center_id: '', service_type: '', city: '' };
 
 const UZ_CITIES = [
   'Toshkent','Andijon',"Farg'ona",'Namangan','Samarqand','Jizzax','Sirdaryo',
@@ -304,9 +304,15 @@ function UsersPage({ token }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
+    if (createForm.user_type === 'center_admin' && (!createForm.service_type || !createForm.city)) {
+      alert("Xizmat turi va shahar/viloyatni tanlang");
+      setCreating(false);
+      return;
+    }
     const password = genPassword();
     try {
-      const data = await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, password, dispatch_center_id: createForm.dispatch_center_id || null } });
+      const body = { ...createForm, password, dispatch_center_id: createForm.dispatch_center_id || null };
+      const data = await apiFetch('/api/admin-panel/users', token, { method: 'POST', body });
       setCreateModal(false);
       setCreateForm(EMPTY_USER);
       load();
@@ -419,7 +425,7 @@ function UsersPage({ token }) {
             </div>
             <div className="field">
               <label>Rol *</label>
-              <select value={createForm.user_type} onChange={e => setCreateForm({...createForm, user_type: e.target.value, dispatch_center_id: ''})}>
+              <select value={createForm.user_type} onChange={e => setCreateForm({...createForm, user_type: e.target.value, dispatch_center_id: '', service_type: '', city: ''})}>
                 <option value="dispatcher">Dispetcher</option>
                 <option value="caller">Chaqiruvchi</option>
                 <option value="driver">Haydovchi</option>
@@ -428,8 +434,37 @@ function UsersPage({ token }) {
               </select>
             </div>
             {createForm.user_type === 'center_admin' && (
-              <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#0369a1', marginBottom: 12 }}>
-                ℹ️ Kirish kodi ham avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
+              <div>
+                <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#0369a1', marginBottom: 12 }}>
+                  ℹ️ Kirish kodi avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
+                </div>
+                <div className="field">
+                  <label>Xizmat turi *</label>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                    {SERVICE_TYPES.map(s => (
+                      <button key={s.key} type="button"
+                        onClick={() => setCreateForm({...createForm, service_type: s.key})}
+                        style={{ flex: 1, padding: '10px 4px', border: `2px solid ${createForm.service_type === s.key ? '#1e3a5f' : '#e2e8f0'}`,
+                          borderRadius: 8, background: createForm.service_type === s.key ? '#1e3a5f' : '#f8fafc',
+                          color: createForm.service_type === s.key ? '#fff' : '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Shahar / Viloyat *</label>
+                  <select value={createForm.city} onChange={e => setCreateForm({...createForm, city: e.target.value})}
+                    style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 14 }}>
+                    <option value="">— Tanlang —</option>
+                    {UZ_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                {createForm.service_type && createForm.city && (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#166534', marginBottom: 12 }}>
+                    ✅ "{createForm.city} {SERVICE_TYPES.find(s=>s.key===createForm.service_type)?.label.split(' ').slice(1).join(' ')}" markazi avtomatik yaratiladi
+                  </div>
+                )}
               </div>
             )}
             <div className="modal-footer">

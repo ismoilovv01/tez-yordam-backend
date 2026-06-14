@@ -1306,10 +1306,8 @@ app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, as
 // POST /api/admin-panel/users - create any user type (dispatcher, caller, admin)
 app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, async (req, res) => {
   try {
-    const { email, password, first_name, last_name, phone, user_type = 'caller', dispatch_center_id } = req.body;
+    const { password, first_name, last_name, phone, user_type = 'caller', dispatch_center_id, service_type, city } = req.body;
     if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
-    if (!email && !phone) return res.status(400).json({ error: 'Email yoki telefon kerak' });
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
     let password_hash = null;
     if (password) {
       if (password.length < 6) return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
@@ -1324,16 +1322,35 @@ app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, a
         if (!exists.rows.length) { login_code = candidate; break; }
       }
     }
+    // For center_admin: auto-create or find dispatch center by city+service_type
+    let resolved_center_id = dispatch_center_id || null;
+    if (user_type === 'center_admin' && city && service_type) {
+      const SERVICE_LABELS = { ambulance: 'Tez Yordam', police: 'Politsiya', fire: "O't o'chirish" };
+      // Find existing center for this city+service_type
+      const existing = await pool.query(
+        'SELECT id FROM dispatch_centers WHERE city = $1 AND service_type = $2 LIMIT 1',
+        [city, service_type]
+      );
+      if (existing.rows.length) {
+        resolved_center_id = existing.rows[0].id;
+      } else {
+        const centerName = `${city} ${SERVICE_LABELS[service_type] || service_type}`;
+        const newCenter = await pool.query(
+          'INSERT INTO dispatch_centers (name, city, service_type) VALUES ($1,$2,$3) RETURNING id',
+          [centerName, city, service_type]
+        );
+        resolved_center_id = newCenter.rows[0].id;
+      }
+    }
     const result = await pool.query(
-      'INSERT INTO users (email, phone, password_hash, first_name, last_name, user_type, dispatch_center_id, login_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, login_code',
-      [email?.toLowerCase() || null, phone || null, password_hash, first_name.trim(), last_name.trim(), user_type, dispatch_center_id || null, login_code]
+      'INSERT INTO users (phone, password_hash, first_name, last_name, user_type, dispatch_center_id, login_code) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, phone, first_name, last_name, user_type, dispatch_center_id, login_code',
+      [phone || null, password_hash, first_name.trim(), last_name.trim(), user_type, resolved_center_id, login_code]
     );
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
     if (err.code === '23505') {
       const detail = err.detail || '';
       if (detail.includes('phone')) return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
-      if (detail.includes('email')) return res.status(400).json({ error: 'Bu email allaqachon mavjud' });
       if (detail.includes('login_code')) return res.status(400).json({ error: 'Kod yaratishda xato, qayta urinib ko\'ring' });
       return res.status(400).json({ error: 'Bu ma\'lumotlar allaqachon mavjud' });
     }
