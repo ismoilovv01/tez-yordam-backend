@@ -547,14 +547,6 @@ function DashboardScreen({ token, onLogout }) {
 
           <div ref={mapRef} id="dashboard-map" className="dashboard-map" />
 
-          <div className="map-legend">
-            {[['#27ae60','Tayyor'],['#f39c12',"Yo'lda"],['#8e44ad','Yetib keldi'],['#e74c3c','Band']].map(([c,l])=>(
-              <span key={l} style={{display:'flex',alignItems:'center',gap:4}}>
-                <span style={{width:12,height:12,borderRadius:'50%',background:c,display:'inline-block'}} />
-                {l}
-              </span>
-            ))}
-          </div>
         </div>
 
         {/* Driver map click panel */}
