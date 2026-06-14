@@ -432,13 +432,6 @@ function UsersPage({ token }) {
                 ℹ️ Kirish kodi ham avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
               </div>
             )}
-            {['dispatcher', 'driver', 'center_admin'].includes(createForm.user_type) && (
-              <div className="field">
-                <label>Dispatch markazi</label>
-                <CenterPicker centers={centers} value={createForm.dispatch_center_id}
-                  onChange={v => setCreateForm({...createForm, dispatch_center_id: v})} />
-              </div>
-            )}
             <div className="modal-footer">
               <button type="button" className="btn-secondary" onClick={() => setCreateModal(false)}>Bekor</button>
               <button type="submit" className="btn-primary" style={{width:'auto'}} disabled={creating}>{creating ? 'Yaratilmoqda...' : 'Yaratish'}</button>

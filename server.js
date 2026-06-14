@@ -1330,7 +1330,13 @@ app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, a
     );
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
-    if (err.code === '23505') return res.status(400).json({ error: 'Bu email yoki telefon allaqachon mavjud' });
+    if (err.code === '23505') {
+      const detail = err.detail || '';
+      if (detail.includes('phone')) return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
+      if (detail.includes('email')) return res.status(400).json({ error: 'Bu email allaqachon mavjud' });
+      if (detail.includes('login_code')) return res.status(400).json({ error: 'Kod yaratishda xato, qayta urinib ko\'ring' });
+      return res.status(400).json({ error: 'Bu ma\'lumotlar allaqachon mavjud' });
+    }
     console.error(err);
     res.status(500).json({ error: err.message });
   }
