@@ -94,6 +94,18 @@ export default function CallerHomeScreen({ user, token, navigation }) {
     setLocationModal(false);
   };
 
+  const handleLocateMe = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const pos = await Location.getCurrentPositionAsync({});
+      const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      setPickerLocation(coords);
+      reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
+      mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
+    } catch {}
+  };
+
   const fetchLastEmergency = async () => {
     try {
       const res = await fetch(`${API_URL}/api/emergencies/my/last`, { headers: { Authorization: `Bearer ${token}` } });
@@ -186,28 +198,33 @@ export default function CallerHomeScreen({ user, token, navigation }) {
               Xaritada o'z joyingizni belgilang
             </Text>
             {pickerLocation && (
-              <MapView
-                ref={mapRef}
-                style={s.locationMap}
-                provider={PROVIDER_GOOGLE}
-                initialRegion={{ ...pickerLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-                onPress={(e) => {
-                  const coords = e.nativeEvent.coordinate;
-                  setPickerLocation(coords);
-                  reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
-                }}
-              >
-                <Marker
-                  coordinate={pickerLocation}
-                  draggable
-                  onDragEnd={(e) => {
+              <View style={s.locationMapWrapper}>
+                <MapView
+                  ref={mapRef}
+                  style={s.locationMap}
+                  provider={PROVIDER_GOOGLE}
+                  initialRegion={{ ...pickerLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+                  onPress={(e) => {
                     const coords = e.nativeEvent.coordinate;
                     setPickerLocation(coords);
                     reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
                   }}
-                  pinColor="red"
-                />
-              </MapView>
+                >
+                  <Marker
+                    coordinate={pickerLocation}
+                    draggable
+                    onDragEnd={(e) => {
+                      const coords = e.nativeEvent.coordinate;
+                      setPickerLocation(coords);
+                      reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
+                    }}
+                    pinColor="red"
+                  />
+                </MapView>
+                <TouchableOpacity style={s.locateMeBtn} onPress={handleLocateMe}>
+                  <Text style={s.locateMeBtnIcon}>📍</Text>
+                </TouchableOpacity>
+              </View>
             )}
             {pickerCity ? (
               <Text style={[s.locationModalCity, { color: theme.text }]}>📍 {pickerCity}, O'zbekiston</Text>
@@ -399,7 +416,10 @@ const s = StyleSheet.create({
   locationModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   locationModalTitle: { fontSize: 17, fontWeight: '700' },
   locationModalSub: { fontSize: 12, marginBottom: 14 },
-  locationMap: { width: '100%', height: 280, borderRadius: 16, marginBottom: 12 },
+  locationMap: { width: '100%', height: '100%' },
+  locationMapWrapper: { width: '100%', height: 280, borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
+  locateMeBtn: { position: 'absolute', right: 12, bottom: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4 },
+  locateMeBtnIcon: { fontSize: 20 },
   locationModalCity: { fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 14 },
   locationSaveBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   locationSaveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
