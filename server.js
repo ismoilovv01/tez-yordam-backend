@@ -84,6 +84,9 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked BOOLEAN DEFAULT FALSE");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)");
     await pool.query("CREATE TABLE IF NOT EXISTS telegram_users (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, chat_id VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
     await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
     console.log('Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ DB migrations done');
@@ -1160,7 +1163,7 @@ app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, as
   try {
     const { user_type, dispatch_center_id } = req.query;
     let query = `SELECT u.id, u.email, u.phone, u.first_name, u.last_name, u.user_type,
-                         u.dispatch_center_id, u.blocked, u.created_at,
+                         u.dispatch_center_id, COALESCE(u.blocked, false) as blocked, u.created_at,
                          dc.name as dispatch_center_name
                   FROM users u
                   LEFT JOIN dispatch_centers dc ON u.dispatch_center_id = dc.id
@@ -1196,7 +1199,7 @@ app.patch('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAdm
     if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
     params.push(id);
     const result = await pool.query(
-      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, blocked`,
+      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, COALESCE(blocked, false) as blocked`,
       params
     );
     if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
