@@ -1183,6 +1183,145 @@ app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, as
   }
 });
 
+// PATCH /api/admin-panel/users/:id - update block status, role, dispatch_center_id
+app.patch('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { blocked, user_type, dispatch_center_id } = req.body;
+    const fields = [];
+    const params = [];
+    if (blocked !== undefined) { params.push(blocked); fields.push(`blocked = $${params.length}`); }
+    if (user_type !== undefined) { params.push(user_type); fields.push(`user_type = $${params.length}`); }
+    if (dispatch_center_id !== undefined) { params.push(dispatch_center_id || null); fields.push(`dispatch_center_id = $${params.length}`); }
+    if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
+    params.push(id);
+    const result = await pool.query(
+      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, blocked`,
+      params
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
+    res.json({ user: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin-panel/users/:id
+app.delete('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin-panel/dispatch-centers
+app.get('/api/admin-panel/dispatch-centers', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT dc.*, COUNT(DISTINCT u.id) as dispatcher_count, COUNT(DISTINCT a.id) as unit_count
+      FROM dispatch_centers dc
+      LEFT JOIN users u ON u.dispatch_center_id = dc.id AND u.user_type = 'dispatcher'
+      LEFT JOIN ambulances a ON a.dispatch_center_id = dc.id
+      GROUP BY dc.id ORDER BY dc.created_at DESC
+    `);
+    res.json({ dispatch_centers: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin-panel/dispatch-centers
+app.post('/api/admin-panel/dispatch-centers', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { name, city, service_type, phone, email, latitude, longitude } = req.body;
+    if (!name || !city || !service_type) return res.status(400).json({ error: 'name, city, service_type kerak' });
+    const result = await pool.query(
+      'INSERT INTO dispatch_centers (name, city, service_type, phone, email, latitude, longitude) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+      [name, city, service_type, phone || null, email || null, latitude || null, longitude || null]
+    );
+    res.status(201).json({ dispatch_center: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/admin-panel/dispatch-centers/:id
+app.patch('/api/admin-panel/dispatch-centers/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, city, service_type, phone, email, latitude, longitude } = req.body;
+    const result = await pool.query(
+      `UPDATE dispatch_centers SET name=COALESCE($1,name), city=COALESCE($2,city), service_type=COALESCE($3,service_type),
+       phone=COALESCE($4,phone), email=COALESCE($5,email), latitude=COALESCE($6,latitude), longitude=COALESCE($7,longitude),
+       updated_at=NOW() WHERE id=$8 RETURNING *`,
+      [name, city, service_type, phone, email, latitude, longitude, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ dispatch_center: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/admin-panel/dispatch-centers/:id
+app.delete('/api/admin-panel/dispatch-centers/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM dispatch_centers WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin-panel/emergencies - all emergencies with filters
+app.get('/api/admin-panel/emergencies', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { status, service_type, limit = 100 } = req.query;
+    let query = `SELECT e.*, u.first_name, u.last_name, u.phone as caller_phone,
+                         dc.name as dispatch_center_name
+                  FROM emergencies e
+                  LEFT JOIN users u ON e.user_id = u.id
+                  LEFT JOIN dispatch_centers dc ON e.dispatch_center_id = dc.id
+                  WHERE 1=1`;
+    const params = [];
+    if (status) { params.push(status); query += ` AND e.status = $${params.length}`; }
+    if (service_type) { params.push(service_type); query += ` AND e.service_type = $${params.length}`; }
+    params.push(parseInt(limit));
+    query += ` ORDER BY e.created_at DESC LIMIT $${params.length}`;
+    const result = await pool.query(query, params);
+    res.json({ emergencies: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin-panel/feedback
+app.get('/api/admin-panel/feedback', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT f.*, u.first_name, u.last_name, u.phone, e.service_type, e.status as emergency_status
+      FROM feedback f
+      LEFT JOIN users u ON f.user_id = u.id
+      LEFT JOIN emergencies e ON f.emergency_id = e.id
+      ORDER BY f.created_at DESC LIMIT 200
+    `);
+    res.json({ feedback: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==================== END ADMIN PANEL ====================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
