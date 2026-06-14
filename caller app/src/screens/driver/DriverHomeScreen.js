@@ -36,7 +36,6 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   const [is3D, setIs3D] = useState(true);
   const [driverName, setDriverName] = useState([user?.first_name, user?.last_name].filter(Boolean).join(' ') || '');
   const [cityName, setCityName] = useState('');
-  const [cancelledPopup, setCancelledPopup] = useState(false);
   const [completedPopup, setCompletedPopup] = useState(false);
   const [navModal, setNavModal] = useState(false);
   const [mapReady, setMapReady] = useState(false);
@@ -344,9 +343,6 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       const call = assignedData.call || null;
 
       const prev = prevStatusRef.current;
-      if (prev && !['cancelled', 'completed', null].includes(prev)) {
-        if (!call || call.status === 'cancelled') setCancelledPopup(true);
-      }
       if (prev === 'arrived' && (!call || call.status === 'completed')) setCompletedPopup(true);
       // Track completed separately to avoid showing cancelled popup
       // when driver finishes a call and it disappears from assigned list
@@ -591,16 +587,6 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   return (
     <div className="dh-safe">
       {/* Cancellation popup */}
-      {cancelledPopup && (
-        <div className="dh-cancel-overlay">
-          <div className="dh-cancel-card">
-            <div className="dh-cancel-icon">❌</div>
-            <h2 className="dh-cancel-title">Chaqiruv bekor qilindi</h2>
-            <p className="dh-cancel-sub">Chaqiruv bekor qilindi. Yangi chaqiruvlarni kuting.</p>
-            <button className="dh-cancel-btn" style={{ background: accentColor }} onClick={() => setCancelledPopup(false)}>OK</button>
-          </div>
-        </div>
-      )}
 
       {/* Completion success popup */}
       {completedPopup && (
@@ -818,3 +804,4 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
 export default function DriverHomeScreen(props) {
   return <DriverScreen {...props} accentColor="#4fc3f7" markerEmoji="🚑" />;
 }
+
