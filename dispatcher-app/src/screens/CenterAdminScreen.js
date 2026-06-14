@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
@@ -42,19 +41,16 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
   const [addForm, setAddForm] = useState({ first_name: '', last_name: '', phone: '' });
   const [driverForm, setDriverForm] = useState({ driver_name: '', driver_phone: '', unit_number: '', plate_region: '' });
   const [selectedDispatcher, setSelectedDispatcher] = useState(null);
-  const [selectedMarker, setSelectedMarker] = useState(null);
   const [assignModal, setAssignModal] = useState(null);
   const [centerForm, setCenterForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [newEmergencyAlert, setNewEmergencyAlert] = useState(false);
   const prevEmergencyIds = useRef(new Set());
 
-  const [mapLoaded, setMapLoaded] = useState(!!window.google);
-  useEffect(() => {
-    if (window.google) { setMapLoaded(true); return; }
-    const id = setInterval(() => { if (window.google) { setMapLoaded(true); clearInterval(id); } }, 200);
-    return () => clearInterval(id);
-  }, []);
+  const centerMapRef = useRef(null);
+  const centerGMapRef = useRef(null);
+  const centerMarkersRef = useRef({});
+  const centerMapInitRef = useRef(false);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -123,6 +119,63 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
     const id = setInterval(() => { loadEmergencies(); loadAmbulances(); }, 15000);
     return () => clearInterval(id);
   }, [loadEmergencies, loadAmbulances]);
+
+  // init vanilla Google Map when map tab opens
+  useEffect(() => {
+    if (tab !== 'map') return;
+    const initMap = () => {
+      if (!centerMapRef.current || centerMapInitRef.current) return;
+      centerMapInitRef.current = true;
+      centerGMapRef.current = new window.google.maps.Map(centerMapRef.current, {
+        center: { lat: 41.2995, lng: 69.2401 },
+        zoom: 11,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+      });
+    };
+    if (window.google) { initMap(); return; }
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const wait = setInterval(() => { if (window.google) { clearInterval(wait); initMap(); } }, 200);
+      return () => clearInterval(wait);
+    }
+    const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz`;
+    script.async = true;
+    script.onload = initMap;
+    document.head.appendChild(script);
+  }, [tab]);
+
+  // update markers when ambulances change
+  useEffect(() => {
+    const map = centerGMapRef.current;
+    if (!map || tab !== 'map') return;
+    const seen = new Set();
+    ambulances.filter(a => a.latitude && a.longitude).forEach(a => {
+      seen.add(a.id);
+      const pos = { lat: parseFloat(a.latitude), lng: parseFloat(a.longitude) };
+      if (centerMarkersRef.current[a.id]) {
+        centerMarkersRef.current[a.id].setPosition(pos);
+      } else {
+        const color = DRIVER_STATUS_COLOR[a.status] || '#6b7280';
+        const svg = encodeURIComponent(`<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="${color}" stroke="white" stroke-width="3"/><text x="18" y="23" text-anchor="middle" font-size="14">🚑</text></svg>`);
+        const marker = new window.google.maps.Marker({
+          map, position: pos,
+          icon: { url: `data:image/svg+xml;charset=UTF-8,${svg}`, scaledSize: new window.google.maps.Size(36, 36) },
+          title: `${a.unit_number} — ${a.driver_name}`,
+        });
+        const iw = new window.google.maps.InfoWindow({
+          content: `<div style="padding:6px;min-width:140px"><b>🚑 ${a.unit_number}</b><br>👤 ${a.driver_name}<br>📞 ${a.driver_phone||'—'}<br><span style="color:${color};font-weight:700">${DRIVER_STATUS_LABEL[a.status]||a.status}</span></div>`
+        });
+        marker.addListener('click', () => iw.open(map, marker));
+        centerMarkersRef.current[a.id] = marker;
+      }
+    });
+    Object.keys(centerMarkersRef.current).forEach(id => {
+      if (!seen.has(parseInt(id))) { centerMarkersRef.current[id].setMap(null); delete centerMarkersRef.current[id]; }
+    });
+  }, [ambulances, tab]);
 
   const updateEmergencyStatus = async (eId, status) => {
     try {
@@ -383,41 +436,7 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
                 </div>
               ))}
             </div>
-            {mapLoaded ? (
-              <div style={{ borderRadius:14, overflow:'hidden', height:520, boxShadow:'0 2px 8px rgba(0,0,0,0.1)' }}>
-                <GoogleMap
-                  mapContainerStyle={{ width:'100%', height:'100%' }}
-                  center={{ lat:41.2995, lng:69.2401 }}
-                  zoom={11}
-                  options={{ streetViewControl:false, mapTypeControl:false, fullscreenControl:false }}
-                >
-                  {ambulances.filter(a => a.latitude && a.longitude).map(a => (
-                    <Marker key={a.id}
-                      position={{ lat:parseFloat(a.latitude), lng:parseFloat(a.longitude) }}
-                      onClick={() => setSelectedMarker(a)}
-                      icon={{
-                        url:`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="18" r="15" fill="${DRIVER_STATUS_COLOR[a.status]||'#6b7280'}" stroke="white" stroke-width="3"/><text x="18" y="23" text-anchor="middle" font-size="14">🚑</text></svg>`)}`,
-                        scaledSize:{ width:36, height:36 }
-                      }}
-                    />
-                  ))}
-                  {selectedMarker && (
-                    <InfoWindow position={{ lat:parseFloat(selectedMarker.latitude), lng:parseFloat(selectedMarker.longitude) }} onCloseClick={() => setSelectedMarker(null)}>
-                      <div style={{ padding:8, minWidth:160 }}>
-                        <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>🚑 {selectedMarker.unit_number}</div>
-                        <div style={{ fontSize:13, marginBottom:2 }}>👤 {selectedMarker.driver_name}</div>
-                        <div style={{ fontSize:13, marginBottom:6 }}>📞 {selectedMarker.driver_phone}</div>
-                        <div style={{ padding:'3px 10px', borderRadius:20, display:'inline-block', background:(DRIVER_STATUS_COLOR[selectedMarker.status]||'#6b7280')+'22', color:DRIVER_STATUS_COLOR[selectedMarker.status]||'#6b7280', fontSize:12, fontWeight:700 }}>
-                          {DRIVER_STATUS_LABEL[selectedMarker.status]||selectedMarker.status}
-                        </div>
-                      </div>
-                    </InfoWindow>
-                  )}
-                </GoogleMap>
-              </div>
-            ) : (
-              <div style={{ height:520, background:'#f1f5f9', borderRadius:14, display:'flex', alignItems:'center', justifyContent:'center', color:'#94a3b8' }}>Xarita yuklanmoqda...</div>
-            )}
+            <div ref={centerMapRef} style={{ borderRadius:14, overflow:'hidden', height:520, boxShadow:'0 2px 8px rgba(0,0,0,0.1)', background:'#e5e7eb' }} />
           </div>
         )}
 

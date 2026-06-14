@@ -261,7 +261,6 @@ function UsersPage({ token }) {
   const [newCenterAdminCode, setNewCenterAdminCode] = useState(null);
   const [editModal, setEditModal] = useState(null); // user object being edited
   const [editForm, setEditForm] = useState({});
-  const [editPassword, setEditPassword] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [assignModal, setAssignModal] = useState(null); // user object
   const [assignCenterId, setAssignCenterId] = useState('');
@@ -336,16 +335,14 @@ function UsersPage({ token }) {
   const openEdit = (u) => {
     setEditModal(u);
     setEditForm({ first_name: u.first_name || '', last_name: u.last_name || '', phone: u.phone || '', user_type: u.user_type, dispatch_center_id: u.dispatch_center_id || '' });
-    setEditPassword('');
+
   };
 
   const handleEditSave = async () => {
     setEditSaving(true);
     try {
       await apiFetch(`/api/admin-panel/users/${editModal.id}`, token, { method: 'PATCH', body: { first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone || null, user_type: editForm.user_type, dispatch_center_id: editForm.dispatch_center_id || null } });
-      if (editPassword.length >= 6) {
-        await apiFetch(`/api/admin-panel/users/${editModal.id}/reset-password`, token, { method: 'POST', body: { password: editPassword } });
-      }
+
       setEditModal(null);
       load();
     } catch (e) { alert(e.message); }
@@ -553,18 +550,9 @@ function UsersPage({ token }) {
               {centers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city}) — {c.service_type}</option>)}
             </select>
           </div>
-          <div className="field">
-            <label>Yangi parol <span style={{ fontSize: 11, color: '#94a3b8' }}>(bo'sh qoldirsangiz o'zgarmaydi)</span></label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input type="text" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Kamida 6 belgi" style={{ flex: 1 }} />
-              <button type="button" className="btn-outline" style={{ whiteSpace: 'nowrap', padding: '8px 12px', fontSize: 12 }} onClick={() => setEditPassword(genPassword())}>🔄 Yaratish</button>
-            </div>
-            {editPassword.length > 0 && editPassword.length < 6 && <small style={{ color: '#ef4444' }}>Kamida 6 ta belgi</small>}
-            {editPassword.length >= 6 && <small style={{ color: '#10b981', fontWeight: 600 }}>✅ Bu parol saqlanadi: {editPassword}</small>}
-          </div>
           <div className="modal-footer">
             <button className="btn-secondary" onClick={() => setEditModal(null)}>Bekor</button>
-            <button className="btn-primary" style={{ width: 'auto' }} disabled={editSaving || (editPassword.length > 0 && editPassword.length < 6)} onClick={handleEditSave}>
+            <button className="btn-primary" style={{ width: 'auto' }} disabled={editSaving} onClick={handleEditSave}>
               {editSaving ? 'Saqlanmoqda...' : 'Saqlash'}
             </button>
           </div>
