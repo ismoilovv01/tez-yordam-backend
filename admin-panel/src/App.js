@@ -201,6 +201,7 @@ function UsersPage({ token }) {
   const [createModal, setCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_USER);
   const [creating, setCreating] = useState(false);
+  const [newCenterAdminCode, setNewCenterAdminCode] = useState(null); // { name, code }
   const [assignModal, setAssignModal] = useState(null); // user object
   const [assignCenterId, setAssignCenterId] = useState('');
 
@@ -247,10 +248,13 @@ function UsersPage({ token }) {
     e.preventDefault();
     setCreating(true);
     try {
-      await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, dispatch_center_id: createForm.dispatch_center_id || null } });
+      const data = await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, dispatch_center_id: createForm.dispatch_center_id || null } });
       setCreateModal(false);
       setCreateForm(EMPTY_USER);
       load();
+      if (data.user?.login_code) {
+        setNewCenterAdminCode({ name: `${data.user.first_name} ${data.user.last_name}`, code: data.user.login_code });
+      }
     } catch (err) { alert(err.message); }
     setCreating(false);
   };
@@ -363,7 +367,12 @@ function UsersPage({ token }) {
                 <option value="admin">Admin</option>
               </select>
             </div>
-            {(createForm.user_type === 'dispatcher' || createForm.user_type === 'driver') && (
+            {createForm.user_type === 'center_admin' && (
+              <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0369a1', marginBottom: 12 }}>
+                ℹ️ Markaz admin uchun kirish kodi avtomatik yaratiladi. Telefon raqami <b>majburiy</b> — u shu raqam + kod bilan kiradi.
+              </div>
+            )}
+            {(createForm.user_type === 'dispatcher' || createForm.user_type === 'driver' || createForm.user_type === 'center_admin') && (
               <div className="field">
                 <label>Dispatch markazi</label>
                 <select value={createForm.dispatch_center_id} onChange={e => setCreateForm({...createForm, dispatch_center_id: e.target.value})}>
@@ -393,6 +402,19 @@ function UsersPage({ token }) {
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={() => setAssignModal(null)}>Bekor</button>
             <button type="button" className="btn-primary" style={{width:'auto'}} onClick={handleAssignCenter}>Saqlash</button>
+          </div>
+        </Modal>
+      )}
+
+      {newCenterAdminCode && (
+        <Modal title="✅ Markaz admin yaratildi!" onClose={() => setNewCenterAdminCode(null)}>
+          <p style={{ textAlign: 'center', marginBottom: 8 }}><b>{newCenterAdminCode.name}</b> uchun kirish kodi:</p>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: 8, background: '#e0f2fe', padding: '16px 24px', borderRadius: 12, textAlign: 'center', color: '#0369a1', marginBottom: 16 }}>
+            {newCenterAdminCode.code}
+          </div>
+          <p style={{ color: '#6b7280', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>Bu kodni markaz adminga bering. U o'z telefon raqami + shu kod bilan tizimga kiradi.</p>
+          <div className="modal-footer">
+            <button className="btn-primary" style={{ width: '100%' }} onClick={() => setNewCenterAdminCode(null)}>Tushunarli</button>
           </div>
         </Modal>
       )}

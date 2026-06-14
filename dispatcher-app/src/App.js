@@ -15,22 +15,11 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleLogin = async ({ type, code, email, password }) => {
+  const handleLogin = async ({ phone, code, role }) => {
     setLoading(true);
     setError(null);
     try {
-      let response;
-      if (type === "code") {
-        response = await axios.post(`${API_URL}/api/auth/dispatcher-login`, { code });
-      } else {
-        response = await axios.post(`${API_URL}/api/auth/email-login`, { email, password });
-        const { user: u } = response.data;
-        if (!["center_admin", "admin"].includes(u.user_type)) {
-          setError("Bu hisob markaz administratori emas");
-          setLoading(false);
-          return;
-        }
-      }
+      const response = await axios.post(`${API_URL}/api/auth/dispatcher-login`, { phone, code, role });
       const { token: newToken, user: newUser } = response.data;
       localStorage.setItem("dispatcherToken", newToken);
       localStorage.setItem("dispatcherUser", JSON.stringify(newUser));

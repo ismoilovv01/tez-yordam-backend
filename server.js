@@ -1082,17 +1082,19 @@ app.post('/api/auth/driver-login', async (req, res) => {
 
 
 // ── DISPATCHER LOGIN WITH CODE ────────────────────────────────────────────────
+// Phone+code login for both center_admin and dispatcher
 app.post('/api/auth/dispatcher-login', async (req, res) => {
   try {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'Kirish kodi kerak' });
+    const { phone, code, role } = req.body;
+    if (!phone || !code) return res.status(400).json({ error: 'Telefon va kod kerak' });
+    const allowedRoles = role === 'center_admin' ? ['center_admin'] : ['dispatcher'];
     const result = await pool.query(
       `SELECT u.*, dc.name as center_name, dc.service_type as center_service_type
        FROM users u LEFT JOIN dispatch_centers dc ON u.dispatch_center_id = dc.id
-       WHERE u.login_code = $1 AND u.user_type = 'dispatcher'`,
-      [code.toUpperCase().trim()]
+       WHERE u.phone = $1 AND u.login_code = $2 AND u.user_type = ANY($3)`,
+      [phone.trim(), code.toUpperCase().trim(), allowedRoles]
     );
-    if (!result.rows.length) return res.status(400).json({ error: "Noto'g'ri kod. Markaz administratori bilan bog'laning." });
+    if (!result.rows.length) return res.status(400).json({ error: "Telefon raqam yoki kod noto'g'ri" });
     const user = result.rows[0];
     if (user.blocked) return res.status(403).json({ error: 'Sizning hisobingiz bloklangan' });
     const token = generateToken(user.id);
@@ -1313,9 +1315,18 @@ app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, a
       if (password.length < 6) return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
       password_hash = await bcrypt.hash(password, 10);
     }
+    // Auto-generate login_code for center_admin users (they log in with phone+code)
+    let login_code = null;
+    if (user_type === 'center_admin') {
+      for (let i = 0; i < 10; i++) {
+        const candidate = generateLoginCode(6);
+        const exists = await pool.query('SELECT id FROM users WHERE login_code = $1', [candidate]);
+        if (!exists.rows.length) { login_code = candidate; break; }
+      }
+    }
     const result = await pool.query(
-      'INSERT INTO users (email, phone, password_hash, first_name, last_name, user_type, dispatch_center_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id',
-      [email?.toLowerCase() || null, phone || null, password_hash, first_name.trim(), last_name.trim(), user_type, dispatch_center_id || null]
+      'INSERT INTO users (email, phone, password_hash, first_name, last_name, user_type, dispatch_center_id, login_code) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, login_code',
+      [email?.toLowerCase() || null, phone || null, password_hash, first_name.trim(), last_name.trim(), user_type, dispatch_center_id || null, login_code]
     );
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
