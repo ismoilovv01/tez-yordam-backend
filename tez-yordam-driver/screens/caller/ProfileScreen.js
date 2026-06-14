@@ -24,6 +24,10 @@ export default function CallerProfileScreen({ user, token, onLogout, navigation,
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const isDriver = homeScreen === 'DriverHome';
+  const feedbackScreenName = isDriver ? 'DriverFeedback' : 'CallerFeedback';
+  const feedbackType = isDriver ? 'driver' : 'caller';
+
   useEffect(() => { fetchUser(); }, [token]);
 
   const fetchUser = async () => {
@@ -108,11 +112,25 @@ export default function CallerProfileScreen({ user, token, onLogout, navigation,
               </View>
             </View>
 
-            <TouchableOpacity style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]} onPress={() => navigation.navigate(homeScreen === 'DriverHome' ? 'DriverHistory' : 'CallerNotifications')}>
+            <TouchableOpacity style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]} onPress={() => navigation.navigate(isDriver ? 'DriverHistory' : 'CallerNotifications')}>
               <Text style={s.cardIcon}>📋</Text>
               <View style={s.cardInfo}>
                 <Text style={[s.cardValue, { color: theme.text }]}>{t.callHistory}</Text>
                 <Text style={[s.cardLabel, { color: theme.textSub }]}>{t.viewAllCalls}</Text>
+              </View>
+              <Text style={s.cardArrow}>›</Text>
+            </TouchableOpacity>
+
+            <Text style={[s.sectionTitle, { color: theme.sectionTitle }]}>{(t.feedbackSection || 'Fikr va takliflar').toUpperCase()}</Text>
+
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
+              onPress={() => navigation.navigate(feedbackScreenName, { type: feedbackType })}
+            >
+              <Text style={s.cardIcon}>⭐</Text>
+              <View style={s.cardInfo}>
+                <Text style={[s.cardValue, { color: theme.text }]}>{t.feedbackSection || 'Fikr va takliflar'}</Text>
+                <Text style={[s.cardLabel, { color: theme.textSub }]}>{t.feedbackSectionSub || "Ilovani yaxshilashga yordam bering"}</Text>
               </View>
               <Text style={s.cardArrow}>›</Text>
             </TouchableOpacity>

@@ -261,6 +261,12 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
         {isCompleted && (
           <View style={s.doneBox}>
             <Text style={s.doneThanks}>{t.thanks}</Text>
+            <TouchableOpacity
+              style={s.btnFeedback}
+              onPress={() => navigation.navigate('CallerFeedback', { emergencyId, type: 'caller', afterCall: true })}
+            >
+              <Text style={s.btnFeedbackText}>⭐ {t.rateCall || 'Chaqiruvni baholash'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={s.btnNew} onPress={() => navigation.replace('CallerHome')}>
               <Text style={s.btnNewText}>{t.newCall}</Text>
             </TouchableOpacity>
@@ -310,6 +316,8 @@ const s = StyleSheet.create({
   waitingText: { color: '#7f8c8d', fontSize: 12 },
   doneBox: { padding: 16, gap: 8 },
   doneThanks: { color: '#27ae60', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  btnFeedback: { borderWidth: 1.5, borderColor: '#f39c12', borderRadius: 10, padding: 12, alignItems: 'center' },
+  btnFeedbackText: { color: '#f39c12', fontWeight: '700', fontSize: 14 },
   btnNew: { backgroundColor: '#e74c3c', borderRadius: 10, padding: 13, alignItems: 'center' },
   btnNewText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

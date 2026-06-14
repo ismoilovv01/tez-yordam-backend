@@ -67,6 +67,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const locationRef        = useRef(null);
   const pollRef            = useRef(null);
   const activeCallRef      = useRef(null);
+  const lastCompletedCallRef = useRef(null);
   const isFollowingRef     = useRef(true);
   const is3DRef            = useRef(true);
   const headingRef         = useRef(0);
@@ -205,7 +206,10 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       if (prev && !['cancelled', 'completed', null].includes(prev)) {
         if (!call || call.status === 'cancelled') setCancelledPopup(true);
       }
-      if (prev === 'arrived' && (!call || call.status === 'completed')) setCompletedPopup(true);
+      if (prev === 'arrived' && (!call || call.status === 'completed')) {
+        setCompletedPopup(true);
+        lastCompletedCallRef.current = activeCallRef.current?.id || null;
+      }
       prevStatusRef.current = call?.status || null;
       setActiveCall(call);
       activeCallRef.current = call;
@@ -384,6 +388,20 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             <Text style={s.cancelIcon}>✅</Text>
             <Text style={[s.cancelTitle, { color: '#27ae60' }]}>{t.completedTitle || 'Muvaffaqiyatli yakunlandi!'}</Text>
             <Text style={s.cancelSub}>{t.completedMsg || 'Chaqiruv muvaffaqiyatli yakunlandi. Yangi chaqiruvlarni kuting.'}</Text>
+            <TouchableOpacity
+              style={[s.cancelBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#f39c12', marginBottom: 8 }]}
+              onPress={() => {
+                setCompletedPopup(false);
+                navigation.navigate('DriverFeedback', {
+                  emergencyId: lastCompletedCallRef.current,
+                  type: 'driver',
+                  afterCall: true,
+                  homeScreen: 'DriverHome',
+                });
+              }}
+            >
+              <Text style={[s.cancelBtnText, { color: '#f39c12' }]}>⭐ {t.rateCall || 'Chaqiruvni baholash'}</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: '#27ae60' }]} onPress={() => setCompletedPopup(false)}>
               <Text style={s.cancelBtnText}>OK</Text>
             </TouchableOpacity>

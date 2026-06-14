@@ -13,6 +13,7 @@ import CallerEmergencyScreen from './screens/caller/EmergencyScreen';
 import CallerConfirmationScreen from './screens/caller/ConfirmationScreen';
 import CallerProfileScreen from './screens/caller/ProfileScreen';
 import CallerNotificationsScreen from './screens/caller/NotificationsScreen';
+import CallerFeedbackScreen from './screens/caller/FeedbackScreen';
 import EmergencyNumbersScreen from './screens/caller/EmergencyNumbersScreen';
 import DriverHomeScreen from './screens/driver/HomeScreen';
 import PoliceHomeScreen from './screens/driver/PoliceHomeScreen';
@@ -157,6 +158,9 @@ export default function App() {
                 <Stack.Screen name="CallerEmergencyNumbers">
                   {(props) => <EmergencyNumbersScreen {...props} />}
                 </Stack.Screen>
+                <Stack.Screen name="DriverFeedback">
+                  {(props) => <CallerFeedbackScreen {...props} token={token} />}
+                </Stack.Screen>
               </>
             ) : (
               <>
@@ -186,6 +190,9 @@ export default function App() {
                 </Stack.Screen>
                 <Stack.Screen name="CallerEmergencyNumbers">
                   {(props) => <EmergencyNumbersScreen {...props} />}
+                </Stack.Screen>
+                <Stack.Screen name="CallerFeedback">
+                  {(props) => <CallerFeedbackScreen {...props} token={token} />}
                 </Stack.Screen>
               </>
             )}
