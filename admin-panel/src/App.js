@@ -309,6 +309,7 @@ function UsersPage({ token }) {
                         <option value="caller">Chaqiruvchi</option>
                         <option value="dispatcher">Dispetcher</option>
                         <option value="driver">Haydovchi</option>
+                        <option value="center_admin">Markaz Admin</option>
                         <option value="admin">Admin</option>
                       </select>
                     </td>
@@ -358,6 +359,7 @@ function UsersPage({ token }) {
                 <option value="dispatcher">Dispetcher</option>
                 <option value="caller">Chaqiruvchi</option>
                 <option value="driver">Haydovchi</option>
+                <option value="center_admin">Markaz Admin</option>
                 <option value="admin">Admin</option>
               </select>
             </div>

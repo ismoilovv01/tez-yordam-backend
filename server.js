@@ -87,6 +87,7 @@ const pool = new Pool({
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)");
+    await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS login_code VARCHAR(20) UNIQUE");
     await pool.query("CREATE TABLE IF NOT EXISTS telegram_users (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, chat_id VARCHAR(50) NOT NULL, created_at TIMESTAMP DEFAULT NOW())");
     await pool.query("CREATE TABLE IF NOT EXISTS allowed_phones (id SERIAL PRIMARY KEY, phone VARCHAR(20) UNIQUE NOT NULL, note VARCHAR(100), created_at TIMESTAMP DEFAULT NOW())");
     console.log('Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ DB migrations done');
@@ -100,6 +101,13 @@ pool.query('SELECT NOW()', (err) => {
 });
 
 function validatePhone(phone) { return /^\+?[0-9]{10,15}$/.test(phone); }
+
+function generateLoginCode(length = 6) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = '';
+  for (let i = 0; i < length; i++) result += chars[Math.floor(Math.random() * chars.length)];
+  return result;
+}
 function validateCoordinates(lat, lng) {
   const la = parseFloat(lat), lo = parseFloat(lng);
   return la >= -90 && la <= 90 && lo >= -180 && lo <= 180;
@@ -445,7 +453,7 @@ app.post('/api/emergencies', authenticateToken, async (req, res) => {
 
 app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     if (!req.dispatchCenterId) return res.status(403).json({ error: 'Dispatcher not assigned to a center' });
     const { status } = req.query;
     let query = `SELECT e.*, a.unit_number, a.driver_name, a.driver_phone,
@@ -512,7 +520,7 @@ app.get('/api/emergencies/:id', authenticateToken, async (req, res) => {
 
 app.patch('/api/emergencies/:id/confirm', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const e = await pool.query('SELECT dispatch_center_id FROM emergencies WHERE id = $1', [req.params.id]);
     if (!e.rows.length) return res.status(404).json({ error: 'Not found' });
     if (e.rows[0].dispatch_center_id !== req.dispatchCenterId) return res.status(403).json({ error: 'No permission' });
@@ -560,7 +568,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
   try {
     const { ambulance_id } = req.body;
     if (!ambulance_id) return res.status(400).json({ error: 'Ambulance ID required' });
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const result = await pool.query(
       'UPDATE emergencies SET assigned_ambulance_id = $1 WHERE id = $2 RETURNING *',
       [ambulance_id, req.params.id]
@@ -576,7 +584,7 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
 
 app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const result = await pool.query(
       'SELECT id, unit_number, driver_name, driver_phone, status, latitude, longitude FROM ambulances WHERE dispatch_center_id = $1 ORDER BY unit_number',
       [req.dispatchCenterId]
@@ -620,7 +628,7 @@ app.get('/api/dispatch-centers', async (req, res) => {
 
 app.post('/api/admin/seed-dispatch-centers', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const centers = [
       { name: 'Toshkent Tez Yordam Markazi', city: 'Toshkent', service_type: 'ambulance', phone: '+998712345678' },
       { name: 'Toshkent Politsiya Boshqarmasi', city: 'Toshkent', service_type: 'police', phone: '+998712345679' },
@@ -647,7 +655,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().
 
 app.get('/api/admin/drivers', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     if (!req.dispatchCenterId) return res.status(403).json({ error: 'No dispatch center assigned' });
     const result = await pool.query(
       `SELECT u.id, u.phone, u.email, u.first_name, u.last_name, u.user_type, u.dispatch_center_id,
@@ -671,7 +679,7 @@ app.post('/api/admin/drivers', authenticateToken, checkRole, async (req, res) =>
     if (!phone || !first_name || !last_name || !unit_number) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const password_hash = await bcrypt.hash(password || '123456', 10);
     const userResult = await pool.query(
       'INSERT INTO users (phone, email, password_hash, first_name, last_name, user_type, dispatch_center_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
@@ -691,7 +699,7 @@ app.post('/api/admin/drivers', authenticateToken, checkRole, async (req, res) =>
 
 app.patch('/api/admin/drivers/:id/block', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const { blocked } = req.body;
     const result = await pool.query(
       'UPDATE users SET blocked = $1 WHERE id = $2 AND user_type = $3 RETURNING *',
@@ -707,7 +715,7 @@ app.patch('/api/admin/drivers/:id/block', authenticateToken, checkRole, async (r
 
 app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, res) => {
   try {
-    if (req.userType !== 'dispatcher') return res.status(403).json({ error: 'Only dispatchers' });
+    if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     await pool.query('DELETE FROM ambulances WHERE driver_user_id = $1', [req.params.id]);
     await pool.query('DELETE FROM users WHERE id = $1 AND user_type = $2', [req.params.id, 'driver']);
     res.json({ success: true });
@@ -1072,6 +1080,113 @@ app.post('/api/auth/driver-login', async (req, res) => {
   }
 });
 
+
+// ── DISPATCHER LOGIN WITH CODE ────────────────────────────────────────────────
+app.post('/api/auth/dispatcher-login', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Kirish kodi kerak' });
+    const result = await pool.query(
+      `SELECT u.*, dc.name as center_name, dc.service_type as center_service_type
+       FROM users u LEFT JOIN dispatch_centers dc ON u.dispatch_center_id = dc.id
+       WHERE u.login_code = $1 AND u.user_type = 'dispatcher'`,
+      [code.toUpperCase().trim()]
+    );
+    if (!result.rows.length) return res.status(400).json({ error: "Noto'g'ri kod. Markaz administratori bilan bog'laning." });
+    const user = result.rows[0];
+    if (user.blocked) return res.status(403).json({ error: 'Sizning hisobingiz bloklangan' });
+    const token = generateToken(user.id);
+    res.json({
+      success: true, token,
+      user: { id: user.id, first_name: user.first_name, last_name: user.last_name, user_type: user.user_type, dispatch_center_id: user.dispatch_center_id, center_name: user.center_name, center_service_type: user.center_service_type }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── CENTER ADMIN ENDPOINTS ────────────────────────────────────────────────────
+function requireCenterAdmin(req, res, next) {
+  if (!['center_admin', 'admin'].includes(req.userType)) return res.status(403).json({ error: 'Faqat markaz administratori uchun' });
+  next();
+}
+
+// GET /api/center-admin/dispatchers
+app.get('/api/center-admin/dispatchers', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, first_name, last_name, phone, email, login_code, blocked, created_at
+       FROM users WHERE user_type = 'dispatcher' AND dispatch_center_id = $1 ORDER BY created_at DESC`,
+      [req.dispatchCenterId]
+    );
+    res.json({ dispatchers: result.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/center-admin/dispatchers - create dispatcher with login code
+app.post('/api/center-admin/dispatchers', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    const { first_name, last_name, phone } = req.body;
+    if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
+    // Generate unique code
+    let code, attempts = 0;
+    do {
+      code = generateLoginCode(6);
+      const exists = await pool.query('SELECT id FROM users WHERE login_code = $1', [code]);
+      if (!exists.rows.length) break;
+      attempts++;
+    } while (attempts < 10);
+    const result = await pool.query(
+      `INSERT INTO users (first_name, last_name, phone, user_type, dispatch_center_id, login_code)
+       VALUES ($1,$2,$3,'dispatcher',$4,$5) RETURNING id, first_name, last_name, phone, login_code, dispatch_center_id`,
+      [first_name.trim(), last_name.trim(), phone || null, req.dispatchCenterId, code]
+    );
+    res.status(201).json({ dispatcher: result.rows[0], login_code: code });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PATCH /api/center-admin/dispatchers/:id/block
+app.patch('/api/center-admin/dispatchers/:id/block', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    const { blocked } = req.body;
+    const result = await pool.query(
+      `UPDATE users SET blocked = $1 WHERE id = $2 AND dispatch_center_id = $3 AND user_type = 'dispatcher' RETURNING id, blocked`,
+      [blocked, req.params.id, req.dispatchCenterId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Dispetcher topilmadi' });
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/center-admin/dispatchers/:id
+app.delete('/api/center-admin/dispatchers/:id', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    await pool.query(`DELETE FROM users WHERE id = $1 AND dispatch_center_id = $2 AND user_type = 'dispatcher'`, [req.params.id, req.dispatchCenterId]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/center-admin/overview - stats for their center
+app.get('/api/center-admin/overview', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    const [dispatchersR, driversR, emergenciesR] = await Promise.all([
+      pool.query(`SELECT COUNT(*) as count FROM users WHERE user_type = 'dispatcher' AND dispatch_center_id = $1`, [req.dispatchCenterId]),
+      pool.query(`SELECT COUNT(*) as count FROM ambulances WHERE dispatch_center_id = $1`, [req.dispatchCenterId]),
+      pool.query(`SELECT status, COUNT(*) as count FROM emergencies WHERE dispatch_center_id = $1 GROUP BY status`, [req.dispatchCenterId]),
+    ]);
+    const dcR = await pool.query('SELECT * FROM dispatch_centers WHERE id = $1', [req.dispatchCenterId]);
+    res.json({
+      dispatch_center: dcR.rows[0] || null,
+      dispatcher_count: dispatchersR.rows[0].count,
+      driver_count: driversR.rows[0].count,
+      emergencies_by_status: emergenciesR.rows,
+    });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // ── FEEDBACK ─────────────────────────────────────────────────────────────────
 
