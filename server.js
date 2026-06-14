@@ -1281,7 +1281,7 @@ app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, as
     const { user_type, dispatch_center_id } = req.query;
     let query = `SELECT u.id, u.email, u.phone, u.first_name, u.last_name, u.user_type,
                          u.dispatch_center_id, COALESCE(u.blocked, false) as blocked, u.created_at,
-                         dc.name as dispatch_center_name
+                         u.login_code, dc.name as dispatch_center_name
                   FROM users u
                   LEFT JOIN dispatch_centers dc ON u.dispatch_center_id = dc.id
                   WHERE 1=1`;
@@ -1322,24 +1322,26 @@ app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, a
         if (!exists.rows.length) { login_code = candidate; break; }
       }
     }
-    // For center_admin: auto-create or find dispatch center by city+service_type
+    // Auto-create or find dispatch center by city+service_type (center_admin creates it; dispatcher/driver joins it)
     let resolved_center_id = dispatch_center_id || null;
-    if (user_type === 'center_admin' && city && service_type) {
+    if (city && service_type && ['center_admin', 'dispatcher', 'driver'].includes(user_type)) {
       const SERVICE_LABELS = { ambulance: 'Tez Yordam', police: 'Politsiya', fire: "O't o'chirish" };
-      // Find existing center for this city+service_type
       const existing = await pool.query(
         'SELECT id FROM dispatch_centers WHERE city = $1 AND service_type = $2 LIMIT 1',
         [city, service_type]
       );
       if (existing.rows.length) {
         resolved_center_id = existing.rows[0].id;
-      } else {
+      } else if (user_type === 'center_admin') {
+        // Only center_admin creates a new center; dispatcher/driver must join an existing one
         const centerName = `${city} ${SERVICE_LABELS[service_type] || service_type}`;
         const newCenter = await pool.query(
           'INSERT INTO dispatch_centers (name, city, service_type) VALUES ($1,$2,$3) RETURNING id',
           [centerName, city, service_type]
         );
         resolved_center_id = newCenter.rows[0].id;
+      } else {
+        return res.status(400).json({ error: `${city} shahrida ${SERVICE_LABELS[service_type]} markazi topilmadi. Avval markaz admin yarating.` });
       }
     }
     const result = await pool.query(
@@ -1388,6 +1390,24 @@ app.delete('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAd
   try {
     const { id } = req.params;
     await pool.query('DELETE FROM users WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin-panel/users/:id/reset-password
+app.post('/api/admin-panel/users/:id/reset-password', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) return res.status(400).json({ error: 'Parol kamida 6 ta belgi' });
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2 RETURNING id, first_name, last_name',
+      [hash, req.params.id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
     res.json({ success: true });
   } catch (err) {
     console.error(err);

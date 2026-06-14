@@ -259,6 +259,9 @@ function UsersPage({ token }) {
   const [createForm, setCreateForm] = useState(EMPTY_USER);
   const [creating, setCreating] = useState(false);
   const [newCenterAdminCode, setNewCenterAdminCode] = useState(null); // { name, code, password }
+  const [infoModal, setInfoModal] = useState(null); // user object
+  const [resetPasswordModal, setResetPasswordModal] = useState(null); // user object
+  const [newPassword, setNewPassword] = useState('');
   const [assignModal, setAssignModal] = useState(null); // user object
   const [assignCenterId, setAssignCenterId] = useState('');
 
@@ -304,7 +307,7 @@ function UsersPage({ token }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
-    if (createForm.user_type === 'center_admin' && (!createForm.service_type || !createForm.city)) {
+    if (['center_admin', 'dispatcher', 'driver'].includes(createForm.user_type) && (!createForm.service_type || !createForm.city)) {
       alert("Xizmat turi va shahar/viloyatni tanlang");
       setCreating(false);
       return;
@@ -391,8 +394,9 @@ function UsersPage({ token }) {
                     </td>
                     <td>
                       <div className="action-row">
+                        <button className="btn-sm btn-info" onClick={() => setInfoModal(u)} title="Ma'lumot">🔑</button>
                         <button className={`btn-sm ${u.blocked ? 'btn-success' : 'btn-warn'}`} onClick={() => toggleBlock(u)}>
-                          {u.blocked ? 'Blokdan chiqar' : 'Blokla'}
+                          {u.blocked ? 'Faol' : 'Blokla'}
                         </button>
                         <button className="btn-sm btn-danger" onClick={() => deleteUser(u)}>O'chir</button>
                       </div>
@@ -433,14 +437,16 @@ function UsersPage({ token }) {
                 <option value="admin">Admin</option>
               </select>
             </div>
-            {createForm.user_type === 'center_admin' && (
+            {['center_admin', 'dispatcher', 'driver'].includes(createForm.user_type) && (
               <div>
-                <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#0369a1', marginBottom: 12 }}>
-                  ℹ️ Kirish kodi avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
-                </div>
+                {createForm.user_type === 'center_admin' && (
+                  <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#0369a1', marginBottom: 12 }}>
+                    ℹ️ Kirish kodi avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
+                  </div>
+                )}
                 <div className="field">
                   <label>Xizmat turi *</label>
-                  <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
                     {SERVICE_TYPES.map(s => (
                       <button key={s.key} type="button"
                         onClick={() => setCreateForm({...createForm, service_type: s.key})}
@@ -462,7 +468,9 @@ function UsersPage({ token }) {
                 </div>
                 {createForm.service_type && createForm.city && (
                   <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#166534', marginBottom: 12 }}>
-                    ✅ "{createForm.city} {SERVICE_TYPES.find(s=>s.key===createForm.service_type)?.label.split(' ').slice(1).join(' ')}" markazi avtomatik yaratiladi
+                    ✅ {createForm.user_type === 'center_admin'
+                      ? `"${createForm.city} ${SERVICE_TYPES.find(s=>s.key===createForm.service_type)?.label.split(' ').slice(1).join(' ')}" markazi yaratiladi va biriktiriladi`
+                      : `"${createForm.city}" shahridagi ${SERVICE_TYPES.find(s=>s.key===createForm.service_type)?.label} markaziga biriktiriladi`}
                   </div>
                 )}
               </div>
@@ -488,6 +496,62 @@ function UsersPage({ token }) {
           <div className="modal-footer">
             <button type="button" className="btn-secondary" onClick={() => setAssignModal(null)}>Bekor</button>
             <button type="button" className="btn-primary" style={{width:'auto'}} onClick={handleAssignCenter}>Saqlash</button>
+          </div>
+        </Modal>
+      )}
+
+      {/* User info modal — show login_code and allow password reset */}
+      {infoModal && (
+        <Modal title={`🔑 ${infoModal.first_name} ${infoModal.last_name}`} onClose={() => setInfoModal(null)}>
+          <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse', marginBottom: 16 }}>
+            <tbody>
+              {[
+                ['Telefon', infoModal.phone || '—'],
+                ['Rol', infoModal.user_type],
+                ['Markaz', infoModal.dispatch_center_name || '—'],
+              ].map(([k, v]) => (
+                <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '8px 0', color: '#6b7280', width: 100 }}>{k}</td>
+                  <td style={{ padding: '8px 0', fontWeight: 600 }}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {infoModal.login_code && (
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>🔑 Kirish kodi:</p>
+              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 7, background: '#e0f2fe', padding: '12px 20px', borderRadius: 10, textAlign: 'center', color: '#0369a1', fontFamily: 'monospace' }}>
+                {infoModal.login_code}
+              </div>
+            </div>
+          )}
+          <button className="btn-outline" style={{ width: '100%' }}
+            onClick={() => { setResetPasswordModal(infoModal); setInfoModal(null); setNewPassword(genPassword()); }}>
+            🔄 Yangi parol yaratish
+          </button>
+        </Modal>
+      )}
+
+      {/* Reset password modal */}
+      {resetPasswordModal && (
+        <Modal title={`🔄 Parolni yangilash — ${resetPasswordModal.first_name}`} onClose={() => setResetPasswordModal(null)}>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>Yangi parol avtomatik yaratildi. Saqlashdan oldin ko'rib chiqing:</p>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 4, background: '#f0fdf4', padding: '12px 20px', borderRadius: 10, textAlign: 'center', color: '#166534', marginBottom: 8, fontFamily: 'monospace' }}>
+            {newPassword}
+          </div>
+          <button type="button" className="btn-outline" style={{ width: '100%', marginBottom: 12, fontSize: 12 }}
+            onClick={() => setNewPassword(genPassword())}>
+            ↻ Boshqasini yaratish
+          </button>
+          <div className="modal-footer">
+            <button className="btn-secondary" onClick={() => setResetPasswordModal(null)}>Bekor</button>
+            <button className="btn-primary" style={{ width: 'auto' }} onClick={async () => {
+              try {
+                await apiFetch(`/api/admin-panel/users/${resetPasswordModal.id}/reset-password`, token, { method: 'POST', body: { password: newPassword } });
+                alert(`✅ Parol yangilandi: ${newPassword}`);
+                setResetPasswordModal(null);
+              } catch(e) { alert(e.message); }
+            }}>Saqlash</button>
           </div>
         </Modal>
       )}
