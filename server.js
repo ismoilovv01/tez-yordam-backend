@@ -1139,16 +1139,40 @@ app.post('/api/center-admin/dispatchers', authenticateToken, checkRole, requireC
       if (!exists.rows.length) break;
       attempts++;
     } while (attempts < 10);
+    const phoneVal = phone && phone.trim() ? phone.trim() : null;
+    if (phoneVal) {
+      const dup = await pool.query('SELECT id FROM users WHERE phone = $1', [phoneVal]);
+      if (dup.rows.length) return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
+    }
     const result = await pool.query(
       `INSERT INTO users (first_name, last_name, phone, user_type, dispatch_center_id, login_code)
        VALUES ($1,$2,$3,'dispatcher',$4,$5) RETURNING id, first_name, last_name, phone, login_code, dispatch_center_id`,
-      [first_name.trim(), last_name.trim(), phone || null, req.dispatchCenterId, code]
+      [first_name.trim(), last_name.trim(), phoneVal, req.dispatchCenterId, code]
     );
     res.status(201).json({ dispatcher: result.rows[0], login_code: code });
   } catch (err) {
     if (err.code === '23505') return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
     res.status(500).json({ error: err.message });
   }
+});
+
+// POST /api/center-admin/dispatchers/:id/reset-code - generate new login code
+app.post('/api/center-admin/dispatchers/:id/reset-code', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    let code, attempts = 0;
+    do {
+      code = generateLoginCode(6);
+      const exists = await pool.query('SELECT id FROM users WHERE login_code = $1', [code]);
+      if (!exists.rows.length) break;
+      attempts++;
+    } while (attempts < 10);
+    const result = await pool.query(
+      `UPDATE users SET login_code=$1 WHERE id=$2 AND dispatch_center_id=$3 AND user_type='dispatcher' RETURNING id`,
+      [code, req.params.id, req.dispatchCenterId]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Dispetcher topilmadi' });
+    res.json({ login_code: code });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // PATCH /api/center-admin/dispatchers/:id/block

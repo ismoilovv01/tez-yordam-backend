@@ -6,6 +6,19 @@ import '../styles/DashboardScreen.css';
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 
+function playAlert() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.3, 0.6].forEach(t => {
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = 880; g.gain.setValueAtTime(0.3, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.25);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+    });
+  } catch {}
+}
+
 const CANCELLED_BY_LABELS = {
   user: '👤 Foydalanuvchi bekor qildi',
   dispatcher: '🎧 Dispetcher bekor qildi',
@@ -52,7 +65,7 @@ const UZ_REGIONS = {
   '95': "Qoraqalpog'iston Respublikasi",
 };
 
-function DashboardScreen({ token, onLogout }) {
+function DashboardScreen({ token, user, onLogout }) {
   const [allEmergencies, setAllEmergencies] = useState([]);
   const [filteredEmergencies, setFilteredEmergencies] = useState([]);
   const [ambulances, setAmbulances] = useState([]);
@@ -348,7 +361,7 @@ function DashboardScreen({ token, onLogout }) {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h1>
-          Dispetcher Markazi
+          {user?.center_name || 'Dispetcher Markazi'}
           <span style={{ marginLeft: 10, fontSize: 12, padding: '2px 8px', borderRadius: 10,
             backgroundColor: connected ? 'rgba(39,174,96,0.3)' : 'rgba(231,76,60,0.3)',
             color: connected ? '#27ae60' : '#e74c3c' }}>
@@ -356,6 +369,11 @@ function DashboardScreen({ token, onLogout }) {
           </span>
         </h1>
         <div className="header-actions">
+          {user && (
+            <span style={{ fontSize: 14, color: '#ecf0f1', fontWeight: 600, marginRight: 8 }}>
+              👤 {user.first_name} {user.last_name}
+            </span>
+          )}
           <button className="btn-refresh" onClick={() => { setShowDrivers(!showDrivers); fetchDrivers(); }}>👮 Hodimlar</button>
           <button className="btn-refresh" onClick={fetchAll} disabled={loading}>Yangilash</button>
           <button className="btn-logout" onClick={onLogout}>Chiqish</button>

@@ -41,7 +41,7 @@ function App() {
 
   if (token && user) {
     if (user.user_type === "dispatcher") {
-      return <DashboardScreen token={token} onLogout={handleLogout} />;
+      return <DashboardScreen token={token} user={user} onLogout={handleLogout} />;
     }
     if (user.user_type === "center_admin" || user.user_type === "admin") {
       return <CenterAdminScreen token={token} user={user} onLogout={handleLogout} />;

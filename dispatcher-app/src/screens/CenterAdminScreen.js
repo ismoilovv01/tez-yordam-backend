@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
-const GOOGLE_MAPS_API_KEY = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
 
 const UZ_CITIES = ['Toshkent',"Andijon","Farg'ona",'Namangan','Samarqand','Jizzax','Sirdaryo','Qashqadaryo','Surxondaryo','Buxoro','Navoiy','Xorazm','Nukus'];
 
@@ -50,7 +49,12 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
   const [newEmergencyAlert, setNewEmergencyAlert] = useState(false);
   const prevEmergencyIds = useRef(new Set());
 
-  const { isLoaded: mapLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY });
+  const [mapLoaded, setMapLoaded] = useState(!!window.google);
+  useEffect(() => {
+    if (window.google) { setMapLoaded(true); return; }
+    const id = setInterval(() => { if (window.google) { setMapLoaded(true); clearInterval(id); } }, 200);
+    return () => clearInterval(id);
+  }, []);
 
   const loadOverview = useCallback(async () => {
     try {
@@ -164,6 +168,16 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
     try {
       await axios.patch(`${API_URL}/api/center-admin/dispatchers/${d.id}/block`, { blocked: !d.blocked }, { headers: h(token) });
       loadDispatchers();
+    } catch (err) { alert(err.response?.data?.error || 'Xato'); }
+  };
+
+  const handleResetDispatcherCode = async (d) => {
+    if (!window.confirm(`${d.first_name} ${d.last_name} uchun yangi login kodi yaratilsinmi?`)) return;
+    try {
+      const r = await axios.post(`${API_URL}/api/center-admin/dispatchers/${d.id}/reset-code`, {}, { headers: h(token) });
+      setSelectedDispatcher(prev => prev ? { ...prev, login_code: r.data.login_code } : prev);
+      loadDispatchers();
+      alert(`✅ Yangi kod: ${r.data.login_code}`);
     } catch (err) { alert(err.response?.data?.error || 'Xato'); }
   };
 
@@ -462,7 +476,8 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
                   <div style={{ marginBottom:6, fontSize:13, color:'#374151' }}><b>🔑 Kirish kodi:</b></div>
                   <code style={{ background:'#e0f2fe', display:'block', padding:'10px', textAlign:'center', borderRadius:8, fontSize:24, fontWeight:800, letterSpacing:6, color:'#0369a1' }}>{selectedDispatcher.login_code}</code>
                 </div>
-                <div style={{ display:'flex', gap:8 }}>
+                <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                  <button onClick={() => handleResetDispatcherCode(selectedDispatcher)} style={{ ...BS('#e0f2fe','#0369a1'), flex:1 }}>🔄 Kodni yangilash</button>
                   <button onClick={() => { handleBlockDispatcher(selectedDispatcher); setSelectedDispatcher(null); }}
                     style={{ ...BS(selectedDispatcher.blocked?'#d1fae5':'#fef3c7', selectedDispatcher.blocked?'#065f46':'#92400e'), flex:1 }}>
                     {selectedDispatcher.blocked?'Blokdan chiqar':'Blokla'}
