@@ -134,3 +134,52 @@
 .coming-soon-emoji { font-size: 48px; }
 .coming-soon-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
 .coming-soon-sub { font-size: 14px; color: #888; }
+.location-modal-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.location-modal-card {
+  background: #fff; width: 100%; max-width: 480px;
+  border-radius: 24px 24px 0 0;
+  padding: 20px; padding-bottom: 32px;
+  box-sizing: border-box;
+}
+.location-modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.location-modal-title {
+  font-size: 17px; font-weight: 700; margin: 0;
+}
+.location-modal-close {
+  background: none; border: none; font-size: 20px; color: #999; cursor: pointer;
+  padding: 4px;
+}
+.location-modal-sub {
+  font-size: 12px; color: #999; margin: 0 0 14px 0;
+}
+.location-map-wrapper {
+  position: relative; width: 100%; height: 320px;
+  border-radius: 16px; overflow: hidden; margin-bottom: 12px;
+}
+.location-map {
+  width: 100%; height: 100%;
+}
+.location-locate-btn {
+  position: absolute; right: 12px; bottom: 12px; z-index: 10;
+  width: 44px; height: 44px; border-radius: 22px;
+  background: #fff; border: none; cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+.location-modal-city {
+  font-size: 14px; font-weight: 600; text-align: center; margin: 0 0 14px 0;
+  color: #333;
+}
+.location-save-btn {
+  width: 100%; border: none; border-radius: 14px;
+  background: #4fc3f7; color: #fff;
+  font-weight: 700; font-size: 15px;
+  padding: 14px; cursor: pointer;
+}

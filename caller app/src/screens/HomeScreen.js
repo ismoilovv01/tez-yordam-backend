@@ -23,7 +23,16 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
   const [searchQuery, setSearchQuery] = useState('');
   const [cityName, setCityName] = useState('');
 
+  // Location picker modal state
+  const [locationModal, setLocationModal] = useState(false);
+  const [pickerLocation, setPickerLocation] = useState(null);
+  const [pickerCity, setPickerCity] = useState('');
+
   const pollRef = useRef(null);
+  const modalMapRef = useRef(null);
+  const gMapRef = useRef(null);
+  const gMarkerRef = useRef(null);
+  const mapInitRef = useRef(false);
 
   useEffect(() => {
     fetchLastEmergency();
@@ -40,19 +49,26 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_KEY}&language=uz`)
-          .then(r => r.json())
-          .then(data => {
-            const components = data.results?.[0]?.address_components || [];
-            const city = components.find(c => c.types.includes('locality'));
-            const region = components.find(c => c.types.includes('administrative_area_level_1'));
-            setCityName(city?.long_name || region?.long_name || '');
-          })
-          .catch(() => {});
+        setPickerLocation({ lat: latitude, lng: longitude });
+        reverseGeocode(latitude, longitude, setCityName);
       },
       () => {}, // silently ignore — fall back to default location text
       { timeout: 4000 }
     );
+  };
+
+  const reverseGeocode = (lat, lng, setter) => {
+    if (!GOOGLE_KEY) return;
+    fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}&language=uz`)
+      .then(r => r.json())
+      .then(data => {
+        const components = data.results?.[0]?.address_components || [];
+        const city = components.find(c => c.types.includes('locality'));
+        const region = components.find(c => c.types.includes('administrative_area_level_1'));
+        const name = city?.long_name || region?.long_name || '';
+        if (name) setter(name);
+      })
+      .catch(() => {});
   };
 
   const fetchDispatchCenters = async () => {
@@ -95,14 +111,9 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
   const isActiveEmergency = lastEmergency && ACTIVE_STATUSES.includes(lastEmergency.status);
 
-  // Only ambulance is a live service for now — everything else shows
-  // "Tez orada" (coming soon), matching mobile's hardcoded behavior.
-  // This intentionally ignores dispatch_centers data for non-ambulance
-  // services so police/fire/pharmacy stay gated even if centers exist.
   const isActive = (key) => key === 'ambulance';
 
   const handleServiceClick = (serviceType) => {
-    // If there's an active emergency, redirect there instead of creating a new one
     if (isActiveEmergency) {
       if (onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
       return;
@@ -118,6 +129,85 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
   const handleLastCallClick = () => {
     if (lastEmergency && onOpenActiveEmergency) onOpenActiveEmergency(lastEmergency);
+  };
+
+  // ── Location picker modal ─────────────────────────────────────────
+  const ensureMapsScript = (cb) => {
+    if (window.google && window.google.maps) { cb(); return; }
+    if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+      const check = setInterval(() => {
+        if (window.google && window.google.maps) { clearInterval(check); cb(); }
+      }, 100);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz`;
+    script.async = true;
+    script.onload = cb;
+    document.head.appendChild(script);
+  };
+
+  const initModalMap = (lat, lng) => {
+    if (!modalMapRef.current) return;
+    const map = new window.google.maps.Map(modalMapRef.current, {
+      center: { lat, lng }, zoom: 16,
+      disableDefaultUI: true,
+      gestureHandling: 'greedy',
+    });
+    gMapRef.current = map;
+
+    const marker = new window.google.maps.Marker({
+      position: { lat, lng }, map, draggable: true,
+      icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+    });
+    gMarkerRef.current = marker;
+
+    marker.addListener('dragend', () => {
+      const pos = marker.getPosition();
+      const coords = { lat: pos.lat(), lng: pos.lng() };
+      setPickerLocation(coords);
+      reverseGeocode(coords.lat, coords.lng, setPickerCity);
+    });
+
+    map.addListener('click', (e) => {
+      const coords = { lat: e.latLng.lat(), lng: e.latLng.lng() };
+      marker.setPosition(coords);
+      setPickerLocation(coords);
+      reverseGeocode(coords.lat, coords.lng, setPickerCity);
+    });
+
+    mapInitRef.current = true;
+  };
+
+  const handleOpenLocationPicker = () => {
+    setLocationModal(true);
+    const startLoc = pickerLocation || { lat: 41.2995, lng: 69.2401 };
+    setPickerLocation(startLoc);
+    mapInitRef.current = false;
+    ensureMapsScript(() => {
+      // Wait a tick for modal DOM to render
+      setTimeout(() => initModalMap(startLoc.lat, startLoc.lng), 50);
+    });
+    if (pickerLocation) reverseGeocode(startLoc.lat, startLoc.lng, setPickerCity);
+  };
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition((pos) => {
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      setPickerLocation(coords);
+      reverseGeocode(coords.lat, coords.lng, setPickerCity);
+      if (gMapRef.current && gMarkerRef.current) {
+        gMapRef.current.setCenter(coords);
+        gMapRef.current.setZoom(16);
+        gMarkerRef.current.setPosition(coords);
+      }
+    });
+  };
+
+  const handleSaveLocation = () => {
+    if (pickerCity) setCityName(pickerCity);
+    setLocationModal(false);
   };
 
   const firstName = user?.first_name || user?.phone || 'Foydalanuvchi';
@@ -150,6 +240,25 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
             <span className="coming-soon-emoji">🚀</span>
             <p className="coming-soon-title">{comingSoonName}</p>
             <p className="coming-soon-sub">Tez orada ishga tushadi!</p>
+          </div>
+        </div>
+      )}
+
+      {/* Location picker modal */}
+      {locationModal && (
+        <div className="location-modal-overlay" onClick={() => setLocationModal(false)}>
+          <div className="location-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="location-modal-header">
+              <p className="location-modal-title">📍 Joylashuvni tanlang</p>
+              <button className="location-modal-close" onClick={() => setLocationModal(false)}>✕</button>
+            </div>
+            <p className="location-modal-sub">Xaritada o'z joyingizni belgilang</p>
+            <div className="location-map-wrapper">
+              <div ref={modalMapRef} className="location-map" />
+              <button className="location-locate-btn" onClick={handleLocateMe}>📍</button>
+            </div>
+            {pickerCity && <p className="location-modal-city">📍 {pickerCity}, O'zbekiston</p>}
+            <button className="location-save-btn" onClick={handleSaveLocation}>Shu joyni saqlash</button>
           </div>
         </div>
       )}
@@ -207,7 +316,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
             <div className="home-quick-icon blue">📞</div>
             <span className="home-quick-label">Qo'ng'iroq</span>
           </button>
-          <button className="home-quick-btn">
+          <button className="home-quick-btn" onClick={handleOpenLocationPicker}>
             <div className="home-quick-icon orange">📍</div>
             <span className="home-quick-label">Joylashuv</span>
           </button>
