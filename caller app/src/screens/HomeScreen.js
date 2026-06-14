@@ -15,6 +15,38 @@ const SERVICES = [
 
 const CENTERS_CACHE_KEY = 'dispatch_centers_cache';
 
+const CITY_COORDS = {
+  'Tashkent': [41.2995, 69.2401], 'Toshkent': [41.2995, 69.2401],
+  'Samarqand': [39.6547, 66.9758], 'Samarkand': [39.6547, 66.9758],
+  'Buxoro': [39.7747, 64.4286], 'Bukhara': [39.7747, 64.4286],
+  'Namangan': [41.0011, 71.6722], 'Andijon': [40.7829, 72.3442],
+  "Farg'ona": [40.3864, 71.7864], 'Fergana': [40.3864, 71.7864],
+  'Xorazm': [41.5534, 60.6166], 'Urganch': [41.5534, 60.6166],
+  'Nukus': [42.4603, 59.6166], 'Navoiy': [40.0963, 65.3791],
+  'Qarshi': [38.8600, 65.7897], 'Termiz': [37.2241, 67.2786],
+  'Jizzax': [40.1158, 67.8422], 'Guliston': [40.4897, 68.7842],
+};
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371, dL = (lat2-lat1)*Math.PI/180, dLo = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dL/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function findNearestCenter(centers, serviceType, userLat, userLon) {
+  const filtered = centers.filter(c => c.service_type === serviceType);
+  if (!filtered.length) return null;
+  if (userLat == null || userLon == null) return filtered[0];
+  let nearest = null, minDist = Infinity;
+  filtered.forEach(c => {
+    const coords = CITY_COORDS[c.city];
+    if (!coords) return;
+    const dist = haversine(userLat, userLon, coords[0], coords[1]);
+    if (dist < minDist) { minDist = dist; nearest = c; }
+  });
+  return nearest || filtered[0];
+}
+
 function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
   const [lastEmergency, setLastEmergency] = useState(null);
   const [showComingSoon, setShowComingSoon] = useState(false);
@@ -123,7 +155,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
       handleComingSoon(name);
       return;
     }
-    const center = dispatchCenters.find(c => c.service_type === 'ambulance');
+    const center = findNearestCenter(dispatchCenters, 'ambulance', pickerLocation?.lat, pickerLocation?.lng);
     onCallEmergency(center?.id || 1, 'ambulance');
   };
 
