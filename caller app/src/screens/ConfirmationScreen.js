@@ -36,7 +36,7 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmergency, onBack, onLogout }) {
+function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmergency, onBack, onLogout, onFeedback }) {
   const [status, setStatus]                       = useState('new');
   const [cancelledBy, setCancelledBy]             = useState(null);
   const [ambulanceInfo, setAmbulanceInfo]         = useState(null);
@@ -374,6 +374,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         {isCompleted && (
           <div className="conf-actions">
             <p className="conf-thanks">Xizmatimizdan foydalanganingiz uchun rahmat! 🙏</p>
+            <button className="btn-feedback" onClick={onFeedback}>⭐ Chaqiruvni baholash</button>
             <button className="btn-new" onClick={onNewEmergency}>Yangi chaqiruv</button>
             <button className="btn-logout-conf" onClick={onLogout}>Chiqish</button>
           </div>
@@ -384,3 +385,5 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
 }
 
 export default ConfirmationScreen;
+
+

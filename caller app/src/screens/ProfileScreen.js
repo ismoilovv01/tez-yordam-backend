@@ -3,7 +3,7 @@ import '../styles/ProfileScreen.css';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
-function ProfileScreen({ user, token, onBack, onLogout, onNotifications }) {
+function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedback }) {
   const [userData, setUserData] = useState(user);
   const [callCount, setCallCount] = useState(0);
 
@@ -197,6 +197,17 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications }) {
           <div className="profile-card-info">
             <p className="profile-card-value">Chaqiruvlar tarixi</p>
             <p className="profile-card-label">Barcha chaqiruvlarni ko'rish</p>
+          </div>
+          <span className="profile-card-arrow">›</span>
+        </div>
+
+        <p className="profile-section-title">FIKR VA TAKLIFLAR</p>
+
+        <div className="profile-card" onClick={onFeedback} style={{ cursor: 'pointer' }}>
+          <span className="profile-card-icon">⭐</span>
+          <div className="profile-card-info">
+            <p className="profile-card-value">Fikr va takliflar</p>
+            <p className="profile-card-label">Ilovani yaxshilashga yordam bering</p>
           </div>
           <span className="profile-card-arrow">›</span>
         </div>

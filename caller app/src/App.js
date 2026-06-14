@@ -10,12 +10,13 @@ import ProfileScreen from './screens/ProfileScreen';
 import NotificationsScreen from './screens/NotificationsScreen';
 import DriverHomeScreen from './screens/driver/DriverHomeScreen';
 import DriverCallHistoryScreen from './screens/driver/DriverCallHistoryScreen';
+import FeedbackScreen from './screens/FeedbackScreen';
 import LocationTracker from './components/LocationTracker';
 import SoundNotification from './components/SoundNotification';
 
 const SCREEN_ORDER = [
   'splash', 'role', 'login', 'home', 'emergency', 'confirmation', 'notifications', 'profile',
-  'driver-home', 'driver-history', 'driver-profile',
+  'driver-home', 'driver-history', 'driver-profile', 'feedback',
 ];
 
 function App() {
@@ -35,6 +36,8 @@ function App() {
   const [driverServiceType, setDriverServiceType] = useState(localStorage.getItem('driver_service_type') || 'ambulance');
 
   const [role, setRole] = useState(null);
+  const [feedbackCtx, setFeedbackCtx] = useState({ type: 'caller', emergencyId: null, returnTo: 'profile' });
+  const openFeedback = (type, emergencyId, returnTo) => { setFeedbackCtx({ type, emergencyId, returnTo }); navigate(type === 'driver' ? 'feedback' : 'feedback'); };
 
   // Params for a NEW emergency request (set when user taps a service card)
   const [pendingDispatchCenterId, setPendingDispatchCenterId] = useState(null);
@@ -212,6 +215,7 @@ function App() {
             onNewEmergency={() => navigate('home')}
             onBack={() => navigate('home')}
             onLogout={handleLogout}
+            onFeedback={() => openFeedback('caller', emergencyId, 'home')}
           />
         )}
 
@@ -222,6 +226,7 @@ function App() {
             onBack={() => navigate('home')}
             onLogout={handleLogout}
             onNotifications={() => navigate('notifications')}
+            onFeedback={() => openFeedback('caller', null, 'profile')}
           />
         )}
 
@@ -240,6 +245,7 @@ function App() {
             onLogout={handleDriverLogout}
             onProfile={() => navigate('driver-profile')}
             onNotifications={() => navigate('driver-history')}
+            onFeedback={(callId) => openFeedback('driver', callId, 'driver-home')}
             accentColor={driverVariant.accentColor}
             markerEmoji={driverVariant.markerEmoji}
           />
@@ -252,6 +258,7 @@ function App() {
             onBack={() => navigate('driver-home')}
             onLogout={handleDriverLogout}
             onNotifications={() => navigate('driver-history')}
+            onFeedback={() => openFeedback('driver', null, 'driver-profile')}
           />
         )}
 
@@ -260,6 +267,16 @@ function App() {
             token={driverToken}
             onBack={() => navigate('driver-home')}
             onLogout={handleDriverLogout}
+          />
+        )}
+        {screen === 'feedback' && (
+          <FeedbackScreen
+            token={feedbackCtx.type === 'driver' ? driverToken : userToken}
+            emergencyId={feedbackCtx.emergencyId}
+            type={feedbackCtx.type}
+            afterCall={!!feedbackCtx.emergencyId}
+            onBack={() => navigate(feedbackCtx.returnTo)}
+            onDone={() => navigate(feedbackCtx.returnTo)}
           />
         )}
       </div>

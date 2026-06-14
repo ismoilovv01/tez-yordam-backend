@@ -22,7 +22,7 @@ const STATUS_LABELS = {
 // How long after a manual map interaction before auto-follow resumes
 const RESUME_FOLLOW_MS = 4000;
 
-function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accentColor = '#4fc3f7', markerEmoji = '🚑' }) {
+function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFeedback, accentColor = '#4fc3f7', markerEmoji = '🚑' }) {
   const [activeCall, setActiveCall] = useState(null);
   const [availableCalls, setAvailableCalls] = useState([]);
   const [driverLocation, setDriverLocation] = useState(null);
@@ -53,6 +53,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
   const locationRef = useRef(null);
   const pollRef = useRef(null);
   const activeCallRef = useRef(null);
+  const lastCompletedCallRef = useRef(null);
   const isFollowingRef = useRef(true);
   const is3DRef = useRef(true);
   const headingRef = useRef(0);
@@ -343,7 +344,10 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
       const call = assignedData.call || null;
 
       const prev = prevStatusRef.current;
-      if (prev === 'arrived' && (!call || call.status === 'completed')) setCompletedPopup(true);
+      if (prev === 'arrived' && (!call || call.status === 'completed')) {
+        setCompletedPopup(true);
+        lastCompletedCallRef.current = activeCallRef.current?.id || null;
+      }
       // Track completed separately to avoid showing cancelled popup
       // when driver finishes a call and it disappears from assigned list
       prevStatusRef.current = call?.status || null;
@@ -595,6 +599,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, accen
             <div className="dh-cancel-icon">✅</div>
             <h2 className="dh-cancel-title" style={{ color: '#27ae60' }}>Muvaffaqiyatli yakunlandi!</h2>
             <p className="dh-cancel-sub">Chaqiruv muvaffaqiyatli yakunlandi. Yangi chaqiruvlarni kuting.</p>
+            <button className="dh-cancel-btn" style={{ background: '#fff', border: '1.5px solid #f39c12', color: '#f39c12', marginBottom: 8 }} onClick={() => { setCompletedPopup(false); onFeedback && onFeedback(lastCompletedCallRef.current); }}>⭐ Baholash</button>
             <button className="dh-cancel-btn" style={{ background: '#27ae60' }} onClick={() => setCompletedPopup(false)}>OK</button>
           </div>
         </div>

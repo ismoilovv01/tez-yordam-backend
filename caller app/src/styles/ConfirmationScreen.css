@@ -185,3 +185,6 @@
   display: flex; align-items: center; justify-content: center;
 }
 .cancel-countdown p { color: #aaa; font-size: 13px; }
+
+.btn-feedback { background: transparent; border: 1.5px solid #f39c12; color: #f39c12; padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-feedback:hover { background: #f39c12; color: #fff; }
