@@ -189,18 +189,6 @@ function Dashboard({ token }) {
   );
 }
 
-function StatCard({ icon, label, value, color }) {
-  return (
-    <div className={`stat-card stat-${color}`}>
-      <span className="stat-icon">{icon}</span>
-      <div>
-        <div className="stat-value">{value}</div>
-        <div className="stat-label">{label}</div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Users ────────────────────────────────────────────────────────────────────
 function UsersPage({ token }) {
   const [users, setUsers] = useState([]);
