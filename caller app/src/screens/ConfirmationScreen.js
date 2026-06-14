@@ -293,6 +293,31 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
             <span>🚑 Tez yordam{ambulanceInfo ? ` (${ambulanceInfo})` : ''}</span>
           </div>
         )}
+        <button
+          onClick={() => {
+            if (!gMapRef.current) return;
+            if (callerLocation) {
+              gMapRef.current.panTo(callerLocation);
+              gMapRef.current.setZoom(16);
+            } else if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(pos => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                gMapRef.current.panTo(loc);
+                gMapRef.current.setZoom(16);
+              });
+            }
+          }}
+          style={{
+            position: 'absolute', bottom: 12, right: 12,
+            width: 42, height: 42, borderRadius: '50%',
+            background: '#fff', border: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            fontSize: 20, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10,
+          }}
+          title="Mening joyim"
+        >📍</button>
       </div>
 
       {/* Draggable bottom sheet */}
