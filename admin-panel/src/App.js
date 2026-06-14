@@ -258,10 +258,11 @@ function UsersPage({ token }) {
   const [createModal, setCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_USER);
   const [creating, setCreating] = useState(false);
-  const [newCenterAdminCode, setNewCenterAdminCode] = useState(null); // { name, code, password }
-  const [infoModal, setInfoModal] = useState(null); // user object
-  const [resetPasswordModal, setResetPasswordModal] = useState(null); // user object
-  const [newPassword, setNewPassword] = useState('');
+  const [newCenterAdminCode, setNewCenterAdminCode] = useState(null);
+  const [editModal, setEditModal] = useState(null); // user object being edited
+  const [editForm, setEditForm] = useState({});
+  const [editPassword, setEditPassword] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const [assignModal, setAssignModal] = useState(null); // user object
   const [assignCenterId, setAssignCenterId] = useState('');
 
@@ -332,12 +333,31 @@ function UsersPage({ token }) {
     } catch (e) { alert(e.message); }
   };
 
+  const openEdit = (u) => {
+    setEditModal(u);
+    setEditForm({ first_name: u.first_name || '', last_name: u.last_name || '', phone: u.phone || '', user_type: u.user_type, dispatch_center_id: u.dispatch_center_id || '' });
+    setEditPassword('');
+  };
+
+  const handleEditSave = async () => {
+    setEditSaving(true);
+    try {
+      await apiFetch(`/api/admin-panel/users/${editModal.id}`, token, { method: 'PATCH', body: { first_name: editForm.first_name, last_name: editForm.last_name, phone: editForm.phone || null, user_type: editForm.user_type, dispatch_center_id: editForm.dispatch_center_id || null } });
+      if (editPassword.length >= 6) {
+        await apiFetch(`/api/admin-panel/users/${editModal.id}/reset-password`, token, { method: 'POST', body: { password: editPassword } });
+      }
+      setEditModal(null);
+      load();
+    } catch (e) { alert(e.message); }
+    setEditSaving(false);
+  };
+
   return (
     <div>
       <h2 className="page-title">Foydalanuvchilar</h2>
       <div className="toolbar">
         <div className="filter-tabs">
-          {[['', 'Barchasi'], ['caller', 'Chaqiruvchilar'], ['dispatcher', 'Dispetcherlar'], ['driver', 'Haydovchilar'], ['admin', 'Adminlar']].map(([v, l]) => (
+          {[['', 'Barchasi'], ['caller', 'Chaqiruvchilar'], ['dispatcher', 'Dispetcherlar'], ['driver', 'Haydovchilar'], ['center_admin', 'Markaz Adminlar'], ['admin', 'Super Adminlar']].map(([v, l]) => (
             <button key={v} className={`tab ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
           ))}
         </div>
@@ -394,7 +414,7 @@ function UsersPage({ token }) {
                     </td>
                     <td>
                       <div className="action-row">
-                        <button className="btn-sm btn-info" onClick={() => setInfoModal(u)} title="Ma'lumot">🔑</button>
+                        <button className="btn-sm btn-info" onClick={() => openEdit(u)} title="Tahrirlash">✏️</button>
                         <button className={`btn-sm ${u.blocked ? 'btn-success' : 'btn-warn'}`} onClick={() => toggleBlock(u)}>
                           {u.blocked ? 'Faol' : 'Blokla'}
                         </button>
@@ -500,58 +520,53 @@ function UsersPage({ token }) {
         </Modal>
       )}
 
-      {/* User info modal — show login_code and allow password reset */}
-      {infoModal && (
-        <Modal title={`🔑 ${infoModal.first_name} ${infoModal.last_name}`} onClose={() => setInfoModal(null)}>
-          <table style={{ width: '100%', fontSize: 14, borderCollapse: 'collapse', marginBottom: 16 }}>
-            <tbody>
-              {[
-                ['Telefon', infoModal.phone || '—'],
-                ['Rol', infoModal.user_type],
-                ['Markaz', infoModal.dispatch_center_name || '—'],
-              ].map(([k, v]) => (
-                <tr key={k} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                  <td style={{ padding: '8px 0', color: '#6b7280', width: 100 }}>{k}</td>
-                  <td style={{ padding: '8px 0', fontWeight: 600 }}>{v}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {infoModal.login_code && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>🔑 Kirish kodi:</p>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: 7, background: '#e0f2fe', padding: '12px 20px', borderRadius: 10, textAlign: 'center', color: '#0369a1', fontFamily: 'monospace' }}>
-                {infoModal.login_code}
+      {/* Full edit modal */}
+      {editModal && (
+        <Modal title={`✏️ Tahrirlash — ${editModal.first_name} ${editModal.last_name}`} onClose={() => setEditModal(null)}>
+          {editModal.login_code && (
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 12, color: '#374151', marginBottom: 4 }}>🔑 Kirish kodi:</p>
+              <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 6, background: '#e0f2fe', padding: '10px 16px', borderRadius: 8, textAlign: 'center', color: '#0369a1', fontFamily: 'monospace' }}>
+                {editModal.login_code}
               </div>
             </div>
           )}
-          <button className="btn-outline" style={{ width: '100%' }}
-            onClick={() => { setResetPasswordModal(infoModal); setInfoModal(null); setNewPassword(genPassword()); }}>
-            🔄 Yangi parol yaratish
-          </button>
-        </Modal>
-      )}
-
-      {/* Reset password modal */}
-      {resetPasswordModal && (
-        <Modal title={`🔄 Parolni yangilash — ${resetPasswordModal.first_name}`} onClose={() => setResetPasswordModal(null)}>
-          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 12 }}>Yangi parol avtomatik yaratildi. Saqlashdan oldin ko'rib chiqing:</p>
-          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 4, background: '#f0fdf4', padding: '12px 20px', borderRadius: 10, textAlign: 'center', color: '#166534', marginBottom: 8, fontFamily: 'monospace' }}>
-            {newPassword}
+          <div className="field-row">
+            <div className="field"><label>Ism</label><input value={editForm.first_name} onChange={e => setEditForm({...editForm, first_name: e.target.value})} /></div>
+            <div className="field"><label>Familiya</label><input value={editForm.last_name} onChange={e => setEditForm({...editForm, last_name: e.target.value})} /></div>
           </div>
-          <button type="button" className="btn-outline" style={{ width: '100%', marginBottom: 12, fontSize: 12 }}
-            onClick={() => setNewPassword(genPassword())}>
-            ↻ Boshqasini yaratish
-          </button>
+          <div className="field"><label>Telefon</label><input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="+998901234567" /></div>
+          <div className="field">
+            <label>Rol</label>
+            <select value={editForm.user_type} onChange={e => setEditForm({...editForm, user_type: e.target.value})}>
+              <option value="caller">Chaqiruvchi</option>
+              <option value="dispatcher">Dispetcher</option>
+              <option value="driver">Haydovchi</option>
+              <option value="center_admin">Markaz Admin</option>
+              <option value="admin">Super Admin</option>
+            </select>
+          </div>
+          <div className="field">
+            <label>Dispatch markazi</label>
+            <select value={editForm.dispatch_center_id} onChange={e => setEditForm({...editForm, dispatch_center_id: e.target.value})}>
+              <option value="">— Markazdan ajratish —</option>
+              {centers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city}) — {c.service_type}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Yangi parol <span style={{ fontSize: 11, color: '#94a3b8' }}>(bo'sh qoldirsangiz o'zgarmaydi)</span></label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input type="text" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Kamida 6 belgi" style={{ flex: 1 }} />
+              <button type="button" className="btn-outline" style={{ whiteSpace: 'nowrap', padding: '8px 12px', fontSize: 12 }} onClick={() => setEditPassword(genPassword())}>🔄 Yaratish</button>
+            </div>
+            {editPassword.length > 0 && editPassword.length < 6 && <small style={{ color: '#ef4444' }}>Kamida 6 ta belgi</small>}
+            {editPassword.length >= 6 && <small style={{ color: '#10b981', fontWeight: 600 }}>✅ Bu parol saqlanadi: {editPassword}</small>}
+          </div>
           <div className="modal-footer">
-            <button className="btn-secondary" onClick={() => setResetPasswordModal(null)}>Bekor</button>
-            <button className="btn-primary" style={{ width: 'auto' }} onClick={async () => {
-              try {
-                await apiFetch(`/api/admin-panel/users/${resetPasswordModal.id}/reset-password`, token, { method: 'POST', body: { password: newPassword } });
-                alert(`✅ Parol yangilandi: ${newPassword}`);
-                setResetPasswordModal(null);
-              } catch(e) { alert(e.message); }
-            }}>Saqlash</button>
+            <button className="btn-secondary" onClick={() => setEditModal(null)}>Bekor</button>
+            <button className="btn-primary" style={{ width: 'auto' }} disabled={editSaving || (editPassword.length > 0 && editPassword.length < 6)} onClick={handleEditSave}>
+              {editSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+            </button>
           </div>
         </Modal>
       )}

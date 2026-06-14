@@ -1247,7 +1247,7 @@ app.get('/api/admin/feedback', authenticateToken, checkRole, async (req, res) =>
 
 // Middleware: require admin user_type (must run after checkRole)
 function requireAdmin(req, res, next) {
-  if (req.userType !== 'admin') return res.status(403).json({ error: 'Faqat administrator uchun' });
+  if (req.userType !== 'admin') return res.status(403).json({ error: `Faqat administrator uchun (sizning rolingiz: ${req.userType})` });
   next();
 }
 
@@ -1361,25 +1361,29 @@ app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, a
   }
 });
 
-// PATCH /api/admin-panel/users/:id - update block status, role, dispatch_center_id
+// PATCH /api/admin-panel/users/:id - update any user fields
 app.patch('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { blocked, user_type, dispatch_center_id } = req.body;
+    const { blocked, user_type, dispatch_center_id, first_name, last_name, phone } = req.body;
     const fields = [];
     const params = [];
     if (blocked !== undefined) { params.push(blocked); fields.push(`blocked = $${params.length}`); }
     if (user_type !== undefined) { params.push(user_type); fields.push(`user_type = $${params.length}`); }
     if (dispatch_center_id !== undefined) { params.push(dispatch_center_id || null); fields.push(`dispatch_center_id = $${params.length}`); }
+    if (first_name !== undefined) { params.push(first_name.trim()); fields.push(`first_name = $${params.length}`); }
+    if (last_name !== undefined) { params.push(last_name.trim()); fields.push(`last_name = $${params.length}`); }
+    if (phone !== undefined) { params.push(phone || null); fields.push(`phone = $${params.length}`); }
     if (!fields.length) return res.status(400).json({ error: 'No fields to update' });
     params.push(id);
     const result = await pool.query(
-      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id, COALESCE(blocked, false) as blocked`,
+      `UPDATE users SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${params.length} RETURNING id, phone, first_name, last_name, user_type, dispatch_center_id, COALESCE(blocked, false) as blocked, login_code`,
       params
     );
     if (!result.rows.length) return res.status(404).json({ error: 'User not found' });
     res.json({ user: result.rows[0] });
   } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'Bu telefon raqam allaqachon mavjud' });
     console.error(err);
     res.status(500).json({ error: err.message });
   }
