@@ -1186,6 +1186,30 @@ app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, as
   }
 });
 
+// POST /api/admin-panel/users - create any user type (dispatcher, caller, admin)
+app.post('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { email, password, first_name, last_name, phone, user_type = 'caller', dispatch_center_id } = req.body;
+    if (!first_name || !last_name) return res.status(400).json({ error: 'Ism va familiya kerak' });
+    if (!email && !phone) return res.status(400).json({ error: 'Email yoki telefon kerak' });
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Noto'g'ri email format" });
+    let password_hash = null;
+    if (password) {
+      if (password.length < 6) return res.status(400).json({ error: 'Parol kamida 6 ta belgidan iborat bo\'lishi kerak' });
+      password_hash = await bcrypt.hash(password, 10);
+    }
+    const result = await pool.query(
+      'INSERT INTO users (email, phone, password_hash, first_name, last_name, user_type, dispatch_center_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, email, phone, first_name, last_name, user_type, dispatch_center_id',
+      [email?.toLowerCase() || null, phone || null, password_hash, first_name.trim(), last_name.trim(), user_type, dispatch_center_id || null]
+    );
+    res.status(201).json({ user: result.rows[0] });
+  } catch (err) {
+    if (err.code === '23505') return res.status(400).json({ error: 'Bu email yoki telefon allaqachon mavjud' });
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/admin-panel/users/:id - update block status, role, dispatch_center_id
 app.patch('/api/admin-panel/users/:id', authenticateToken, checkRole, requireAdmin, async (req, res) => {
   try {
@@ -1288,7 +1312,7 @@ app.delete('/api/admin-panel/dispatch-centers/:id', authenticateToken, checkRole
 // GET /api/admin-panel/emergencies - all emergencies with filters
 app.get('/api/admin-panel/emergencies', authenticateToken, checkRole, requireAdmin, async (req, res) => {
   try {
-    const { status, service_type, limit = 100 } = req.query;
+    const { status, service_type, date_from, date_to, limit = 200 } = req.query;
     let query = `SELECT e.*, u.first_name, u.last_name, u.phone as caller_phone,
                          dc.name as dispatch_center_name
                   FROM emergencies e
@@ -1298,6 +1322,8 @@ app.get('/api/admin-panel/emergencies', authenticateToken, checkRole, requireAdm
     const params = [];
     if (status) { params.push(status); query += ` AND e.status = $${params.length}`; }
     if (service_type) { params.push(service_type); query += ` AND e.service_type = $${params.length}`; }
+    if (date_from) { params.push(date_from); query += ` AND e.created_at >= $${params.length}::date`; }
+    if (date_to) { params.push(date_to); query += ` AND e.created_at < ($${params.length}::date + interval '1 day')`; }
     params.push(parseInt(limit));
     query += ` ORDER BY e.created_at DESC LIMIT $${params.length}`;
     const result = await pool.query(query, params);

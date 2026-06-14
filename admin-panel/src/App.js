@@ -190,11 +190,19 @@ function Dashboard({ token }) {
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
+const EMPTY_USER = { first_name: '', last_name: '', email: '', phone: '', password: '', user_type: 'dispatcher', dispatch_center_id: '' };
+
 function UsersPage({ token }) {
   const [users, setUsers] = useState([]);
+  const [centers, setCenters] = useState([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [createModal, setCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState(EMPTY_USER);
+  const [creating, setCreating] = useState(false);
+  const [assignModal, setAssignModal] = useState(null); // user object
+  const [assignCenterId, setAssignCenterId] = useState('');
 
   const load = useCallback(() => {
     setLoading(true);
@@ -206,6 +214,12 @@ function UsersPage({ token }) {
   }, [token, filter]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    apiFetch('/api/admin-panel/dispatch-centers', token)
+      .then((d) => setCenters(d.dispatch_centers || []))
+      .catch(() => {});
+  }, [token]);
 
   const toggleBlock = async (user) => {
     try {
@@ -229,6 +243,26 @@ function UsersPage({ token }) {
     } catch (e) { alert(e.message); }
   };
 
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, dispatch_center_id: createForm.dispatch_center_id || null } });
+      setCreateModal(false);
+      setCreateForm(EMPTY_USER);
+      load();
+    } catch (err) { alert(err.message); }
+    setCreating(false);
+  };
+
+  const handleAssignCenter = async () => {
+    try {
+      await apiFetch(`/api/admin-panel/users/${assignModal.id}`, token, { method: 'PATCH', body: { dispatch_center_id: assignCenterId || null } });
+      setAssignModal(null);
+      load();
+    } catch (e) { alert(e.message); }
+  };
+
   return (
     <div>
       <h2 className="page-title">Foydalanuvchilar</h2>
@@ -238,7 +272,10 @@ function UsersPage({ token }) {
             <button key={v} className={`tab ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
           ))}
         </div>
-        <button className="btn-outline" onClick={load}>Yangilash</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-primary" style={{ width: 'auto' }} onClick={() => { setCreateForm(EMPTY_USER); setCreateModal(true); }}>+ Foydalanuvchi qo'shish</button>
+          <button className="btn-outline" onClick={load}>Yangilash</button>
+        </div>
       </div>
 
       {error && <div className="error-box">{error}</div>}
@@ -268,18 +305,18 @@ function UsersPage({ token }) {
                       <br /><small className="muted">{u.phone || '—'}</small>
                     </td>
                     <td>
-                      <select
-                        className="role-select"
-                        value={u.user_type}
-                        onChange={(e) => changeRole(u, e.target.value)}
-                      >
+                      <select className="role-select" value={u.user_type} onChange={(e) => changeRole(u, e.target.value)}>
                         <option value="caller">Chaqiruvchi</option>
                         <option value="dispatcher">Dispetcher</option>
                         <option value="driver">Haydovchi</option>
                         <option value="admin">Admin</option>
                       </select>
                     </td>
-                    <td>{u.dispatch_center_name || <span className="muted">—</span>}</td>
+                    <td>
+                      <button className="btn-sm btn-info" onClick={() => { setAssignModal(u); setAssignCenterId(u.dispatch_center_id || ''); }}>
+                        {u.dispatch_center_name || '+ Biriktirish'}
+                      </button>
+                    </td>
                     <td>
                       {u.blocked
                         ? <span className="badge badge-red">Bloklangan</span>
@@ -287,15 +324,10 @@ function UsersPage({ token }) {
                     </td>
                     <td>
                       <div className="action-row">
-                        <button
-                          className={`btn-sm ${u.blocked ? 'btn-success' : 'btn-warn'}`}
-                          onClick={() => toggleBlock(u)}
-                        >
+                        <button className={`btn-sm ${u.blocked ? 'btn-success' : 'btn-warn'}`} onClick={() => toggleBlock(u)}>
                           {u.blocked ? 'Blokdan chiqar' : 'Blokla'}
                         </button>
-                        <button className="btn-sm btn-danger" onClick={() => deleteUser(u)}>
-                          O'chir
-                        </button>
+                        <button className="btn-sm btn-danger" onClick={() => deleteUser(u)}>O'chir</button>
                       </div>
                     </td>
                   </tr>
@@ -307,6 +339,60 @@ function UsersPage({ token }) {
             </table>
           </div>
         </div>
+      )}
+
+      {/* Create user modal */}
+      {createModal && (
+        <Modal title="Foydalanuvchi qo'shish" onClose={() => setCreateModal(false)}>
+          <form onSubmit={handleCreate}>
+            <div className="field-row">
+              <div className="field"><label>Ism *</label><input value={createForm.first_name} onChange={e => setCreateForm({...createForm, first_name: e.target.value})} required /></div>
+              <div className="field"><label>Familiya *</label><input value={createForm.last_name} onChange={e => setCreateForm({...createForm, last_name: e.target.value})} required /></div>
+            </div>
+            <div className="field"><label>Email</label><input type="email" value={createForm.email} onChange={e => setCreateForm({...createForm, email: e.target.value})} /></div>
+            <div className="field"><label>Telefon</label><input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} placeholder="+998901234567" /></div>
+            <div className="field"><label>Parol</label><input type="password" value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} placeholder="Kamida 6 belgi" /></div>
+            <div className="field">
+              <label>Rol *</label>
+              <select value={createForm.user_type} onChange={e => setCreateForm({...createForm, user_type: e.target.value})}>
+                <option value="dispatcher">Dispetcher</option>
+                <option value="caller">Chaqiruvchi</option>
+                <option value="driver">Haydovchi</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            {(createForm.user_type === 'dispatcher' || createForm.user_type === 'driver') && (
+              <div className="field">
+                <label>Dispatch markazi</label>
+                <select value={createForm.dispatch_center_id} onChange={e => setCreateForm({...createForm, dispatch_center_id: e.target.value})}>
+                  <option value="">— Tanlang —</option>
+                  {centers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city})</option>)}
+                </select>
+              </div>
+            )}
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setCreateModal(false)}>Bekor</button>
+              <button type="submit" className="btn-primary" style={{width:'auto'}} disabled={creating}>{creating ? 'Yaratilmoqda...' : 'Yaratish'}</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Assign dispatch center modal */}
+      {assignModal && (
+        <Modal title={`Markaz biriktirish — ${assignModal.first_name} ${assignModal.last_name}`} onClose={() => setAssignModal(null)}>
+          <div className="field">
+            <label>Dispatch markazi</label>
+            <select value={assignCenterId} onChange={e => setAssignCenterId(e.target.value)}>
+              <option value="">— Markazdan ajratish —</option>
+              {centers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city}) — {c.service_type}</option>)}
+            </select>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="btn-secondary" onClick={() => setAssignModal(null)}>Bekor</button>
+            <button type="button" className="btn-primary" style={{width:'auto'}} onClick={handleAssignCenter}>Saqlash</button>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -465,6 +551,8 @@ function EmergenciesPage({ token }) {
   const [emergencies, setEmergencies] = useState([]);
   const [status, setStatus] = useState('');
   const [serviceType, setServiceType] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -474,10 +562,12 @@ function EmergenciesPage({ token }) {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
     if (serviceType) params.set('service_type', serviceType);
+    if (dateFrom) params.set('date_from', dateFrom);
+    if (dateTo) params.set('date_to', dateTo);
     apiFetch(`/api/admin-panel/emergencies?${params}`, token)
       .then((d) => { setEmergencies(d.emergencies || []); setLoading(false); })
       .catch((e) => { setError(e.message); setLoading(false); });
-  }, [token, status, serviceType]);
+  }, [token, status, serviceType, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -498,6 +588,19 @@ function EmergenciesPage({ token }) {
           </div>
         </div>
         <button className="btn-outline" onClick={load}>Yangilash</button>
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="field" style={{ margin: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <label style={{ whiteSpace: 'nowrap', marginBottom: 0 }}>Sanadan:</label>
+          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13 }} />
+        </div>
+        <div className="field" style={{ margin: 0, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <label style={{ whiteSpace: 'nowrap', marginBottom: 0 }}>Gacha:</label>
+          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ padding: '7px 10px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13 }} />
+        </div>
+        {(dateFrom || dateTo) && (
+          <button className="btn-sm btn-danger" onClick={() => { setDateFrom(''); setDateTo(''); }}>Tozalash</button>
+        )}
       </div>
 
       {error && <div className="error-box">{error}</div>}

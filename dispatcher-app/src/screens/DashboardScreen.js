@@ -78,6 +78,8 @@ function DashboardScreen({ token, onLogout }) {
   const [editPlate, setEditPlate] = useState('');
   const [mapFilter, setMapFilter] = useState('all');
   const [selectedMapDriver, setSelectedMapDriver] = useState(null);
+  const [alertCount, setAlertCount] = useState(0);
+  const prevNewIdsRef = useRef(new Set());
 
   const mapRef = useRef(null);
   const gMapRef = useRef(null);
@@ -110,6 +112,11 @@ function DashboardScreen({ token, onLogout }) {
     script.async = true;
     script.onload = initMap;
     document.head.appendChild(script);
+  }, []);
+
+  // Request browser notification permission
+  useEffect(() => {
+    if (Notification.permission === 'default') Notification.requestPermission();
   }, []);
 
   // Socket.io + polling
@@ -188,13 +195,42 @@ function DashboardScreen({ token, onLogout }) {
     await Promise.all([fetchEmergencies(), fetchAmbulances()]);
   };
 
+  const playAlert = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [0, 0.35, 0.7].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.4, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.28);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.28);
+      });
+    } catch {}
+  };
+
   const fetchEmergencies = async () => {
     setLoading(true);
     try {
       const res = await axios.get(`${API_URL}/api/emergencies`, {
         headers: { Authorization: `Bearer ${tokenRef.current}` },
       });
-      setAllEmergencies(res.data);
+      const list = res.data;
+      setAllEmergencies(list);
+      // Detect brand-new 'new' emergencies
+      const currentNewIds = new Set(list.filter(e => e.status === 'new').map(e => e.id));
+      const genuinelyNew = [...currentNewIds].filter(id => !prevNewIdsRef.current.has(id));
+      if (genuinelyNew.length > 0 && prevNewIdsRef.current.size > 0) {
+        setAlertCount(n => n + genuinelyNew.length);
+        playAlert();
+        if (Notification.permission === 'granted') {
+          new Notification('🚨 Yangi chaqiruv!', { body: `${genuinelyNew.length} ta yangi favqulotiy vaziyat`, icon: '/favicon.ico' });
+        }
+      }
+      prevNewIdsRef.current = currentNewIds;
     } catch (err) { console.error(err); }
     setLoading(false);
   };
@@ -326,16 +362,32 @@ function DashboardScreen({ token, onLogout }) {
         </div>
       </div>
 
+      {/* ── New emergency alert banner ── */}
+      {alertCount > 0 && (
+        <div onClick={() => { setAlertCount(0); setFilter('new'); }}
+          style={{
+            background:'linear-gradient(90deg,#e74c3c,#c0392b)', color:'#fff',
+            padding:'10px 20px', cursor:'pointer', display:'flex', alignItems:'center',
+            justifyContent:'space-between', animation:'pulse 1s infinite',
+          }}>
+          <span style={{fontWeight:700,fontSize:15}}>🚨 {alertCount} ta yangi chaqiruv keldi! Ko'rish uchun bosing</span>
+          <span style={{fontSize:20}} onClick={e=>{e.stopPropagation();setAlertCount(0);}}>✕</span>
+        </div>
+      )}
+
       {/* ── Assign ambulance modal ── */}
       {selectedEmergency && (
         <div className="modal-overlay" onClick={() => setSelectedEmergency(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Ambulans belgilash #{selectedEmergency.id}</h2>
             <div className="ambulance-list">
-              {ambulances.length === 0 ? <p>Ambulans mavjud emas</p> : ambulances.map((amb) => (
+              {ambulances.filter(a => a.status === 'available').length === 0
+                ? <p style={{textAlign:'center',color:'#888',padding:20}}>Bo'sh ambulans yo'q</p>
+                : ambulances.filter(a => a.status === 'available').map((amb) => (
                 <button key={amb.id} className="ambulance-option"
                   onClick={() => handleAssignAmbulance(selectedEmergency.id, amb.id)}>
                   <strong>{amb.unit_number}</strong><br />{amb.driver_name}
+                  <span style={{fontSize:11,color:'#27ae60',display:'block',marginTop:2}}>🟢 Tayyor</span>
                 </button>
               ))}
             </div>
@@ -679,7 +731,7 @@ function DashboardScreen({ token, onLogout }) {
                   <div className="emergency-info">
                     <p className="emergency-id">#{e.id}</p>
                     <p className="emergency-type">{e.service_type?.toUpperCase()}</p>
-                    {e.user_phone && <p className="emergency-phone">Tel: {e.user_phone}</p>}
+                    {e.user_phone && <p className="emergency-phone"><a href={`tel:${e.user_phone}`} style={{color:'#2980b9',textDecoration:'none',fontWeight:600}} onClick={ev=>ev.stopPropagation()}>📞 {e.user_phone}</a></p>}
                     {(assignedAmb || e.unit_number) && (
                       <p className="ambulance-assigned">🚑 {e.unit_number || assignedAmb?.unit_number}</p>
                     )}
