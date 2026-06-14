@@ -1123,6 +1123,67 @@ app.get('/api/admin/feedback', authenticateToken, checkRole, async (req, res) =>
 });
 
 
+// ==================== ADMIN PANEL ====================
+
+// Middleware: require admin user_type (must run after checkRole)
+function requireAdmin(req, res, next) {
+  if (req.userType !== 'admin') return res.status(403).json({ error: 'Faqat administrator uchun' });
+  next();
+}
+
+// GET /api/admin-panel/overview - global dashboard stats (all centers, all services)
+app.get('/api/admin-panel/overview', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const usersByType = await pool.query('SELECT user_type, COUNT(*) as count FROM users GROUP BY user_type');
+    const emergenciesByStatus = await pool.query('SELECT status, COUNT(*) as count FROM emergencies GROUP BY status');
+    const emergenciesByService = await pool.query('SELECT service_type, COUNT(*) as count FROM emergencies GROUP BY service_type');
+    const unitsByStatus = await pool.query('SELECT status, COUNT(*) as count FROM ambulances GROUP BY status');
+    const dispatchCentersCount = await pool.query('SELECT COUNT(*) as count FROM dispatch_centers');
+    const recentEmergencies = await pool.query('SELECT id, service_type, status, latitude, longitude, created_at FROM emergencies ORDER BY created_at DESC LIMIT 10');
+
+    res.json({
+      users_by_type: usersByType.rows,
+      emergencies_by_status: emergenciesByStatus.rows,
+      emergencies_by_service: emergenciesByService.rows,
+      units_by_status: unitsByStatus.rows,
+      dispatch_centers_count: dispatchCentersCount.rows[0].count,
+      recent_emergencies: recentEmergencies.rows
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/admin-panel/users - all users, optional filters: ?user_type=&dispatch_center_id=
+app.get('/api/admin-panel/users', authenticateToken, checkRole, requireAdmin, async (req, res) => {
+  try {
+    const { user_type, dispatch_center_id } = req.query;
+    let query = `SELECT u.id, u.email, u.phone, u.first_name, u.last_name, u.user_type,
+                         u.dispatch_center_id, u.blocked, u.created_at,
+                         dc.name as dispatch_center_name
+                  FROM users u
+                  LEFT JOIN dispatch_centers dc ON u.dispatch_center_id = dc.id
+                  WHERE 1=1`;
+    const params = [];
+    if (user_type) {
+      params.push(user_type);
+      query += ` AND u.user_type = $${params.length}`;
+    }
+    if (dispatch_center_id) {
+      params.push(dispatch_center_id);
+      query += ` AND u.dispatch_center_id = $${params.length}`;
+    }
+    query += ' ORDER BY u.created_at DESC';
+    const result = await pool.query(query, params);
+    res.json({ users: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== END ADMIN PANEL ====================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Emergency dispatch backend running on port ${PORT}`);
