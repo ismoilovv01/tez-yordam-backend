@@ -190,7 +190,64 @@ function Dashboard({ token }) {
 }
 
 // ─── Users ────────────────────────────────────────────────────────────────────
-const EMPTY_USER = { first_name: '', last_name: '', email: '', phone: '', password: '', user_type: 'dispatcher', dispatch_center_id: '' };
+const EMPTY_USER = { first_name: '', last_name: '', phone: '', user_type: 'dispatcher', dispatch_center_id: '' };
+
+const UZ_CITIES = [
+  'Toshkent','Andijon',"Farg'ona",'Namangan','Samarqand','Jizzax','Sirdaryo',
+  'Qashqadaryo','Surxondaryo','Buxoro','Navoiy','Xorazm','Nukus',
+];
+
+const SERVICE_TYPES = [
+  { key: 'ambulance', label: '🚑 Tez Yordam' },
+  { key: 'police', label: '👮 Politsiya' },
+  { key: 'fire', label: '🔥 O\'t o\'chirish' },
+];
+
+function genPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function CenterPicker({ centers, value, onChange }) {
+  const [serviceType, setServiceType] = useState('');
+  const [region, setRegion] = useState('');
+
+  const filtered = centers.filter(c =>
+    (!serviceType || c.service_type === serviceType) &&
+    (!region || (c.city || '').toLowerCase().includes(region.toLowerCase()))
+  );
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        {SERVICE_TYPES.map(s => (
+          <button key={s.key} type="button"
+            onClick={() => { setServiceType(serviceType === s.key ? '' : s.key); onChange(''); }}
+            style={{ flex: 1, padding: '8px 4px', border: `2px solid ${serviceType === s.key ? '#1e3a5f' : '#e2e8f0'}`,
+              borderRadius: 8, background: serviceType === s.key ? '#1e3a5f' : '#f8fafc',
+              color: serviceType === s.key ? '#fff' : '#374151', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+            {s.label}
+          </button>
+        ))}
+      </div>
+      {serviceType && (
+        <select value={region} onChange={e => { setRegion(e.target.value); onChange(''); }}
+          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, marginBottom: 8, fontSize: 13 }}>
+          <option value="">— Shahar/viloyatni tanlang —</option>
+          {UZ_CITIES.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      )}
+      {serviceType && region && (
+        <select value={value} onChange={e => onChange(e.target.value)}
+          style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e2e8f0', borderRadius: 8, fontSize: 13 }}>
+          <option value="">— Markazni tanlang —</option>
+          {filtered.length ? filtered.map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+            : <option disabled>Bu hududda markaz topilmadi</option>}
+        </select>
+      )}
+    </div>
+  );
+}
 
 function UsersPage({ token }) {
   const [users, setUsers] = useState([]);
@@ -201,7 +258,7 @@ function UsersPage({ token }) {
   const [createModal, setCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState(EMPTY_USER);
   const [creating, setCreating] = useState(false);
-  const [newCenterAdminCode, setNewCenterAdminCode] = useState(null); // { name, code }
+  const [newCenterAdminCode, setNewCenterAdminCode] = useState(null); // { name, code, password }
   const [assignModal, setAssignModal] = useState(null); // user object
   const [assignCenterId, setAssignCenterId] = useState('');
 
@@ -247,14 +304,13 @@ function UsersPage({ token }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
+    const password = genPassword();
     try {
-      const data = await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, dispatch_center_id: createForm.dispatch_center_id || null } });
+      const data = await apiFetch('/api/admin-panel/users', token, { method: 'POST', body: { ...createForm, password, dispatch_center_id: createForm.dispatch_center_id || null } });
       setCreateModal(false);
       setCreateForm(EMPTY_USER);
       load();
-      if (data.user?.login_code) {
-        setNewCenterAdminCode({ name: `${data.user.first_name} ${data.user.last_name}`, code: data.user.login_code });
-      }
+      setNewCenterAdminCode({ name: `${data.user.first_name} ${data.user.last_name}`, code: data.user.login_code || null, password, user_type: data.user.user_type });
     } catch (err) { alert(err.message); }
     setCreating(false);
   };
@@ -354,12 +410,16 @@ function UsersPage({ token }) {
               <div className="field"><label>Ism *</label><input value={createForm.first_name} onChange={e => setCreateForm({...createForm, first_name: e.target.value})} required /></div>
               <div className="field"><label>Familiya *</label><input value={createForm.last_name} onChange={e => setCreateForm({...createForm, last_name: e.target.value})} required /></div>
             </div>
-            <div className="field"><label>Email</label><input type="email" value={createForm.email} onChange={e => setCreateForm({...createForm, email: e.target.value})} /></div>
-            <div className="field"><label>Telefon</label><input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} placeholder="+998901234567" /></div>
-            <div className="field"><label>Parol</label><input type="password" value={createForm.password} onChange={e => setCreateForm({...createForm, password: e.target.value})} placeholder="Kamida 6 belgi" /></div>
+            <div className="field">
+              <label>Telefon {createForm.user_type === 'center_admin' ? '*' : ''}</label>
+              <input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} placeholder="+998901234567" required={createForm.user_type === 'center_admin'} />
+            </div>
+            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#166534', marginBottom: 12 }}>
+              🔐 Parol avtomatik yaratiladi va yaratilgandan so'ng ko'rsatiladi
+            </div>
             <div className="field">
               <label>Rol *</label>
-              <select value={createForm.user_type} onChange={e => setCreateForm({...createForm, user_type: e.target.value})}>
+              <select value={createForm.user_type} onChange={e => setCreateForm({...createForm, user_type: e.target.value, dispatch_center_id: ''})}>
                 <option value="dispatcher">Dispetcher</option>
                 <option value="caller">Chaqiruvchi</option>
                 <option value="driver">Haydovchi</option>
@@ -368,17 +428,15 @@ function UsersPage({ token }) {
               </select>
             </div>
             {createForm.user_type === 'center_admin' && (
-              <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#0369a1', marginBottom: 12 }}>
-                ℹ️ Markaz admin uchun kirish kodi avtomatik yaratiladi. Telefon raqami <b>majburiy</b> — u shu raqam + kod bilan kiradi.
+              <div style={{ background: '#e0f2fe', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#0369a1', marginBottom: 12 }}>
+                ℹ️ Kirish kodi ham avtomatik yaratiladi. Markaz admin telefon + kod bilan kiradi.
               </div>
             )}
-            {(createForm.user_type === 'dispatcher' || createForm.user_type === 'driver' || createForm.user_type === 'center_admin') && (
+            {['dispatcher', 'driver', 'center_admin'].includes(createForm.user_type) && (
               <div className="field">
                 <label>Dispatch markazi</label>
-                <select value={createForm.dispatch_center_id} onChange={e => setCreateForm({...createForm, dispatch_center_id: e.target.value})}>
-                  <option value="">— Tanlang —</option>
-                  {centers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.city})</option>)}
-                </select>
+                <CenterPicker centers={centers} value={createForm.dispatch_center_id}
+                  onChange={v => setCreateForm({...createForm, dispatch_center_id: v})} />
               </div>
             )}
             <div className="modal-footer">
@@ -407,12 +465,21 @@ function UsersPage({ token }) {
       )}
 
       {newCenterAdminCode && (
-        <Modal title="✅ Markaz admin yaratildi!" onClose={() => setNewCenterAdminCode(null)}>
-          <p style={{ textAlign: 'center', marginBottom: 8 }}><b>{newCenterAdminCode.name}</b> uchun kirish kodi:</p>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: 8, background: '#e0f2fe', padding: '16px 24px', borderRadius: 12, textAlign: 'center', color: '#0369a1', marginBottom: 16 }}>
-            {newCenterAdminCode.code}
+        <Modal title="✅ Foydalanuvchi yaratildi!" onClose={() => setNewCenterAdminCode(null)}>
+          <p style={{ textAlign: 'center', fontWeight: 700, fontSize: 16, marginBottom: 16 }}>{newCenterAdminCode.name}</p>
+          {newCenterAdminCode.code && (
+            <>
+              <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>🔑 Kirish kodi (telefon + kod bilan kiradi):</p>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: 7, background: '#e0f2fe', padding: '14px 20px', borderRadius: 10, textAlign: 'center', color: '#0369a1', marginBottom: 14 }}>
+                {newCenterAdminCode.code}
+              </div>
+            </>
+          )}
+          <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>🔐 Avtomatik parol:</p>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 4, background: '#f0fdf4', padding: '12px 20px', borderRadius: 10, textAlign: 'center', color: '#166534', marginBottom: 16, fontFamily: 'monospace' }}>
+            {newCenterAdminCode.password}
           </div>
-          <p style={{ color: '#6b7280', fontSize: 13, textAlign: 'center', marginBottom: 20 }}>Bu kodni markaz adminga bering. U o'z telefon raqami + shu kod bilan tizimga kiradi.</p>
+          <p style={{ color: '#6b7280', fontSize: 12, textAlign: 'center', marginBottom: 16 }}>Bu ma'lumotlarni saqlang — ular qayta ko'rsatilmaydi.</p>
           <div className="modal-footer">
             <button className="btn-primary" style={{ width: '100%' }} onClick={() => setNewCenterAdminCode(null)}>Tushunarli</button>
           </div>
