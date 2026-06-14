@@ -1190,6 +1190,34 @@ app.get('/api/center-admin/overview', authenticateToken, checkRole, requireCente
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PATCH /api/center-admin/info - update their dispatch center info
+app.patch('/api/center-admin/info', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    if (!req.dispatchCenterId) return res.status(400).json({ error: 'Siz hech qanday markazga biriktirilmagansiz' });
+    const { name, phone, city } = req.body;
+    const result = await pool.query(
+      `UPDATE dispatch_centers SET name=COALESCE($1,name), phone=COALESCE($2,phone), city=COALESCE($3,city), updated_at=NOW()
+       WHERE id=$4 RETURNING *`,
+      [name || null, phone || null, city || null, req.dispatchCenterId]
+    );
+    res.json({ dispatch_center: result.rows[0] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/center-admin/stats - weekly/monthly breakdown
+app.get('/api/center-admin/stats', authenticateToken, checkRole, requireCenterAdmin, async (req, res) => {
+  try {
+    const cid = req.dispatchCenterId;
+    const [weekly, monthly, byStatus, drivers] = await Promise.all([
+      pool.query(`SELECT DATE(created_at) as day, COUNT(*) as count FROM emergencies WHERE dispatch_center_id=$1 AND created_at > NOW()-INTERVAL '7 days' GROUP BY day ORDER BY day`, [cid]),
+      pool.query(`SELECT TO_CHAR(created_at,'YYYY-MM') as month, COUNT(*) as count FROM emergencies WHERE dispatch_center_id=$1 AND created_at > NOW()-INTERVAL '6 months' GROUP BY month ORDER BY month`, [cid]),
+      pool.query(`SELECT status, COUNT(*) as count FROM emergencies WHERE dispatch_center_id=$1 GROUP BY status`, [cid]),
+      pool.query(`SELECT status, COUNT(*) as count FROM ambulances WHERE dispatch_center_id=$1 GROUP BY status`, [cid]),
+    ]);
+    res.json({ weekly: weekly.rows, monthly: monthly.rows, by_status: byStatus.rows, drivers_by_status: drivers.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ── FEEDBACK ─────────────────────────────────────────────────────────────────
 
 // Auto-create feedback table if it doesn't exist
