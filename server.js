@@ -1094,7 +1094,7 @@ app.post('/api/feedback', authenticateToken, async (req, res) => {
     const result = await pool.query(
       `INSERT INTO feedback (user_id, emergency_id, rating, message, type)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [req.user.id, emergency_id || null, rating || null, message || null, type]
+      [req.userId, emergency_id || null, rating || null, message || null, type]
     );
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {
