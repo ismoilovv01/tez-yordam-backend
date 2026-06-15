@@ -587,7 +587,13 @@ app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const result = await pool.query(
-      'SELECT id, unit_number, driver_name, driver_phone, status, latitude, longitude FROM ambulances WHERE dispatch_center_id = $1 ORDER BY unit_number',
+      `SELECT a.id, a.unit_number, a.driver_name, a.driver_phone, a.status, a.latitude, a.longitude, a.last_location_update,
+              e.id AS emergency_id, e.latitude AS dest_lat, e.longitude AS dest_lng,
+              e.status AS emergency_status, u.first_name AS caller_name, u.phone AS caller_phone
+       FROM ambulances a
+       LEFT JOIN emergencies e ON e.assigned_ambulance_id = a.id AND e.status NOT IN ('completed','cancelled','rejected')
+       LEFT JOIN users u ON u.id = e.user_id
+       WHERE a.dispatch_center_id = $1 ORDER BY a.unit_number`,
       [req.dispatchCenterId]
     );
     res.json(result.rows);
