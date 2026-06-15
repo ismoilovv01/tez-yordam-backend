@@ -23,6 +23,15 @@ const CANCELLED_BY_LABELS = {
   user: '👤 Foydalanuvchi bekor qildi',
   dispatcher: '🎧 Dispetcher bekor qildi',
   driver: '🚗 Haydovchi bekor qildi',
+  admin: '👑 Admin bekor qildi',
+  center_admin: '👑 Admin bekor qildi',
+};
+
+const ASSIGNED_BY_LABELS = {
+  driver: '🚗 Haydovchi qabul qildi',
+  dispatcher: '🎧 Dispetcher tayinladi',
+  admin: '👑 Admin tayinladi',
+  center_admin: '👑 Admin tayinladi',
 };
 
 const STATUS_UZ = {
@@ -512,15 +521,23 @@ function DashboardScreen({ token, user, onLogout }) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h2>Ambulans belgilash #{selectedEmergency.id}</h2>
             <div className="ambulance-list">
-              {ambulances.filter(a => a.status === 'available').length === 0
-                ? <p style={{textAlign:'center',color:'#888',padding:20}}>Bo'sh ambulans yo'q</p>
-                : ambulances.filter(a => a.status === 'available').map((amb) => (
-                <button key={amb.id} className="ambulance-option"
-                  onClick={() => handleAssignAmbulance(selectedEmergency.id, amb.id)}>
-                  <strong>{amb.unit_number}</strong><br />{amb.driver_name}
-                  <span style={{fontSize:11,color:'#27ae60',display:'block',marginTop:2}}>🟢 Tayyor</span>
-                </button>
-              ))}
+              {(() => {
+                const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+                const activeAvailable = ambulances.filter(a =>
+                  a.status === 'available' &&
+                  a.last_location_update &&
+                  new Date(a.last_location_update) > fiveMinAgo
+                );
+                if (activeAvailable.length === 0)
+                  return <p style={{textAlign:'center',color:'#888',padding:20}}>Faol bo'sh ambulans yo'q</p>;
+                return activeAvailable.map((amb) => (
+                  <button key={amb.id} className="ambulance-option"
+                    onClick={() => handleAssignAmbulance(selectedEmergency.id, amb.id)}>
+                    <strong>{amb.unit_number}</strong><br />{amb.driver_name}
+                    <span style={{fontSize:11,color:'#27ae60',display:'block',marginTop:2}}>🟢 Faol / Tayyor</span>
+                  </button>
+                ));
+              })()}
             </div>
             <button className="modal-close" onClick={() => setSelectedEmergency(null)}>Bekor</button>
           </div>
@@ -563,6 +580,9 @@ function DashboardScreen({ token, user, onLogout }) {
                 <p><b>Xizmat:</b> {SERVICE_UZ[detailEmergency.service_type] || detailEmergency.service_type}</p>
                 <p><b>Vaqt:</b> {new Date(detailEmergency.created_at).toLocaleString('uz-UZ')}</p>
                 {detailEmergency.description && <p><b>Izoh:</b> {detailEmergency.description}</p>}
+                {detailEmergency.assigned_by && (
+                  <p><b>Qabul qildi:</b> {ASSIGNED_BY_LABELS[detailEmergency.assigned_by] || detailEmergency.assigned_by}</p>
+                )}
                 {detailEmergency.cancelled_by && (
                   <p><b>Bekor qildi:</b> {CANCELLED_BY_LABELS[detailEmergency.cancelled_by] || detailEmergency.cancelled_by}</p>
                 )}

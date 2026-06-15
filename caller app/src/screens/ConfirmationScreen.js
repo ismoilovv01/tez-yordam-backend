@@ -319,9 +319,11 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   // ── Cancellation screen ──────────────────────────────────────────
   if (showCancelScreen) {
     const msgs = {
-      user:       'Siz chaqiruvni bekor qildingiz.',
-      driver:     "Haydovchi chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
-      dispatcher: "Dispetcher chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
+      user:         'Siz chaqiruvni bekor qildingiz.',
+      driver:       "Haydovchi chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
+      dispatcher:   "Dispetcher chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
+      admin:        "Admin chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
+      center_admin: "Admin chaqiruvni bekor qildi. Iltimos qayta urinib ko'ring.",
     };
     return (
       <div className="cancel-screen">

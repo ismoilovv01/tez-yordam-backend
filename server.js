@@ -85,6 +85,7 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS heading NUMERIC(6,2) DEFAULT 0");
+    await pool.query("ALTER TABLE emergencies ADD COLUMN IF NOT EXISTS assigned_by VARCHAR(20)");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)");
@@ -538,8 +539,8 @@ app.patch('/api/emergencies/:id/confirm', authenticateToken, checkRole, async (r
 app.patch('/api/emergencies/:id/reject', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      "UPDATE emergencies SET status = 'cancelled', cancelled_by = 'dispatcher', rejected_at = NOW() WHERE id = $1 RETURNING *",
-      [req.params.id]
+      `UPDATE emergencies SET status = 'cancelled', cancelled_by = $2, rejected_at = NOW() WHERE id = $1 RETURNING *`,
+      [req.params.id, req.userType === 'center_admin' ? 'admin' : (req.userType || 'dispatcher')]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
     // Reset assigned ambulance status back to available
@@ -579,9 +580,9 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     // Assign ambulance + move emergency to 'assigned' + mark ambulance as 'assigned'
     const result = await pool.query(
-      `UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', confirmed_at = COALESCE(confirmed_at, NOW()), dispatcher_id = COALESCE(dispatcher_id, $3)
+      `UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', confirmed_at = COALESCE(confirmed_at, NOW()), dispatcher_id = COALESCE(dispatcher_id, $3), assigned_by = $4
        WHERE id = $2 RETURNING *`,
-      [ambulance_id, req.params.id, req.userId]
+      [ambulance_id, req.params.id, req.userId, req.userType === 'center_admin' ? 'admin' : (req.userType || 'dispatcher')]
     );
     await pool.query("UPDATE ambulances SET status = 'assigned' WHERE id = $1", [ambulance_id]);
     io.emit('emergency_updated', { id: req.params.id });
@@ -902,7 +903,7 @@ app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) 
     const check = await pool.query("SELECT id FROM emergencies WHERE id = $1 AND status = 'confirmed'", [req.params.callId]);
     if (!check.rows.length) return res.status(409).json({ error: 'Bu chaqiruv allaqachon qabul qilingan' });
     const result = await pool.query(
-      "UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', dispatched_at = NOW() WHERE id = $2 AND status = 'confirmed' RETURNING *",
+      "UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', dispatched_at = NOW(), assigned_by = 'driver' WHERE id = $2 AND status = 'confirmed' RETURNING *",
       [ambId, req.params.callId]
     );
     if (!result.rows.length) return res.status(409).json({ error: 'Bu chaqiruv allaqachon qabul qilingan' });
