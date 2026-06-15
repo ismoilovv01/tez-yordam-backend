@@ -151,9 +151,8 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
       centerGMapRef.current = new window.google.maps.Map(centerMapRef.current, {
         center: { lat: 41.2995, lng: 69.2401 },
         zoom: 11,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
+        disableDefaultUI: true,
+        zoomControl: true,
       });
       loadAmbulances();
     };

@@ -147,9 +147,8 @@ function DashboardScreen({ token, user, onLogout }) {
       const map = new window.google.maps.Map(mapRef.current, {
         center: { lat: 41.5534, lng: 60.6166 },
         zoom: 12,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
+        disableDefaultUI: true,
+        zoomControl: true,
       });
       gMapRef.current = map;
       setMapReady(true);
