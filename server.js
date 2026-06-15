@@ -463,10 +463,6 @@ app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
                    LEFT JOIN users u ON e.user_id = u.id
                    WHERE 1=1`;
     const params = [];
-    if (req.dispatchCenterId) {
-      query += ` AND e.dispatch_center_id = $${params.length + 1}`;
-      params.push(req.dispatchCenterId);
-    }
     if (status) { query += ` AND e.status = $${params.length + 1}`; params.push(status); }
     query += ' ORDER BY e.created_at DESC';
     const result = await pool.query(query, params);
@@ -604,8 +600,8 @@ app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
        FROM ambulances a
        LEFT JOIN emergencies e ON e.assigned_ambulance_id = a.id AND e.status NOT IN ('completed','cancelled','rejected')
        LEFT JOIN users u ON u.id = e.user_id
-       WHERE ($1::int IS NULL OR a.dispatch_center_id = $1) ORDER BY a.unit_number`,
-      [req.dispatchCenterId || null]
+       ORDER BY a.unit_number`,
+      []
     );
     res.json(result.rows);
   } catch (err) {
