@@ -1036,6 +1036,8 @@ app.patch('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (re
 
 app.delete('/api/dispatcher/drivers/:id', authenticateToken, checkRole, async (req, res) => {
   try {
+    // Clear foreign key references before deleting
+    await pool.query('UPDATE emergencies SET assigned_ambulance_id = NULL WHERE assigned_ambulance_id = $1', [req.params.id]);
     await pool.query('DELETE FROM ambulances WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
