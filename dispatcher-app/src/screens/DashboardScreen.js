@@ -754,6 +754,25 @@ function DashboardScreen({ token, user, onLogout }) {
 
           <div style={{position:'relative', flex:1, display:'flex', flexDirection:'column'}}>
             <div ref={mapRef} id="dashboard-map" className="dashboard-map" />
+            {/* 📍 Re-center button */}
+            <button
+              onClick={() => {
+                if (!gMapRef.current) return;
+                const tenSec = new Date(Date.now() - 10 * 1000);
+                const active = ambulances.filter(a => a.latitude && a.longitude && a.last_location_update && new Date(a.last_location_update) > tenSec);
+                if (active.length === 0) return;
+                if (active.length === 1) {
+                  gMapRef.current.panTo({ lat: parseFloat(active[0].latitude), lng: parseFloat(active[0].longitude) });
+                  gMapRef.current.setZoom(15);
+                } else {
+                  const bounds = new window.google.maps.LatLngBounds();
+                  active.forEach(a => bounds.extend({ lat: parseFloat(a.latitude), lng: parseFloat(a.longitude) }));
+                  gMapRef.current.fitBounds(bounds, 60);
+                }
+              }}
+              style={{ position:'absolute', bottom:120, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
+              title="Haydovchilarni ko'rsatish"
+            >📍</button>
 
             {/* Driver map click panel — top-right overlay */}
             {selectedMapDriver && (
