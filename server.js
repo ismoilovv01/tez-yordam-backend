@@ -1054,7 +1054,17 @@ app.post('/api/auth/driver-login', async (req, res) => {
       'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1',
       [login_code.toUpperCase()]
     );
-    if (!ambR.rows.length) return res.status(404).json({ error: "Noto'g'ri login kod. Dispetcher bilan bog'laning." });
+    if (!ambR.rows.length) {
+      // Debug: check if code exists with different casing or whitespace
+      const allR = await pool.query("SELECT login_code, driver_name, unit_number FROM ambulances WHERE UPPER(TRIM(login_code)) = $1", [login_code.trim().toUpperCase()]);
+      if (allR.rows.length) {
+        // Code exists but with whitespace — fix and retry
+        const fixedCode = allR.rows[0].login_code.trim();
+        await pool.query("UPDATE ambulances SET login_code = $1 WHERE UPPER(TRIM(login_code)) = $2", [fixedCode, login_code.trim().toUpperCase()]);
+        return res.status(400).json({ error: `Login kod topildi, qayta urinib ko'ring: ${fixedCode}` });
+      }
+      return res.status(404).json({ error: "Noto'g'ri login kod. Dispetcher bilan bog'laning." });
+    }
     const ambulance = ambR.rows[0];
 
     const service_type = ambulance.service_type || ambulance.center_service_type || 'ambulance';

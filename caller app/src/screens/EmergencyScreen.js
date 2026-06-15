@@ -17,7 +17,6 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
   const mapRef = useRef(null);
   const gMapRef = useRef(null);
   const markerRef = useRef(null);
-  const userLocationMarkerRef = useRef(null);
   const mapInitRef = useRef(false);
 
   // Fetch dispatch center id if not provided
@@ -60,18 +59,6 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
     document.head.appendChild(script);
   }, [markerLocation]);
 
-  // Blue dot SVG icon for "you are here" — separate from the draggable
-  // red destination pin, matching Google Maps' own user-location marker.
-  const userLocationIcon = () => ({
-    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-         <circle cx="16" cy="16" r="14" fill="#4285F4" opacity="0.18"/>
-         <circle cx="16" cy="16" r="8" fill="#4285F4" stroke="#fff" stroke-width="3"/>
-       </svg>`
-    ),
-    scaledSize: new window.google.maps.Size(32, 32),
-    anchor: new window.google.maps.Point(16, 16),
-  });
 
   const initMap = (lat, lng) => {
     if (!mapRef.current || mapInitRef.current) return;
@@ -83,10 +70,20 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
     });
     gMapRef.current = map;
 
+    const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="56" viewBox="0 0 40 56">
+      <circle cx="20" cy="20" r="18" fill="#e74c3c" stroke="#fff" stroke-width="3"/>
+      <circle cx="20" cy="20" r="7" fill="#fff"/>
+      <polygon points="20,56 10,34 30,34" fill="#e74c3c"/>
+    </svg>`;
+
     // Draggable destination pin (where the emergency will be reported)
     const marker = new window.google.maps.Marker({
       position: { lat, lng }, map, draggable: true,
-      icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+      icon: {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
+        scaledSize: new window.google.maps.Size(40, 56),
+        anchor: new window.google.maps.Point(20, 56),
+      },
     });
     markerRef.current = marker;
     marker.addListener('dragend', () => {
@@ -98,17 +95,6 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
       marker.setPosition(pos);
       setMarkerLocation(pos);
     });
-
-    // Blue "you are here" dot — static at the user's actual GPS position,
-    // separate from the draggable red destination pin so the user can
-    // still see where they really are even after dragging the pin.
-    const userMarker = new window.google.maps.Marker({
-      position: { lat, lng }, map,
-      icon: userLocationIcon(),
-      clickable: false,
-      zIndex: 1,
-    });
-    userLocationMarkerRef.current = userMarker;
   };
 
   const handleGetLocation = () => {
@@ -118,7 +104,6 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
       setMarkerLocation(loc);
       if (gMapRef.current) { gMapRef.current.setCenter(loc); gMapRef.current.setZoom(16); }
       if (markerRef.current) markerRef.current.setPosition(loc);
-      if (userLocationMarkerRef.current) userLocationMarkerRef.current.setPosition(loc);
     });
   };
 
