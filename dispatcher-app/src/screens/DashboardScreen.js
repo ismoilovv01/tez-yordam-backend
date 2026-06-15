@@ -681,17 +681,16 @@ function DashboardScreen({ token, user, onLogout }) {
             </span>
           </div>
 
-          <div ref={mapRef} id="dashboard-map" className="dashboard-map" />
+          <div style={{position:'relative', flex:1, display:'flex', flexDirection:'column'}}>
+            <div ref={mapRef} id="dashboard-map" className="dashboard-map" />
 
-        </div>
-
-        {/* Driver map click panel */}
-        {selectedMapDriver && (
-          <div style={{
-            position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)',
-            background:'#fff', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
-            padding:20, width:340, zIndex:1500, border:'2px solid #e3f2fd',
-          }}>
+            {/* Driver map click panel — top-right overlay */}
+            {selectedMapDriver && (
+            <div style={{
+              position:'absolute', top:10, right:10,
+              background:'#fff', borderRadius:16, boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
+              padding:20, width:300, zIndex:1500, border:'2px solid #e3f2fd',
+            }}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
               <b style={{fontSize:15}}>🚑 {selectedMapDriver.amb.unit_number}</b>
               <button onClick={() => setSelectedMapDriver(null)}
@@ -738,7 +737,7 @@ function DashboardScreen({ token, user, onLogout }) {
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {showDrivers && (
           <div style={{width:'350px',background:'white',display:'flex',flexDirection:'column',borderLeft:'2px solid #e3f2fd',flexShrink:0}}>
