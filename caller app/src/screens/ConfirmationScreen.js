@@ -80,6 +80,8 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     if (cancelShownRef.current) return;
     cancelShownRef.current = true;
     clearInterval(pollRef.current);
+    localStorage.removeItem('last_emergency');
+    localStorage.removeItem('caller_location');
     setCancelledBy(by);
     setShowCancelScreen(true);
     let count = 5;
@@ -129,6 +131,9 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
 
       setStatus(data.status);
 
+      // Keep last_emergency cache in sync
+      localStorage.setItem('last_emergency', JSON.stringify(data));
+
       // Save caller location from API if not already in localStorage
       if (data.latitude && data.longitude && !localStorage.getItem('caller_location')) {
         const loc = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
@@ -138,7 +143,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
           callerMarkRef.current = new window.google.maps.Marker({
             position: loc, map: gMapRef.current,
             title: 'Sizning joyingiz',
-            icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+            icon: callerPinIcon(),
           });
           gMapRef.current.panTo(loc);
         }
@@ -199,6 +204,18 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     document.head.appendChild(script);
   }, []);
 
+  const callerPinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+    <circle cx="14" cy="14" r="12" fill="#e74c3c" stroke="#fff" stroke-width="2.5"/>
+    <circle cx="14" cy="14" r="5" fill="#fff"/>
+    <polygon points="14,38 7,24 21,24" fill="#e74c3c"/>
+  </svg>`;
+
+  const callerPinIcon = () => ({
+    url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(callerPinSvg),
+    scaledSize: new window.google.maps.Size(28, 38),
+    anchor: new window.google.maps.Point(14, 38),
+  });
+
   const initMap = () => {
     if (mapInitRef.current || !mapRef.current) return;
     mapInitRef.current = true;
@@ -213,7 +230,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       callerMarkRef.current = new window.google.maps.Marker({
         position: callerLocation, map,
         title: 'Sizning joyingiz',
-        icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+        icon: callerPinIcon(),
       });
     }
   };
