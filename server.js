@@ -890,6 +890,7 @@ app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) 
       [ambR.rows[0].id, req.params.callId]
     );
     if (!result.rows.length) return res.status(409).json({ error: 'Bu chaqiruv allaqachon qabul qilingan' });
+    await pool.query("UPDATE ambulances SET status = 'assigned' WHERE id = $1", [ambR.rows[0].id]);
     res.json({ success: true, call: result.rows[0] });
   } catch (err) {
     console.error(err);
