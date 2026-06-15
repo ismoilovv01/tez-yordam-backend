@@ -387,7 +387,7 @@ function DashboardScreen({ token, user, onLogout }) {
     try {
       await axios.patch(`${API_URL}/api/emergencies/${id}/confirm`, {}, { headers: { Authorization: `Bearer ${token}` } });
       fetchEmergencies(); setFilter('confirmed');
-    } catch (err) { console.error(err); }
+    } catch (err) { alert(err.response?.data?.error || 'Tasdiqlashda xatolik'); }
   };
 
   const handleReject = async (id) => {

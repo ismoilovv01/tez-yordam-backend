@@ -523,7 +523,6 @@ app.patch('/api/emergencies/:id/confirm', authenticateToken, checkRole, async (r
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const e = await pool.query('SELECT dispatch_center_id FROM emergencies WHERE id = $1', [req.params.id]);
     if (!e.rows.length) return res.status(404).json({ error: 'Not found' });
-    if (req.dispatchCenterId && e.rows[0].dispatch_center_id !== req.dispatchCenterId) return res.status(403).json({ error: 'No permission' });
     const result = await pool.query(
       'UPDATE emergencies SET status = $1, dispatcher_id = $2, confirmed_at = NOW() WHERE id = $3 RETURNING *',
       ['confirmed', req.userId, req.params.id]
