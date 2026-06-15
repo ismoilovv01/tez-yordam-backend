@@ -744,15 +744,15 @@ app.delete('/api/admin/drivers/:id', authenticateToken, checkRole, async (req, r
 
 app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.json({ call: null });
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.json({ call: null });
     const callR = await pool.query(
       `SELECT e.id, e.latitude, e.longitude, e.status, e.created_at,
               u.phone AS caller_phone, u.first_name, u.last_name
        FROM emergencies e LEFT JOIN users u ON e.user_id = u.id
        WHERE e.assigned_ambulance_id = $1 AND e.status NOT IN ('completed','rejected','cancelled')
        ORDER BY e.created_at DESC LIMIT 1`,
-      [ambR.rows[0].id]
+      [ambId]
     );
     res.json({ call: callR.rows[0] || null });
   } catch (err) {
@@ -761,16 +761,32 @@ app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   }
 });
 
+// Re-links ambulance to driver by phone if driver_user_id is missing (e.g. after ambulance was deleted/recreated)
+async function relinkAmbulanceIfNeeded(userId) {
+  let r = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [userId]);
+  if (r.rows.length) return r.rows[0].id;
+  const uR = await pool.query('SELECT phone FROM users WHERE id = $1', [userId]);
+  if (!uR.rows.length || !uR.rows[0].phone) return null;
+  const aR = await pool.query(
+    "SELECT id FROM ambulances WHERE driver_phone = $1 AND driver_user_id IS NULL ORDER BY id DESC LIMIT 1",
+    [uR.rows[0].phone]
+  );
+  if (!aR.rows.length) return null;
+  await pool.query('UPDATE ambulances SET driver_user_id = $1 WHERE id = $2', [userId, aR.rows[0].id]);
+  return aR.rows[0].id;
+}
+
 app.patch('/api/driver/location', authenticateToken, async (req, res) => {
   try {
     const { latitude, longitude } = req.body;
     if (!latitude || !longitude) return res.status(400).json({ error: 'Coordinates required' });
     if (!validateCoordinates(latitude, longitude)) return res.status(400).json({ error: 'Invalid coordinates' });
-    const result = await pool.query(
-      'UPDATE ambulances SET latitude = $1, longitude = $2, last_location_update = NOW() WHERE driver_user_id = $3 RETURNING id',
-      [latitude, longitude, req.userId]
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
+    await pool.query(
+      'UPDATE ambulances SET latitude = $1, longitude = $2, last_location_update = NOW() WHERE id = $3',
+      [latitude, longitude, ambId]
     );
-    if (!result.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -780,9 +796,8 @@ app.patch('/api/driver/location', authenticateToken, async (req, res) => {
 
 app.patch('/api/driver/start/:callId', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
-    const ambId = ambR.rows[0].id;
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     const result = await pool.query(
       "UPDATE emergencies SET status = 'on_the_way', dispatched_at = NOW() WHERE id = $1 AND assigned_ambulance_id = $2 RETURNING *",
       [req.params.callId, ambId]
@@ -798,9 +813,8 @@ app.patch('/api/driver/start/:callId', authenticateToken, async (req, res) => {
 
 app.patch('/api/driver/arrived/:callId', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
-    const ambId = ambR.rows[0].id;
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     const eR = await pool.query('SELECT id FROM emergencies WHERE id = $1 AND assigned_ambulance_id = $2', [req.params.callId, ambId]);
     if (!eR.rows.length) return res.status(404).json({ error: 'Call not found' });
     await pool.query("UPDATE emergencies SET status = 'arrived', arrived_at = NOW() WHERE id = $1", [req.params.callId]);
@@ -814,9 +828,8 @@ app.patch('/api/driver/arrived/:callId', authenticateToken, async (req, res) => 
 
 app.patch('/api/driver/complete/:callId', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
-    const ambId = ambR.rows[0].id;
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     const eR = await pool.query('SELECT id FROM emergencies WHERE id = $1 AND assigned_ambulance_id = $2', [req.params.callId, ambId]);
     if (!eR.rows.length) return res.status(404).json({ error: 'Call not found' });
     await pool.query("UPDATE emergencies SET status = 'completed', completed_at = NOW() WHERE id = $1", [req.params.callId]);
@@ -830,9 +843,8 @@ app.patch('/api/driver/complete/:callId', authenticateToken, async (req, res) =>
 
 app.patch('/api/driver/cancel/:callId', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
-    const ambId = ambR.rows[0].id;
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     const result = await pool.query(
       "UPDATE emergencies SET status = 'cancelled', cancelled_by = 'driver', assigned_ambulance_id = NULL, rejected_at = NOW() WHERE id = $1 AND assigned_ambulance_id = $2 RETURNING *",
       [req.params.callId, ambId]
@@ -863,14 +875,14 @@ app.get('/api/driver/available-calls', authenticateToken, async (req, res) => {
 
 app.get('/api/driver/call-history', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.json({ calls: [] });
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.json({ calls: [] });
     const result = await pool.query(
       `SELECT e.id, e.latitude, e.longitude, e.status, e.created_at,
               u.phone AS caller_phone, u.first_name, u.last_name
        FROM emergencies e LEFT JOIN users u ON e.user_id = u.id
        WHERE e.assigned_ambulance_id = $1 ORDER BY e.created_at DESC`,
-      [ambR.rows[0].id]
+      [ambId]
     );
     res.json({ calls: result.rows });
   } catch (err) {
@@ -881,16 +893,16 @@ app.get('/api/driver/call-history', authenticateToken, async (req, res) => {
 
 app.post('/api/driver/accept-call/:callId', authenticateToken, async (req, res) => {
   try {
-    const ambR = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [req.userId]);
-    if (!ambR.rows.length) return res.status(404).json({ error: 'No ambulance linked' });
+    const ambId = await relinkAmbulanceIfNeeded(req.userId);
+    if (!ambId) return res.status(404).json({ error: 'No ambulance linked. Iltimos qayta kiring.' });
     const check = await pool.query("SELECT id FROM emergencies WHERE id = $1 AND status = 'confirmed'", [req.params.callId]);
     if (!check.rows.length) return res.status(409).json({ error: 'Bu chaqiruv allaqachon qabul qilingan' });
     const result = await pool.query(
       "UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', dispatched_at = NOW() WHERE id = $2 AND status = 'confirmed' RETURNING *",
-      [ambR.rows[0].id, req.params.callId]
+      [ambId, req.params.callId]
     );
     if (!result.rows.length) return res.status(409).json({ error: 'Bu chaqiruv allaqachon qabul qilingan' });
-    await pool.query("UPDATE ambulances SET status = 'assigned' WHERE id = $1", [ambR.rows[0].id]);
+    await pool.query("UPDATE ambulances SET status = 'assigned' WHERE id = $1", [ambId]);
     res.json({ success: true, call: result.rows[0] });
   } catch (err) {
     console.error(err);

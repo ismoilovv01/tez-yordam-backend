@@ -98,6 +98,7 @@ function DashboardScreen({ token, user, onLogout }) {
   const [editUnit, setEditUnit] = useState('');
   const [editPlate, setEditPlate] = useState('');
   const [mapFilter, setMapFilter] = useState('all');
+  const [mapReady, setMapReady] = useState(false);
   const [selectedMapDriver, setSelectedMapDriver] = useState(null);
   const [alertCount, setAlertCount] = useState(0);
   const [blocked, setBlocked] = useState(false);
@@ -124,6 +125,8 @@ function DashboardScreen({ token, user, onLogout }) {
         fullscreenControl: false,
       });
       gMapRef.current = map;
+      setMapReady(true);
+      fetchAmbulances();
     };
     if (window.google) { initMap(); return; }
     if (document.querySelector('script[src*="maps.googleapis.com"]')) {
@@ -328,7 +331,7 @@ function DashboardScreen({ token, user, onLogout }) {
 
       ambulanceMarkersRef.current[String(amb.id)] = marker;
     });
-  }, [ambulances, mapFilter, allEmergencies]);
+  }, [ambulances, mapFilter, allEmergencies, mapReady]);
 
   // Draw route line only for selected driver (on click), clear when deselected
   useEffect(() => {
