@@ -131,8 +131,9 @@ function authenticateToken(req, res, next) {
 
 async function checkRole(req, res, next) {
   try {
-    const r = await pool.query('SELECT user_type, dispatch_center_id FROM users WHERE id = $1', [req.userId]);
+    const r = await pool.query('SELECT user_type, dispatch_center_id, COALESCE(blocked, false) as blocked FROM users WHERE id = $1', [req.userId]);
     if (!r.rows.length) return res.status(404).json({ error: 'User not found' });
+    if (r.rows[0].blocked) return res.status(403).json({ error: 'Sizning hisobingiz bloklangan' });
     req.userType = r.rows[0].user_type;
     req.dispatchCenterId = r.rows[0].dispatch_center_id;
     next();
