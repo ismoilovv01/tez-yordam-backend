@@ -309,7 +309,7 @@ function DashboardScreen({ token, user, onLogout }) {
   // Update ambulance markers — re-runs when ambulances OR mapFilter changes
   useEffect(() => {
     if (!gMapRef.current || !window.google) return;
-    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const tenMinutesAgo = new Date(Date.now() - 60 * 1000);
 
     const visible = ambulances.filter(amb => {
       if (!amb.latitude || !amb.longitude) return false;
@@ -737,7 +737,7 @@ function DashboardScreen({ token, user, onLogout }) {
                   transition: 'all 0.15s',
                 }}>
                 {label} ({(() => {
-                  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+                  const tenMinutesAgo = new Date(Date.now() - 60 * 1000);
                   const onMap = ambulances.filter(a => a.latitude && a.longitude && a.last_location_update && new Date(a.last_location_update) > tenMinutesAgo);
                   if (key === 'all') return onMap.length;
                   if (key === 'available') return onMap.filter(a => a.status === 'available').length;
