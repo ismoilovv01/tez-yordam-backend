@@ -57,6 +57,8 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const directionsRendererRef = useRef(null);
   const cancelShownRef        = useRef(false);
   const mapFittedRef          = useRef(false); // only fit bounds once
+  const sheetRef              = useRef(null);
+  const [locateBtnBottom, setLocateBtnBottom] = useState(138);
 
   // drag state
   const dragStartY   = useRef(null);
@@ -127,6 +129,21 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
 
       setStatus(data.status);
 
+      // Save caller location from API if not already in localStorage
+      if (data.latitude && data.longitude && !localStorage.getItem('caller_location')) {
+        const loc = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
+        localStorage.setItem('caller_location', JSON.stringify(loc));
+        // Place marker if map already initialized but marker missing
+        if (gMapRef.current && !callerMarkRef.current) {
+          callerMarkRef.current = new window.google.maps.Marker({
+            position: loc, map: gMapRef.current,
+            title: 'Sizning joyingiz',
+            icon: { url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png' },
+          });
+          gMapRef.current.panTo(loc);
+        }
+      }
+
       if ((data.status === 'cancelled' || data.status === 'rejected') && !cancelShownRef.current) {
         triggerCancelScreen(data.cancelled_by || 'dispatcher');
         return;
@@ -153,6 +170,19 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     pollRef.current = setInterval(fetchStatus, 1000);
     return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); };
   }, [emergencyId, userToken]);
+
+  // Track sheet top position so 📍 button always sits 8px above it
+  useEffect(() => {
+    const update = () => {
+      if (sheetRef.current) {
+        const rect = sheetRef.current.getBoundingClientRect();
+        setLocateBtnBottom(window.innerHeight - rect.top + 8);
+      }
+    };
+    update();
+    const id = setInterval(update, 50);
+    return () => clearInterval(id);
+  }, [sheetExpanded]);
 
   // ── Init map ───────────────────────────────────────────────────
   useEffect(() => {
@@ -298,7 +328,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       {/* Locate-me button — tracks sheet position */}
       <button
         className="locate-btn"
-        style={{ bottom: sheetExpanded ? 'calc(70vh + 8px)' : '138px' }}
+        style={{ bottom: locateBtnBottom }}
         onClick={() => {
           if (!gMapRef.current) return;
           if (callerLocation) {
@@ -316,6 +346,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
 
       {/* Draggable bottom sheet */}
       <div
+        ref={sheetRef}
         className={`conf-bottom ${sheetExpanded ? 'expanded' : 'collapsed'}`}
         onTouchStart={handleDragStart}
         onTouchEnd={handleDragEnd}
