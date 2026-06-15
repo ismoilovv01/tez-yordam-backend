@@ -433,6 +433,12 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
     }
   };
 
+  // ── Immediately redraw driver icon when status changes (on_the_way ↔ other) ──
+  useEffect(() => {
+    if (!locationRef.current || !mapReady) return;
+    updateDriverMarker(locationRef.current, headingRef.current);
+  }, [activeCall?.status, mapReady]);
+
   // ── Active call marker + route ────────────────────────────────────
   useEffect(() => {
     if (!gMapRef.current || !window.google) return;
