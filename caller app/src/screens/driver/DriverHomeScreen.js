@@ -670,9 +670,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
         )}
 
         <div className="dh-right-buttons">
-          {!isNavigating && (
-            <button className="dh-toggle-btn" onClick={toggle3D}>{is3D ? '2D' : '3D'}</button>
-          )}
+          <button className="dh-toggle-btn" onClick={toggle3D}>{is3D ? '2D' : '3D'}</button>
           <button className="dh-locate-btn" onClick={handleReCenter}>📍</button>
         </div>
 

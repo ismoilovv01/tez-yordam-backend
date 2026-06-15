@@ -84,6 +84,7 @@ const pool = new Pool({
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS login_code VARCHAR(20)");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS driver_user_id INTEGER");
     await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS plate_region VARCHAR(10)");
+    await pool.query("ALTER TABLE ambulances ADD COLUMN IF NOT EXISTS heading NUMERIC(6,2) DEFAULT 0");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS blocked BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(100)");
     await pool.query("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(100)");
@@ -593,7 +594,7 @@ app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
   try {
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const result = await pool.query(
-      `SELECT a.id, a.unit_number, a.driver_name, a.driver_phone, a.status, a.latitude, a.longitude, a.last_location_update,
+      `SELECT a.id, a.unit_number, a.driver_name, a.driver_phone, a.status, a.latitude, a.longitude, a.last_location_update, a.heading,
               e.id AS emergency_id, e.latitude AS dest_lat, e.longitude AS dest_lng,
               e.status AS emergency_status, u.first_name AS caller_name, u.phone AS caller_phone
        FROM ambulances a
@@ -776,14 +777,14 @@ async function relinkAmbulanceIfNeeded(userId) {
 
 app.patch('/api/driver/location', authenticateToken, async (req, res) => {
   try {
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, heading } = req.body;
     if (!latitude || !longitude) return res.status(400).json({ error: 'Coordinates required' });
     if (!validateCoordinates(latitude, longitude)) return res.status(400).json({ error: 'Invalid coordinates' });
     const ambId = await relinkAmbulanceIfNeeded(req.userId);
     if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     await pool.query(
-      'UPDATE ambulances SET latitude = $1, longitude = $2, last_location_update = NOW() WHERE id = $3',
-      [latitude, longitude, ambId]
+      'UPDATE ambulances SET latitude = $1, longitude = $2, last_location_update = NOW(), heading = COALESCE($4, heading) WHERE id = $3',
+      [latitude, longitude, ambId, (heading !== undefined && heading !== null) ? heading : null]
     );
     res.json({ success: true });
   } catch (err) {

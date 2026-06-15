@@ -108,9 +108,27 @@ function DashboardScreen({ token, user, onLogout }) {
   const gMapRef = useRef(null);
   const mapInitRef = useRef(false);
   const ambulanceMarkersRef = useRef({});
+  const ambulancePrevPosRef = useRef({}); // {id: {lat, lng}} for smooth animation
+  const animFramesRef = useRef({});       // {id: rafId}
+  const ambulanceImgDataRef = useRef(null); // preloaded PNG data URL
   const driverRouteRendererRef = useRef(null);
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);
+
+  // Preload ambulance-top.png as data URL once so we can embed it in rotated SVG
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 52; canvas.height = 52;
+        canvas.getContext('2d').drawImage(img, 0, 0, 52, 52);
+        ambulanceImgDataRef.current = canvas.toDataURL('image/png');
+      } catch {}
+    };
+    img.src = '/ambulance-top.png';
+  }, []);
 
   // Load Google Maps
   useEffect(() => {
@@ -150,7 +168,7 @@ function DashboardScreen({ token, user, onLogout }) {
     fetchAll();
     fetchDrivers();
 
-    const interval = setInterval(() => { fetchAll(); fetchDrivers(); }, 5000);
+    const interval = setInterval(() => { fetchAll(); fetchDrivers(); }, 2000);
 
     const socket = io(API_URL, {
       transports: ['websocket', 'polling'],
@@ -298,38 +316,71 @@ function DashboardScreen({ token, user, onLogout }) {
 
     const visibleIds = new Set(visible.map(a => String(a.id)));
 
+    // Remove markers no longer visible
     Object.keys(ambulanceMarkersRef.current).forEach((id) => {
-      ambulanceMarkersRef.current[id].setMap(null);
-      delete ambulanceMarkersRef.current[id];
+      if (!visibleIds.has(id)) {
+        ambulanceMarkersRef.current[id].setMap(null);
+        delete ambulanceMarkersRef.current[id];
+        if (animFramesRef.current[id]) { cancelAnimationFrame(animFramesRef.current[id]); delete animFramesRef.current[id]; }
+      }
     });
 
-    visible.forEach((amb) => {
-      const color = AMB_STATUS_COLOR[amb.status] || '#2980b9';
-      const pos = { lat: parseFloat(amb.latitude), lng: parseFloat(amb.longitude) };
-      const icon = {
-        url: '/ambulance-top.png',
-        scaledSize: new window.google.maps.Size(52, 52),
-        anchor: new window.google.maps.Point(26, 26),
+    const makeIcon = (heading) => {
+      const h = ((heading || 0) % 360 + 360) % 360;
+      if (ambulanceImgDataRef.current) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="52" height="52" viewBox="0 0 52 52">
+          <image href="${ambulanceImgDataRef.current}" x="0" y="0" width="52" height="52" transform="rotate(${h},26,26)"/>
+        </svg>`;
+        return {
+          url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+          scaledSize: new window.google.maps.Size(52, 52),
+          anchor: new window.google.maps.Point(26, 26),
+        };
+      }
+      return { url: '/ambulance-top.png', scaledSize: new window.google.maps.Size(52, 52), anchor: new window.google.maps.Point(26, 26) };
+    };
+
+    const animateTo = (id, marker, toPos, durationMs = 1800) => {
+      if (animFramesRef.current[id]) cancelAnimationFrame(animFramesRef.current[id]);
+      const prev = ambulancePrevPosRef.current[id];
+      if (!prev) { marker.setPosition(toPos); ambulancePrevPosRef.current[id] = toPos; return; }
+      const start = Date.now();
+      const tick = () => {
+        const t = Math.min((Date.now() - start) / durationMs, 1);
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+        marker.setPosition({ lat: prev.lat + (toPos.lat - prev.lat) * ease, lng: prev.lng + (toPos.lng - prev.lng) * ease });
+        if (t < 1) animFramesRef.current[id] = requestAnimationFrame(tick);
+        else ambulancePrevPosRef.current[id] = toPos;
       };
+      animFramesRef.current[id] = requestAnimationFrame(tick);
+    };
 
-      const marker = new window.google.maps.Marker({
-        position: pos,
-        map: gMapRef.current,
-        title: `${amb.unit_number} — ${amb.driver_name || ''}`,
-        icon,
-        zIndex: 999,
-      });
+    visible.forEach((amb) => {
+      const id = String(amb.id);
+      const pos = { lat: parseFloat(amb.latitude), lng: parseFloat(amb.longitude) };
+      const icon = makeIcon(amb.heading);
 
-      marker.addListener('click', () => {
-        const activeEmergency = allEmergencies.find(e =>
-          e.assigned_ambulance_id === amb.id &&
-          ['assigned', 'on_the_way', 'arrived'].includes(e.status)
-        );
-        setSelectedMapDriver({ amb, emergency: activeEmergency || null });
-        gMapRef.current.panTo(pos);
-      });
-
-      ambulanceMarkersRef.current[String(amb.id)] = marker;
+      if (ambulanceMarkersRef.current[id]) {
+        // Update existing marker — animate position + refresh icon for heading
+        ambulanceMarkersRef.current[id].setIcon(icon);
+        animateTo(id, ambulanceMarkersRef.current[id], pos);
+      } else {
+        const marker = new window.google.maps.Marker({
+          position: pos, map: gMapRef.current,
+          title: `${amb.unit_number} — ${amb.driver_name || ''}`,
+          icon, zIndex: 999,
+        });
+        marker.addListener('click', () => {
+          const activeEmergency = allEmergencies.find(e =>
+            e.assigned_ambulance_id === amb.id &&
+            ['assigned', 'on_the_way', 'arrived'].includes(e.status)
+          );
+          setSelectedMapDriver({ amb, emergency: activeEmergency || null });
+          gMapRef.current.panTo(pos);
+        });
+        ambulanceMarkersRef.current[id] = marker;
+        ambulancePrevPosRef.current[id] = pos;
+      }
     });
   }, [ambulances, mapFilter, allEmergencies, mapReady]);
 

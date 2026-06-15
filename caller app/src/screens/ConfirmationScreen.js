@@ -58,6 +58,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const cancelShownRef        = useRef(false);
   const mapFittedRef          = useRef(false); // only fit bounds once
   const sheetRef              = useRef(null);
+  const animFrameRef          = useRef(null);
   const [locateBtnBottom, setLocateBtnBottom] = useState(138);
 
   // drag state
@@ -82,6 +83,10 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     clearInterval(pollRef.current);
     localStorage.removeItem('last_emergency');
     localStorage.removeItem('caller_location');
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
     setCancelledBy(by);
     setShowCancelScreen(true);
     let count = 5;
@@ -165,7 +170,12 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         const ambLat = parseFloat(data.amb_lat);
         const ambLng = parseFloat(data.amb_lng);
         setAmbulanceLocation({ lat: ambLat, lng: ambLng });
-        if (data.status === 'on_the_way') fetchEta(ambLat, ambLng);
+        if (data.status === 'on_the_way') {
+          fetchEta(ambLat, ambLng);
+        } else if (directionsRendererRef.current) {
+          directionsRendererRef.current.setMap(null);
+          directionsRendererRef.current = null;
+        }
       }
     } catch {}
   };
@@ -173,7 +183,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   useEffect(() => {
     fetchStatus();
     pollRef.current = setInterval(fetchStatus, 1000);
-    return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); };
+    return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [emergencyId, userToken]);
 
   // Track sheet top position so 📍 button always sits 8px above it
@@ -235,12 +245,30 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     }
   };
 
+  // ── Smooth ambulance marker animation ─────────────────────────
+  const animateMarkerTo = (marker, toPos, durationMs = 900) => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    const from = marker.getPosition();
+    if (!from) { marker.setPosition(toPos); return; }
+    const startLat = from.lat(), startLng = from.lng();
+    const start = Date.now();
+    const tick = () => {
+      const t = Math.min((Date.now() - start) / durationMs, 1);
+      const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; // ease-in-out
+      marker.setPosition({
+        lat: startLat + (toPos.lat - startLat) * ease,
+        lng: startLng + (toPos.lng - startLng) * ease,
+      });
+      if (t < 1) animFrameRef.current = requestAnimationFrame(tick);
+    };
+    animFrameRef.current = requestAnimationFrame(tick);
+  };
+
   // ── Update ambulance marker — NO map snapping after first fit ───
   useEffect(() => {
     if (!gMapRef.current || !window.google || !ambulanceLocation) return;
     if (ambulanceMarkRef.current) {
-      ambulanceMarkRef.current.setPosition(ambulanceLocation);
-      // DO NOT call fitBounds again — user can freely pan
+      animateMarkerTo(ambulanceMarkRef.current, ambulanceLocation, 900);
     } else {
       const icon = {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
