@@ -85,7 +85,7 @@ function DashboardScreen({ token, onLogout }) {
   useEffect(() => {
     if (!gMapRef.current || !window.google) return;
     const existingIds = new Set(Object.keys(unitMarkersRef.current));
-    const oneMinAgo = new Date(Date.now() - 60 * 1000);
+    const oneMinAgo = new Date(Date.now() - 10 * 1000);
     units.forEach((unit) => {
       if (!unit.latitude || !unit.longitude) return;
       if (!unit.last_location_update || new Date(unit.last_location_update) <= oneMinAgo) return;
@@ -164,7 +164,7 @@ function DashboardScreen({ token, onLogout }) {
             <h2>Ekipaj tayinlash #{selectedEmergency.id}</h2>
             <div className="ambulance-list">
               {(() => {
-                const oneMinAgo = new Date(Date.now() - 60 * 1000);
+                const oneMinAgo = new Date(Date.now() - 10 * 1000);
                 const active = units.filter(u => u.status === 'available' && u.last_location_update && new Date(u.last_location_update) > oneMinAgo);
                 if (active.length === 0) return <p>Faol ekipaj mavjud emas</p>;
                 return active.map((unit) => (
