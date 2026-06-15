@@ -482,20 +482,17 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
 
     if (!showRoute) return;
 
+    let stale = false;
+
     directionsServiceRef.current.route({
       origin: { lat: driverLocation.latitude, lng: driverLocation.longitude },
       destination: { lat: parseFloat(activeCall.latitude), lng: parseFloat(activeCall.longitude) },
       travelMode: window.google.maps.TravelMode.DRIVING,
     }, (result, status) => {
-      if (status !== 'OK') return;
+      if (stale || status !== 'OK') return;
       const leg = result.routes[0].legs[0];
       setRouteInfo({ distance: leg.distance.text, duration: leg.duration.text });
 
-      // Draw route as a plain Polyline instead of using DirectionsRenderer —
-      // DirectionsRenderer.setDirections() calls fitBounds() on the first
-      // render regardless of preserveViewport, which zooms the camera out to
-      // show the entire route (even 900+ km routes). A Polyline is drawn
-      // without any camera movement.
       const path = window.google.maps.geometry
         ? window.google.maps.geometry.encoding.decodePath(result.routes[0].overview_polyline)
         : result.routes[0].legs.flatMap(l => l.steps.flatMap(s => [s.start_location, s.end_location]));
@@ -509,6 +506,14 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
       });
       directionsRendererRef.current = polyline;
     });
+
+    return () => {
+      stale = true;
+      if (directionsRendererRef.current) {
+        directionsRendererRef.current.setMap(null);
+        directionsRendererRef.current = null;
+      }
+    };
   }, [activeCall?.status, driverLocation, isNavigating]);
 
   // ── Action API calls ──────────────────────────────────────────────
