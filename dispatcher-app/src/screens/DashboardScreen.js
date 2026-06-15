@@ -768,7 +768,7 @@ function DashboardScreen({ token, user, onLogout }) {
                   gMapRef.current.fitBounds(bounds, 60);
                 }
               }}
-              style={{ position:'absolute', bottom:120, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
+              style={{ position:'absolute', bottom:16, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
               title="Haydovchilarni ko'rsatish"
             >📍</button>
 

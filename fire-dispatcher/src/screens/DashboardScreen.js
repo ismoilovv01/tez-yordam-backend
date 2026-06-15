@@ -235,7 +235,7 @@ function DashboardScreen({ token, onLogout }) {
               if (active.length === 1) { gMapRef.current.panTo({ lat: parseFloat(active[0].latitude), lng: parseFloat(active[0].longitude) }); gMapRef.current.setZoom(15); }
               else { const b = new window.google.maps.LatLngBounds(); active.forEach(u => b.extend({ lat: parseFloat(u.latitude), lng: parseFloat(u.longitude) })); gMapRef.current.fitBounds(b, 60); }
             }}
-            style={{ position:'absolute', bottom:120, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
+            style={{ position:'absolute', bottom:16, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
             title="Ekipajlarni ko'rsatish"
           >📍</button>
           <div className="map-legend">
