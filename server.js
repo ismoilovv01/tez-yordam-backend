@@ -455,16 +455,19 @@ app.post('/api/emergencies', authenticateToken, async (req, res) => {
 app.get('/api/emergencies', authenticateToken, checkRole, async (req, res) => {
   try {
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
-    if (!req.dispatchCenterId) return res.status(403).json({ error: 'Dispatcher not assigned to a center' });
     const { status } = req.query;
     let query = `SELECT e.*, a.unit_number, a.driver_name, a.driver_phone,
                    u.phone as user_phone, u.first_name, u.last_name
                    FROM emergencies e
                    LEFT JOIN ambulances a ON e.assigned_ambulance_id = a.id
                    LEFT JOIN users u ON e.user_id = u.id
-                   WHERE e.dispatch_center_id = $1`;
-    const params = [req.dispatchCenterId];
-    if (status) { query += ' AND e.status = $2'; params.push(status); }
+                   WHERE 1=1`;
+    const params = [];
+    if (req.dispatchCenterId) {
+      query += ` AND e.dispatch_center_id = $${params.length + 1}`;
+      params.push(req.dispatchCenterId);
+    }
+    if (status) { query += ` AND e.status = $${params.length + 1}`; params.push(status); }
     query += ' ORDER BY e.created_at DESC';
     const result = await pool.query(query, params);
     res.json(result.rows);
@@ -524,7 +527,7 @@ app.patch('/api/emergencies/:id/confirm', authenticateToken, checkRole, async (r
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
     const e = await pool.query('SELECT dispatch_center_id FROM emergencies WHERE id = $1', [req.params.id]);
     if (!e.rows.length) return res.status(404).json({ error: 'Not found' });
-    if (e.rows[0].dispatch_center_id !== req.dispatchCenterId) return res.status(403).json({ error: 'No permission' });
+    if (req.dispatchCenterId && e.rows[0].dispatch_center_id !== req.dispatchCenterId) return res.status(403).json({ error: 'No permission' });
     const result = await pool.query(
       'UPDATE emergencies SET status = $1, dispatcher_id = $2, confirmed_at = NOW() WHERE id = $3 RETURNING *',
       ['confirmed', req.userId, req.params.id]
@@ -601,8 +604,8 @@ app.get('/api/ambulances', authenticateToken, checkRole, async (req, res) => {
        FROM ambulances a
        LEFT JOIN emergencies e ON e.assigned_ambulance_id = a.id AND e.status NOT IN ('completed','cancelled','rejected')
        LEFT JOIN users u ON u.id = e.user_id
-       WHERE a.dispatch_center_id = $1 ORDER BY a.unit_number`,
-      [req.dispatchCenterId]
+       WHERE ($1::int IS NULL OR a.dispatch_center_id = $1) ORDER BY a.unit_number`,
+      [req.dispatchCenterId || null]
     );
     res.json(result.rows);
   } catch (err) {
