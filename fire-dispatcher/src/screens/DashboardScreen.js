@@ -32,7 +32,7 @@ function DashboardScreen({ token, onLogout }) {
       const map = new window.google.maps.Map(mapRef.current, {
         center: { lat: 41.2995, lng: 69.2401 },
         zoom: 12,
-        disableDefaultUI: true, zoomControl: true,
+        disableDefaultUI: true,
       });
       gMapRef.current = map;
     };

@@ -152,7 +152,6 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
         center: { lat: 41.2995, lng: 69.2401 },
         zoom: 11,
         disableDefaultUI: true,
-        zoomControl: true,
       });
       loadAmbulances();
     };

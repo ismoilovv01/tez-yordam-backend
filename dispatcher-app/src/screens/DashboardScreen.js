@@ -148,7 +148,6 @@ function DashboardScreen({ token, user, onLogout }) {
         center: { lat: 41.5534, lng: 60.6166 },
         zoom: 12,
         disableDefaultUI: true,
-        zoomControl: true,
       });
       gMapRef.current = map;
       setMapReady(true);
