@@ -32,32 +32,50 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
     }
   }, [serviceType]);
 
+  // Load Google Maps script immediately — don't wait for GPS
   useEffect(() => {
+    const FALLBACK = { lat: 41.5534, lng: 60.6166 };
+
+    const tryInit = (loc) => {
+      if (window.google) { initMap(loc.lat, loc.lng); return; }
+      if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+        const wait = setInterval(() => { if (window.google) { clearInterval(wait); initMap(loc.lat, loc.lng); } }, 50);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz`;
+      script.async = true;
+      script.onload = () => initMap(loc.lat, loc.lng);
+      document.head.appendChild(script);
+    };
+
+    // Start map immediately with fallback, then snap to real GPS
+    tryInit(FALLBACK);
+    setMarkerLocation(FALLBACK);
+
     if (!navigator.geolocation) return;
+    // Fast low-accuracy fix first (< 1s), then refine with high accuracy
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setMarkerLocation(loc);
-        if (window.google && !mapInitRef.current) initMap(loc.lat, loc.lng);
+        if (gMapRef.current) { gMapRef.current.panTo(loc); }
+        if (markerRef.current) markerRef.current.setPosition(loc);
       },
-      () => {
-        const fallback = { lat: 41.5534, lng: 60.6166 };
-        setMarkerLocation(fallback);
-        if (window.google && !mapInitRef.current) initMap(fallback.lat, fallback.lng);
-      }
+      () => {},
+      { enableHighAccuracy: false, timeout: 3000, maximumAge: 10000 }
+    );
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setMarkerLocation(loc);
+        if (gMapRef.current) { gMapRef.current.panTo(loc); }
+        if (markerRef.current) markerRef.current.setPosition(loc);
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 }
     );
   }, []);
-
-  useEffect(() => {
-    if (!markerLocation) return;
-    if (window.google) { if (!mapInitRef.current) initMap(markerLocation.lat, markerLocation.lng); return; }
-    if (document.querySelector('script[src*="maps.googleapis.com"]')) return;
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_KEY}&language=uz`;
-    script.async = true;
-    script.onload = () => initMap(markerLocation.lat, markerLocation.lng);
-    document.head.appendChild(script);
-  }, [markerLocation]);
 
 
   const initMap = (lat, lng) => {
@@ -70,19 +88,19 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
     });
     gMapRef.current = map;
 
-    const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="56" viewBox="0 0 40 56">
-      <circle cx="20" cy="20" r="18" fill="#e74c3c" stroke="#fff" stroke-width="3"/>
-      <circle cx="20" cy="20" r="7" fill="#fff"/>
-      <polygon points="20,56 10,34 30,34" fill="#e74c3c"/>
+    const pinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="38" viewBox="0 0 28 38">
+      <circle cx="14" cy="14" r="12" fill="#e74c3c" stroke="#fff" stroke-width="2.5"/>
+      <circle cx="14" cy="14" r="5" fill="#fff"/>
+      <polygon points="14,38 7,24 21,24" fill="#e74c3c"/>
     </svg>`;
 
-    // Draggable destination pin (where the emergency will be reported)
+    // Draggable destination pin
     const marker = new window.google.maps.Marker({
       position: { lat, lng }, map, draggable: true,
       icon: {
         url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(pinSvg),
-        scaledSize: new window.google.maps.Size(40, 56),
-        anchor: new window.google.maps.Point(20, 56),
+        scaledSize: new window.google.maps.Size(28, 38),
+        anchor: new window.google.maps.Point(14, 38),
       },
     });
     markerRef.current = marker;
@@ -99,12 +117,15 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, load
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
+    const snap = (pos) => {
       const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setMarkerLocation(loc);
-      if (gMapRef.current) { gMapRef.current.setCenter(loc); gMapRef.current.setZoom(16); }
+      if (gMapRef.current) { gMapRef.current.panTo(loc); gMapRef.current.setZoom(16); }
       if (markerRef.current) markerRef.current.setPosition(loc);
-    });
+    };
+    // Fast result first (cached/network), then high-accuracy refinement
+    navigator.geolocation.getCurrentPosition(snap, () => {}, { enableHighAccuracy: false, timeout: 2000, maximumAge: 5000 });
+    navigator.geolocation.getCurrentPosition(snap, () => {}, { enableHighAccuracy: true, timeout: 8000 });
   };
 
   const handleSendEmergency = async () => {

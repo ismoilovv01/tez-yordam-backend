@@ -43,9 +43,17 @@ const SERVICE_UZ = {
 
 const AMB_STATUS_COLOR = {
   available: '#27ae60',
+  assigned: '#2980b9',
   on_the_way: '#f39c12',
   busy: '#e74c3c',
   arrived: '#8e44ad',
+};
+const AMB_STATUS_LABEL = {
+  available: '🟢 Tayyor',
+  assigned: '🔵 Qabul qilindi',
+  on_the_way: "🟡 Yo'lda",
+  arrived: '🟣 Yetib keldi',
+  busy: '🔴 Band',
 };
 
 const UZ_REGIONS = {
@@ -92,12 +100,14 @@ function DashboardScreen({ token, user, onLogout }) {
   const [mapFilter, setMapFilter] = useState('all');
   const [selectedMapDriver, setSelectedMapDriver] = useState(null);
   const [alertCount, setAlertCount] = useState(0);
+  const [blocked, setBlocked] = useState(false);
   const prevNewIdsRef = useRef(new Set());
 
   const mapRef = useRef(null);
   const gMapRef = useRef(null);
   const mapInitRef = useRef(false);
   const ambulanceMarkersRef = useRef({});
+  const driverRouteRendererRef = useRef(null);
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);
 
@@ -137,7 +147,7 @@ function DashboardScreen({ token, user, onLogout }) {
     fetchAll();
     fetchDrivers();
 
-    const interval = setInterval(fetchAll, 5000);
+    const interval = setInterval(() => { fetchAll(); fetchDrivers(); }, 5000);
 
     const socket = io(API_URL, {
       transports: ['websocket', 'polling'],
@@ -244,7 +254,12 @@ function DashboardScreen({ token, user, onLogout }) {
         }
       }
       prevNewIdsRef.current = currentNewIds;
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      if ([401, 403, 404].includes(err.response?.status)) {
+        setBlocked(true);
+      }
+      console.error(err);
+    }
     setLoading(false);
   };
 
@@ -272,6 +287,7 @@ function DashboardScreen({ token, user, onLogout }) {
       if (new Date(amb.last_location_update) <= tenMinutesAgo) return false;
       if (mapFilter === 'all') return true;
       if (mapFilter === 'available') return amb.status === 'available';
+      if (mapFilter === 'assigned') return amb.status === 'assigned';
       if (mapFilter === 'on_the_way') return amb.status === 'on_the_way' || amb.status === 'busy';
       if (mapFilter === 'arrived') return amb.status === 'arrived';
       return true;
@@ -288,15 +304,9 @@ function DashboardScreen({ token, user, onLogout }) {
       const color = AMB_STATUS_COLOR[amb.status] || '#2980b9';
       const pos = { lat: parseFloat(amb.latitude), lng: parseFloat(amb.longitude) };
       const icon = {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="44" height="52" viewBox="0 0 44 52">
-            <ellipse cx="22" cy="48" rx="10" ry="4" fill="rgba(0,0,0,0.18)"/>
-            <rect x="2" y="2" width="40" height="40" rx="10" fill="${color}" stroke="white" stroke-width="2.5"/>
-            <text y="30" x="22" text-anchor="middle" font-size="24">🚑</text>
-          </svg>
-        `),
-        scaledSize: new window.google.maps.Size(44, 52),
-        anchor: new window.google.maps.Point(22, 48),
+        url: '/ambulance-top.png',
+        scaledSize: new window.google.maps.Size(52, 52),
+        anchor: new window.google.maps.Point(26, 26),
       };
 
       const marker = new window.google.maps.Marker({
@@ -319,6 +329,46 @@ function DashboardScreen({ token, user, onLogout }) {
       ambulanceMarkersRef.current[String(amb.id)] = marker;
     });
   }, [ambulances, mapFilter, allEmergencies]);
+
+  // Draw route line only for selected driver (on click), clear when deselected
+  useEffect(() => {
+    const map = gMapRef.current;
+    if (driverRouteRendererRef.current) {
+      driverRouteRendererRef.current.setMap(null);
+      driverRouteRendererRef.current = null;
+    }
+    if (!map || !window.google || !selectedMapDriver) return;
+    const a = selectedMapDriver.amb;
+    if ((a.status === 'on_the_way' || a.status === 'assigned') && a.dest_lat && a.dest_lng && a.latitude && a.longitude) {
+      const dr = new window.google.maps.DirectionsRenderer({
+        map,
+        suppressMarkers: true,
+        polylineOptions: { strokeColor: '#2980b9', strokeWeight: 4, strokeOpacity: 0.75 },
+      });
+      driverRouteRendererRef.current = dr;
+      new window.google.maps.DirectionsService().route({
+        origin: { lat: parseFloat(a.latitude), lng: parseFloat(a.longitude) },
+        destination: { lat: parseFloat(a.dest_lat), lng: parseFloat(a.dest_lng) },
+        travelMode: window.google.maps.TravelMode.DRIVING,
+      }, (result, status) => {
+        if (status === 'OK') dr.setDirections(result);
+      });
+    }
+  }, [selectedMapDriver]);
+
+  // Live-sync selected driver panel with latest ambulances data
+  useEffect(() => {
+    if (!selectedMapDriver) return;
+    const updated = ambulances.find(a => a.id === selectedMapDriver.amb.id);
+    if (updated) {
+      const activeEmergency = allEmergencies.find(e =>
+        e.assigned_ambulance_id === updated.id &&
+        ['assigned', 'on_the_way', 'arrived'].includes(e.status)
+      );
+      setSelectedMapDriver({ amb: updated, emergency: activeEmergency || null });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ambulances]);
 
   const handleAssignAmbulance = async (emergencyId, ambulanceId) => {
     try {
@@ -356,6 +406,15 @@ function DashboardScreen({ token, user, onLogout }) {
   const openCoords = (lat, lng) => window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
   const countByStatus = (status) => allEmergencies.filter(e => e.status === status).length;
   const getAssignedAmbulance = (ambulanceId) => ambulances.find(a => a.id === ambulanceId);
+
+  if (blocked) return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#fff', gap: 20, padding: 32, textAlign: 'center' }}>
+      <div style={{ fontSize: 72 }}>🚫</div>
+      <h2 style={{ fontSize: 24, fontWeight: 800, margin: 0 }}>Kirish bloklandi</h2>
+      <p style={{ color: '#94a3b8', fontSize: 15, maxWidth: 320 }}>Sizning akkauntingiz markaz admin tomonidan bloklangan yoki o'chirilgan. Iltimos, admin bilan bog'laning.</p>
+      <button onClick={onLogout} style={{ background: '#e74c3c', border: 'none', color: '#fff', padding: '13px 32px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Chiqish</button>
+    </div>
+  );
 
   return (
     <div className="dashboard-container">
@@ -589,10 +648,11 @@ function DashboardScreen({ token, user, onLogout }) {
           {/* Map driver filter */}
           <div style={{display:'flex',gap:6,padding:'8px 10px',background:'#fff',borderBottom:'1px solid #e3f2fd',flexWrap:'wrap'}}>
             {[
-              { key: 'all', label: 'Barchasi', color: '#2980b9' },
-              { key: 'available', label: '🟢 Tayyor', color: '#27ae60' },
-              { key: 'on_the_way', label: '🟡 Yo\'lda', color: '#f39c12' },
-              { key: 'arrived', label: '🟣 Yetib keldi', color: '#8e44ad' },
+              { key: 'all',       label: 'Barchasi',          color: '#2980b9' },
+              { key: 'available', label: '🟢 Tayyor',          color: '#27ae60' },
+              { key: 'assigned',  label: '🔵 Qabul qilindi',   color: '#2980b9' },
+              { key: 'on_the_way',label: "🟡 Yo'lda",          color: '#f39c12' },
+              { key: 'arrived',   label: '🟣 Yetib keldi',     color: '#8e44ad' },
             ].map(({ key, label, color }) => (
               <button key={key} onClick={() => setMapFilter(key)}
                 style={{
@@ -602,12 +662,15 @@ function DashboardScreen({ token, user, onLogout }) {
                   color: mapFilter === key ? '#fff' : '#555',
                   transition: 'all 0.15s',
                 }}>
-                {label} ({
-                  key === 'all' ? ambulances.filter(a => a.latitude && a.longitude).length :
-                  key === 'available' ? ambulances.filter(a => a.status === 'available').length :
-                  key === 'on_the_way' ? ambulances.filter(a => a.status === 'on_the_way' || a.status === 'busy').length :
-                  ambulances.filter(a => a.status === 'arrived').length
-                })
+                {label} ({(() => {
+                  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+                  const onMap = ambulances.filter(a => a.latitude && a.longitude && a.last_location_update && new Date(a.last_location_update) > tenMinutesAgo);
+                  if (key === 'all') return onMap.length;
+                  if (key === 'available') return onMap.filter(a => a.status === 'available').length;
+                  if (key === 'assigned') return onMap.filter(a => a.status === 'assigned').length;
+                  if (key === 'on_the_way') return onMap.filter(a => a.status === 'on_the_way' || a.status === 'busy').length;
+                  return onMap.filter(a => a.status === 'arrived').length;
+                })()})
               </button>
             ))}
             <span style={{marginLeft:'auto',fontSize:11,color:'#aaa',alignSelf:'center'}}>
@@ -650,11 +713,7 @@ function DashboardScreen({ token, user, onLogout }) {
                   background: AMB_STATUS_COLOR[selectedMapDriver.amb.status] || '#2980b9',
                   color:'#fff',
                 }}>
-                  {selectedMapDriver.amb.status === 'available' ? '🟢 Tayyor' :
-                   selectedMapDriver.amb.status === 'on_the_way' ? "🟡 Yo'lda" :
-                   selectedMapDriver.amb.status === 'arrived' ? '🟣 Yetib keldi' :
-                   selectedMapDriver.amb.status === 'busy' ? '🔴 Band' :
-                   selectedMapDriver.amb.status || '—'}
+                  {AMB_STATUS_LABEL[selectedMapDriver.amb.status] || selectedMapDriver.amb.status || '—'}
                 </span>
               </div>
             </div>
