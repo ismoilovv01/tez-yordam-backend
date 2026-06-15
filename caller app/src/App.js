@@ -27,8 +27,12 @@ function App() {
   // Caller auth state
   const [userToken, setUserToken] = useState(localStorage.getItem('userToken'));
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user') || 'null'));
-  const [emergencyId, setEmergencyId] = useState(null);
-  const [callerLocation, setCallerLocation] = useState(null);
+  const [emergencyId, setEmergencyId] = useState(() => {
+    try { const e = JSON.parse(localStorage.getItem('last_emergency') || 'null'); return e?.id || null; } catch { return null; }
+  });
+  const [callerLocation, setCallerLocation] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('caller_location') || 'null'); } catch { return null; }
+  });
 
   // Driver auth state
   const [driverToken, setDriverToken] = useState(localStorage.getItem('driver_token'));
@@ -64,7 +68,15 @@ function App() {
       if (localStorage.getItem('driver_token')) {
         navigate('driver-home');
       } else if (localStorage.getItem('userToken')) {
-        navigate('home');
+        // If there's an active emergency cached, go straight to confirmation
+        try {
+          const em = JSON.parse(localStorage.getItem('last_emergency') || 'null');
+          if (em && em.id && !['completed', 'cancelled', 'rejected'].includes(em.status)) {
+            navigate('confirmation');
+          } else {
+            navigate('home');
+          }
+        } catch { navigate('home'); }
       } else {
         navigate('role');
       }
@@ -103,7 +115,11 @@ function App() {
 
   const handleSendEmergency = (id, lat, lng) => {
     setEmergencyId(id);
-    if (lat && lng) setCallerLocation({ lat, lng });
+    if (lat && lng) {
+      const loc = { lat, lng };
+      setCallerLocation(loc);
+      localStorage.setItem('caller_location', JSON.stringify(loc));
+    }
     navigate('confirmation');
   };
 
@@ -113,9 +129,9 @@ function App() {
     const lat = parseFloat(emergency.latitude ?? emergency.lat);
     const lng = parseFloat(emergency.longitude ?? emergency.lng);
     if (!isNaN(lat) && !isNaN(lng)) {
-      setCallerLocation({ lat, lng });
-    } else {
-      setCallerLocation(null);
+      const loc = { lat, lng };
+      setCallerLocation(loc);
+      localStorage.setItem('caller_location', JSON.stringify(loc));
     }
     navigate('confirmation');
   };
@@ -126,6 +142,7 @@ function App() {
     localStorage.removeItem('userPhone');
     localStorage.removeItem('user');
     localStorage.removeItem('last_emergency');
+    localStorage.removeItem('caller_location');
     setUserToken(null);
     setUser(null);
     setEmergencyId(null);

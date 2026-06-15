@@ -62,8 +62,8 @@
 /* Locate-me button — always visible just above the bottom sheet */
 .locate-btn {
   position: fixed;
-  bottom: 138px;
   right: 12px;
+  transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   width: 44px; height: 44px;
   border-radius: 50%;
   background: #fff;

@@ -295,9 +295,10 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         )}
       </div>
 
-      {/* Locate-me button — fixed above bottom sheet */}
+      {/* Locate-me button — tracks sheet position */}
       <button
         className="locate-btn"
+        style={{ bottom: sheetExpanded ? 'calc(70vh + 8px)' : '138px' }}
         onClick={() => {
           if (!gMapRef.current) return;
           if (callerLocation) {
