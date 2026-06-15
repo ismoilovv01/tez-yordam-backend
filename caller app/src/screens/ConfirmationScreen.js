@@ -295,24 +295,6 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         )}
       </div>
 
-      {/* Locate-me button — floats just above the bottom sheet */}
-      <button
-        className={`locate-btn ${sheetExpanded ? 'locate-btn-expanded' : ''}`}
-        onClick={() => {
-          if (!gMapRef.current) return;
-          if (callerLocation) {
-            gMapRef.current.panTo(callerLocation);
-            gMapRef.current.setZoom(16);
-          } else if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(pos => {
-              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              gMapRef.current.panTo(loc);
-              gMapRef.current.setZoom(16);
-            });
-          }
-        }}
-      >📍</button>
-
       {/* Draggable bottom sheet */}
       <div
         className={`conf-bottom ${sheetExpanded ? 'expanded' : 'collapsed'}`}
@@ -321,6 +303,24 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         onMouseDown={handleDragStart}
         onMouseUp={handleDragEnd}
       >
+        {/* Locate-me button — anchored to top-right of sheet */}
+        <button
+          className="locate-btn"
+          onClick={() => {
+            if (!gMapRef.current) return;
+            if (callerLocation) {
+              gMapRef.current.panTo(callerLocation);
+              gMapRef.current.setZoom(16);
+            } else if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(pos => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                gMapRef.current.panTo(loc);
+                gMapRef.current.setZoom(16);
+              });
+            }
+          }}
+        >📍</button>
+
         {/* Drag handle */}
         <div className="sheet-handle" onClick={() => setSheetExpanded(!sheetExpanded)}>
           <div className="sheet-handle-bar" />

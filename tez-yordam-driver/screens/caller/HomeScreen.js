@@ -61,6 +61,12 @@ export default function CallerHomeScreen({ user, token, navigation }) {
   const { t, theme } = useLanguage();
   const insets = useSafeAreaInsets();
   const [lastEmergency, setLastEmergency] = useState(null);
+  // Load cached emergency instantly on mount so UI doesn't flicker
+  useEffect(() => {
+    AsyncStorage.getItem('last_emergency').then(v => {
+      if (v) { try { setLastEmergency(JSON.parse(v)); } catch {} }
+    });
+  }, []);
   const [dispatchCenters, setDispatchCenters] = useState([]);
   const [comingSoon, setComingSoon] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -143,7 +149,13 @@ export default function CallerHomeScreen({ user, token, navigation }) {
   const fetchLastEmergency = async () => {
     try {
       const res = await fetch(`${API_URL}/api/emergencies/my/last`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) setLastEmergency(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        const em = data && data.id ? data : null;
+        setLastEmergency(em);
+        if (em) AsyncStorage.setItem('last_emergency', JSON.stringify(em));
+        else AsyncStorage.removeItem('last_emergency');
+      }
     } catch {}
   };
 

@@ -48,7 +48,9 @@ function findNearestCenter(centers, serviceType, userLat, userLon) {
 }
 
 function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
-  const [lastEmergency, setLastEmergency] = useState(null);
+  const [lastEmergency, setLastEmergency] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('last_emergency') || 'null'); } catch { return null; }
+  });
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [comingSoonName, setComingSoonName] = useState('');
   const [dispatchCenters, setDispatchCenters] = useState([]);
@@ -130,7 +132,10 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
       });
       if (res.ok) {
         const data = await res.json();
-        setLastEmergency(data && data.id ? data : null);
+        const em = data && data.id ? data : null;
+        setLastEmergency(em);
+        if (em) localStorage.setItem('last_emergency', JSON.stringify(em));
+        else localStorage.removeItem('last_emergency');
       }
     } catch {}
   };

@@ -125,6 +125,7 @@ function App() {
     localStorage.removeItem('userId');
     localStorage.removeItem('userPhone');
     localStorage.removeItem('user');
+    localStorage.removeItem('last_emergency');
     setUserToken(null);
     setUser(null);
     setEmergencyId(null);
