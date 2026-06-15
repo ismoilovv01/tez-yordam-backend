@@ -736,6 +736,8 @@ function DashboardScreen({ token, user, onLogout }) {
                 ✅ Hozirda bo'sh — yangi chaqiruvga tayyor
               </div>
             )}
+            </div>
+          )}
           </div>
         </div>
 
