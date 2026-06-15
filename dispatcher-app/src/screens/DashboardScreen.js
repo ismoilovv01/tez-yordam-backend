@@ -522,7 +522,7 @@ function DashboardScreen({ token, user, onLogout }) {
             <h2>Ambulans belgilash #{selectedEmergency.id}</h2>
             <div className="ambulance-list">
               {(() => {
-                const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+                const fiveMinAgo = new Date(Date.now() - 60 * 1000);
                 const activeAvailable = ambulances.filter(a =>
                   a.status === 'available' &&
                   a.last_location_update &&
