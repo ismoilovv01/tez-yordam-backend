@@ -59,6 +59,26 @@
   font-size: 11px; color: #fff; z-index: 30;
 }
 
+/* Locate-me button */
+.locate-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 138px; /* just above collapsed sheet (130px) */
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.35);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 30;
+  transition: bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.locate-btn.locate-btn-expanded {
+  bottom: calc(70vh + 8px);
+}
+
 /* Bottom sheet */
 .conf-bottom {
   position: absolute;

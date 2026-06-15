@@ -293,32 +293,25 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
             <span>🚑 Tez yordam{ambulanceInfo ? ` (${ambulanceInfo})` : ''}</span>
           </div>
         )}
-        <button
-          onClick={() => {
-            if (!gMapRef.current) return;
-            if (callerLocation) {
-              gMapRef.current.panTo(callerLocation);
-              gMapRef.current.setZoom(16);
-            } else if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(pos => {
-                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-                gMapRef.current.panTo(loc);
-                gMapRef.current.setZoom(16);
-              });
-            }
-          }}
-          style={{
-            position: 'absolute', bottom: 80, right: 12,
-            width: 44, height: 44, borderRadius: '50%',
-            background: '#fff', border: 'none',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
-            fontSize: 22, cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 999,
-          }}
-          title="Mening joyim"
-        >📍</button>
       </div>
+
+      {/* Locate-me button — floats just above the bottom sheet */}
+      <button
+        className={`locate-btn ${sheetExpanded ? 'locate-btn-expanded' : ''}`}
+        onClick={() => {
+          if (!gMapRef.current) return;
+          if (callerLocation) {
+            gMapRef.current.panTo(callerLocation);
+            gMapRef.current.setZoom(16);
+          } else if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              gMapRef.current.panTo(loc);
+              gMapRef.current.setZoom(16);
+            });
+          }
+        }}
+      >📍</button>
 
       {/* Draggable bottom sheet */}
       <div
