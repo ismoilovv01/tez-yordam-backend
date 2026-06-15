@@ -755,10 +755,6 @@ function DashboardScreen({ token, user, onLogout }) {
                   ? <a href={`tel:${selectedMapDriver.amb.driver_phone}`} style={{marginLeft:6,color:'#2980b9'}}>{selectedMapDriver.amb.driver_phone}</a>
                   : ' —'}
               </div>
-              <div style={{marginBottom:6}}><b>📍 Viloyat:</b> {selectedMapDriver.amb.plate_region
-                ? `${selectedMapDriver.amb.plate_region} — ${UZ_REGIONS[selectedMapDriver.amb.plate_region] || ''}`
-                : '—'}
-              </div>
               <div style={{display:'flex',alignItems:'center',gap:8}}>
                 <b>Holat:</b>
                 <span style={{

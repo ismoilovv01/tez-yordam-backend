@@ -577,10 +577,15 @@ app.patch('/api/emergencies/:id/assign-ambulance', authenticateToken, checkRole,
     const { ambulance_id } = req.body;
     if (!ambulance_id) return res.status(400).json({ error: 'Ambulance ID required' });
     if (!['dispatcher','center_admin'].includes(req.userType)) return res.status(403).json({ error: 'Only dispatchers' });
+    // Assign ambulance + move emergency to 'assigned' + mark ambulance as 'assigned'
     const result = await pool.query(
-      'UPDATE emergencies SET assigned_ambulance_id = $1 WHERE id = $2 RETURNING *',
-      [ambulance_id, req.params.id]
+      `UPDATE emergencies SET assigned_ambulance_id = $1, status = 'assigned', confirmed_at = COALESCE(confirmed_at, NOW()), dispatcher_id = COALESCE(dispatcher_id, $3)
+       WHERE id = $2 RETURNING *`,
+      [ambulance_id, req.params.id, req.userId]
     );
+    await pool.query("UPDATE ambulances SET status = 'assigned' WHERE id = $1", [ambulance_id]);
+    io.emit('emergency_updated', { id: req.params.id });
+    io.emit('ambulance_updated', { id: ambulance_id });
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
