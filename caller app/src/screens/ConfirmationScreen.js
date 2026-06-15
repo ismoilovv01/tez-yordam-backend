@@ -176,7 +176,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     const map = new window.google.maps.Map(mapRef.current, {
       center, zoom: 14,
       mapTypeControl: false, streetViewControl: false,
-      fullscreenControl: false, zoomControl: true,
+      fullscreenControl: false, zoomControl: false,
     });
     gMapRef.current = map;
     if (callerLocation) {
@@ -308,13 +308,13 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
             }
           }}
           style={{
-            position: 'absolute', bottom: 12, right: 12,
-            width: 42, height: 42, borderRadius: '50%',
+            position: 'absolute', bottom: 80, right: 12,
+            width: 44, height: 44, borderRadius: '50%',
             background: '#fff', border: 'none',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-            fontSize: 20, cursor: 'pointer',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+            fontSize: 22, cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 10,
+            zIndex: 999,
           }}
           title="Mening joyim"
         >📍</button>

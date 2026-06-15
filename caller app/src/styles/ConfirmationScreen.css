@@ -50,7 +50,7 @@
 .conf-id { background: rgba(0,0,0,0.25); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 20px; font-family: monospace; flex-shrink: 0; }
 
 /* Map */
-.conf-map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; }
+.conf-map-container { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; overflow: hidden; }
 .conf-map { width: 100%; height: 100%; }
 .conf-map-legend {
   position: absolute; bottom: 8px; left: 8px;
