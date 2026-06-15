@@ -160,10 +160,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       }
 
       if (data.unit_number) {
-        const plateLabel = data.plate_region
-          ? `${data.plate_region} ${data.unit_number}`
-          : data.unit_number;
-        setAmbulanceInfo(plateLabel);
+        setAmbulanceInfo(data.unit_number);
       }
 
       if (data.amb_lat && data.amb_lng) {

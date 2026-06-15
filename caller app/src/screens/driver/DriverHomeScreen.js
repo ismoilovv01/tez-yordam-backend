@@ -174,7 +174,8 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
   const moveCamera = (coords, heading, opts = {}) => {
     if (!gMapRef.current) return;
     const { pitch, zoom, instant = false, speed } = opts;
-    const targetTilt = pitch !== undefined ? pitch : (is3DRef.current ? 45 : 0);
+    // 2D mode always wins — even when navigation passes explicit pitch
+    const targetTilt = !is3DRef.current ? 0 : (pitch !== undefined ? pitch : 45);
     const targetZoom = zoom !== undefined ? zoom : speedToZoom(speed);
     const targetHeading = ((heading || 0) % 360 + 360) % 360;
 
@@ -420,10 +421,15 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
   };
 
   const toggle3D = () => {
-    const new3D = !is3D; setIs3D(new3D); is3DRef.current = new3D;
-    if (gMapRef.current) {
-      gMapRef.current.setTilt(new3D ? 45 : 0);
-      gMapRef.current.setHeading(new3D ? headingRef.current : 0);
+    const new3D = !is3D;
+    setIs3D(new3D);
+    is3DRef.current = new3D;
+    if (gMapRef.current && locationRef.current) {
+      const navigatingNow = activeCallRef.current?.status === 'on_the_way';
+      moveCamera(locationRef.current, headingRef.current, {
+        pitch: new3D ? (navigatingNow ? NAV_TILT : 35) : 0,
+        instant: true,
+      });
     }
   };
 
