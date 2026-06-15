@@ -59,10 +59,10 @@
   font-size: 11px; color: #fff; z-index: 30;
 }
 
-/* Locate-me button — sits above the sheet, anchored to its top-right corner */
+/* Locate-me button — always visible just above the bottom sheet */
 .locate-btn {
-  position: absolute;
-  top: -52px;
+  position: fixed;
+  bottom: 138px;
   right: 12px;
   width: 44px; height: 44px;
   border-radius: 50%;
@@ -72,7 +72,7 @@
   font-size: 22px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  z-index: 30;
+  z-index: 100;
 }
 
 /* Bottom sheet */
