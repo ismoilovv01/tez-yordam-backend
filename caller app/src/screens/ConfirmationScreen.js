@@ -61,6 +61,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const sheetRef              = useRef(null);
   const animFrameRef          = useRef(null);
   const [locateBtnBottom, setLocateBtnBottom] = useState(138);
+  const myGpsRef              = useRef(null); // cached GPS position
 
   // drag state
   const dragStartY   = useRef(null);
@@ -198,6 +199,17 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     const id = setInterval(update, 50);
     return () => clearInterval(id);
   }, [sheetExpanded]);
+
+  // ── Request GPS on mount so Telegram shows the permission dialog early ──
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+      () => {},
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   // ── Init map ───────────────────────────────────────────────────
   useEffect(() => {
@@ -376,25 +388,30 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         className="locate-btn"
         style={{ bottom: locateBtnBottom }}
         onClick={() => {
-          if (!gMapRef.current || !window.google || !navigator.geolocation) return;
-          navigator.geolocation.getCurrentPosition(
-            (gpsPos) => {
-              const here = { lat: gpsPos.coords.latitude, lng: gpsPos.coords.longitude };
-              if (ambulanceLocation) {
-                const bounds = new window.google.maps.LatLngBounds();
-                bounds.extend(here);
-                bounds.extend(ambulanceLocation);
-                gMapRef.current.fitBounds(bounds, { top: 100, right: 60, bottom: 200, left: 60 });
-                window.google.maps.event.addListenerOnce(gMapRef.current, 'idle', () => {
-                  if (gMapRef.current.getZoom() > 15) gMapRef.current.setZoom(15);
-                });
-              } else {
-                gMapRef.current.panTo(here);
-                gMapRef.current.setZoom(15);
-              }
-            },
-            () => alert("Joylashuvni aniqlab bo'lmadi")
-          );
+          if (!gMapRef.current || !window.google) return;
+          const panTo = (here) => {
+            if (ambulanceLocation) {
+              const bounds = new window.google.maps.LatLngBounds();
+              bounds.extend(here);
+              bounds.extend(ambulanceLocation);
+              gMapRef.current.fitBounds(bounds, { top: 100, right: 60, bottom: 200, left: 60 });
+              window.google.maps.event.addListenerOnce(gMapRef.current, 'idle', () => {
+                if (gMapRef.current.getZoom() > 15) gMapRef.current.setZoom(15);
+              });
+            } else {
+              gMapRef.current.panTo(here);
+              gMapRef.current.setZoom(15);
+            }
+          };
+          if (myGpsRef.current) {
+            panTo(myGpsRef.current);
+          } else if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              (p) => { const here = { lat: p.coords.latitude, lng: p.coords.longitude }; myGpsRef.current = here; panTo(here); },
+              () => alert("Joylashuvni aniqlab bo'lmadi"),
+              { enableHighAccuracy: true, timeout: 10000 }
+            );
+          }
         }}
       >📍</button>
 
