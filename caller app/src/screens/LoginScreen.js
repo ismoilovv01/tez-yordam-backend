@@ -260,12 +260,8 @@ function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
       <div className="login-form-card">
 
         {/* ── PHONE LOGIN ── */}
-        {step === 'input' && tab === 'phone' && (
+        {step === 'input' && (
           <>
-            <div className="login-tabs">
-              <button className={`login-tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => switchTab('phone')}>📱 Telefon</button>
-              <button className={`login-tab ${tab === 'email' ? 'active' : ''}`} onClick={() => switchTab('email')}>📧 Email</button>
-            </div>
             <h2 className="login-form-title">Kirish</h2>
             <p className="login-form-sub">Telefon raqamingizni kiriting</p>
             <div className="login-input-row">
@@ -278,102 +274,12 @@ function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
             <button className="login-btn" onClick={handleSendCode} disabled={loading}>
               {loading ? 'Yuklanmoqda...' : 'Kod yuborish'}
             </button>
-            <button className="login-btn-back" onClick={() => setStep('email-register')}>
-              Hisobingiz yo'qmi? Ro'yxatdan o'tish →
-            </button>
           </>
         )}
 
         {/* ── EMAIL LOGIN ── */}
         {step === 'input' && tab === 'email' && (
           <>
-            <div className="login-tabs">
-              <button className={`login-tab ${tab === 'phone' ? 'active' : ''}`} onClick={() => switchTab('phone')}>📱 Telefon</button>
-              <button className={`login-tab ${tab === 'email' ? 'active' : ''}`} onClick={() => switchTab('email')}>📧 Email</button>
-            </div>
-            <h2 className="login-form-title">Email bilan kirish</h2>
-            <p className="login-form-sub">Email va parolingizni kiriting</p>
-            <div className="login-input-row">
-              <input className="login-input" type="email" placeholder="email@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, handleEmailLogin)} autoFocus />
-            </div>
-            <div className="login-input-row">
-              <input className="login-input" type="password" placeholder="Parol"
-                value={password} onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, handleEmailLogin)} />
-            </div>
-            {error && <p className="login-error">⚠️ {error}</p>}
-            <button className="login-btn" onClick={handleEmailLogin} disabled={loading}>
-              {loading ? 'Yuklanmoqda...' : 'Kirish'}
-            </button>
-            <button className="login-btn-back" onClick={() => setStep('email-register')}>
-              Hisobingiz yo'qmi? Ro'yxatdan o'tish →
-            </button>
-          </>
-        )}
-
-        {/* ── EMAIL REGISTER FORM ── */}
-        {step === 'email-register' && (
-          <>
-            <h2 className="login-form-title">Ro'yxatdan o'tish</h2>
-            <p className="login-form-sub">Barcha maydonlarni to'ldiring</p>
-            <div className="login-input-row">
-              <input className="login-input" type="text" placeholder="Ismingiz"
-                value={firstName} onChange={(e) => setFirstName(e.target.value)} autoFocus />
-            </div>
-            <div className="login-input-row">
-              <input className="login-input" type="text" placeholder="Familiyangiz"
-                value={lastName} onChange={(e) => setLastName(e.target.value)} />
-            </div>
-            <div className="login-input-row">
-              <span className="login-prefix">+998</span>
-              <input className="login-input" type="tel" placeholder="90 123 45 67"
-                value={emailPhone} onChange={(e) => setEmailPhone(e.target.value.replace(/^\+?998/, ''))}
-                maxLength={13} />
-            </div>
-            <div className="login-input-row">
-              <input className="login-input" type="email" placeholder="email@example.com"
-                value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="login-input-row">
-              <input className="login-input" type="password" placeholder="Parol (kamida 8 belgi)"
-                value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
-            <div className="login-input-row">
-              <input className="login-input" type="password" placeholder="Parolni tasdiqlang"
-                value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, handleEmailRegisterSubmit)} />
-            </div>
-            {error && <p className="login-error">⚠️ {error}</p>}
-            <button className="login-btn" onClick={handleEmailRegisterSubmit} disabled={loading}>
-              {loading ? 'SMS yuborilmoqda...' : 'Davom etish →'}
-            </button>
-            <button className="login-btn-back" onClick={() => { setStep('input'); setError(''); }}>
-              ← Kirishga qaytish
-            </button>
-          </>
-        )}
-
-        {/* ── EMAIL OTP VERIFICATION ── */}
-        {step === 'email-otp' && (
-          <>
-            <h2 className="login-form-title">SMS kodni kiriting</h2>
-            <p className="login-form-sub">{pendingRegisterData?.phone} raqamiga yuborildi</p>
-            <input className="login-input code-input" type="number" placeholder="------"
-              value={code} onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, handleEmailOtpVerify)} maxLength={6} autoFocus />
-            {error && <p className="login-error">⚠️ {error}</p>}
-            <button className="login-btn" onClick={handleEmailOtpVerify} disabled={loading}>
-              {loading ? 'Tekshirilmoqda...' : "✅ Ro'yxatdan o'tish"}
-            </button>
-            {resendLabel(handleEmailRegisterSubmit)}
-            <button className="login-btn-back" onClick={() => { setStep('email-register'); setCode(''); setError(''); setSecondsLeft(0); }}>
-              ← Orqaga
-            </button>
-          </>
-        )}
-
         {/* ── PHONE OTP CODE ── */}
         {step === 'code' && (
           <>
