@@ -512,7 +512,7 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
       const polyline = new window.google.maps.Polyline({
         path,
         map: gMapRef.current,
-        strokeColor: isNavigating ? accentColor : '#e74c3c',
+        strokeColor: '#e74c3c',
         strokeWeight: isNavigating ? 8 : 5,
         strokeOpacity: 0.85,
       });
