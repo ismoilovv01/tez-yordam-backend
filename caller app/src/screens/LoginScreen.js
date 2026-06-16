@@ -253,7 +253,7 @@ function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
         <div className="login-pulse-ring delay1" />
         <div className="login-pulse-ring delay2" />
         {onBack && <button className="login-back-btn" onClick={onBack}>←</button>}
-        <div className="login-ambulance-icon">🚑</div>
+        <img className="login-ambulance-icon" src="/app-logo.png" alt="Help Mee" style={{ width: 72, height: 72, objectFit: 'contain' }} />
         <h1 className="login-app-name">Help Mee</h1>
       </div>
 
