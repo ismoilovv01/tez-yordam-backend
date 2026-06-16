@@ -60,6 +60,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const mapFittedRef          = useRef(false); // only fit bounds once
   const sheetRef              = useRef(null);
   const animFrameRef          = useRef(null);
+  const ambulanceImgDataRef   = useRef(null); // preloaded PNG as data URL for rotation
   const [locateBtnBottom, setLocateBtnBottom] = useState(138);
   const myGpsRef              = useRef(null); // cached GPS position
 
@@ -170,7 +171,8 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       if (data.amb_lat && data.amb_lng) {
         const ambLat = parseFloat(data.amb_lat);
         const ambLng = parseFloat(data.amb_lng);
-        setAmbulanceLocation({ lat: ambLat, lng: ambLng });
+        const ambHeading = data.amb_heading != null ? parseFloat(data.amb_heading) : 0;
+        setAmbulanceLocation({ lat: ambLat, lng: ambLng, heading: ambHeading });
         if (data.status === 'on_the_way') {
           fetchEta(ambLat, ambLng);
         } else if (routePolylineRef.current) {
@@ -225,6 +227,21 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       if (intervalId !== null) clearInterval(intervalId);
       if (watchId !== null) navigator.geolocation?.clearWatch(watchId);
     };
+  }, []);
+
+  // ── Preload ambulance PNG as data URL so rotation SVG works cross-origin ──
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 52; canvas.height = 52;
+        canvas.getContext('2d').drawImage(img, 0, 0, 52, 52);
+        ambulanceImgDataRef.current = canvas.toDataURL('image/png');
+      } catch {}
+    };
+    img.src = '/ambulance-top.png';
   }, []);
 
   // ── Init map ───────────────────────────────────────────────────
@@ -292,17 +309,33 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     animFrameRef.current = requestAnimationFrame(tick);
   };
 
-  // ── Update ambulance marker — NO map snapping after first fit ───
-  useEffect(() => {
-    if (!gMapRef.current || !window.google || !ambulanceLocation) return;
-    if (ambulanceMarkRef.current) {
-      animateMarkerTo(ambulanceMarkRef.current, ambulanceLocation, 900);
-    } else {
-      const icon = {
-        url: '/ambulance-top.png',
+  const makeAmbulanceIcon = (heading) => {
+    const h = ((heading || 0) % 360 + 360) % 360;
+    if (ambulanceImgDataRef.current) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="52" height="52" viewBox="0 0 52 52">
+        <image href="${ambulanceImgDataRef.current}" x="0" y="0" width="52" height="52" transform="rotate(${h},26,26)"/>
+      </svg>`;
+      return {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
         scaledSize: new window.google.maps.Size(52, 52),
         anchor: new window.google.maps.Point(26, 26),
       };
+    }
+    return {
+      url: '/ambulance-top.png',
+      scaledSize: new window.google.maps.Size(52, 52),
+      anchor: new window.google.maps.Point(26, 26),
+    };
+  };
+
+  // ── Update ambulance marker — NO map snapping after first fit ───
+  useEffect(() => {
+    if (!gMapRef.current || !window.google || !ambulanceLocation) return;
+    const icon = makeAmbulanceIcon(ambulanceLocation.heading);
+    if (ambulanceMarkRef.current) {
+      ambulanceMarkRef.current.setIcon(icon);
+      animateMarkerTo(ambulanceMarkRef.current, ambulanceLocation, 900);
+    } else {
       ambulanceMarkRef.current = new window.google.maps.Marker({
         position: ambulanceLocation, map: gMapRef.current,
         title: 'Tez yordam', icon, zIndex: 999,

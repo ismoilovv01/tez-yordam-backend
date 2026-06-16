@@ -504,7 +504,7 @@ app.get('/api/emergencies/my/history', authenticateToken, async (req, res) => {
 app.get('/api/emergencies/:id', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT e.*, a.unit_number, a.plate_region, a.driver_name, a.driver_phone, a.latitude as amb_lat, a.longitude as amb_lng,
+      `SELECT e.*, a.unit_number, a.plate_region, a.driver_name, a.driver_phone, a.latitude as amb_lat, a.longitude as amb_lng, a.heading as amb_heading,
               u.phone as user_phone, u.first_name, u.last_name
        FROM emergencies e
        LEFT JOIN ambulances a ON e.assigned_ambulance_id = a.id
