@@ -505,7 +505,21 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
             </div>
 
             <div style={{ display:'flex', gap:12 }}>
-              <div ref={centerMapRef} style={{ flex:1, borderRadius:14, overflow:'hidden', height:520, boxShadow:'0 2px 8px rgba(0,0,0,0.1)', background:'#e5e7eb' }} />
+              <div style={{ position:'relative', flex:1, height:520 }}>
+                <div ref={centerMapRef} style={{ width:'100%', height:'100%', borderRadius:14, overflow:'hidden', boxShadow:'0 2px 8px rgba(0,0,0,0.1)', background:'#e5e7eb' }} />
+                <button
+                  onClick={() => {
+                    if (!centerGMapRef.current) return;
+                    const tenSec = new Date(Date.now() - 10 * 1000);
+                    const active = ambulances.filter(a => a.latitude && a.longitude && a.last_location_update && new Date(a.last_location_update) > tenSec);
+                    if (active.length === 0) return;
+                    if (active.length === 1) { centerGMapRef.current.panTo({ lat: parseFloat(active[0].latitude), lng: parseFloat(active[0].longitude) }); centerGMapRef.current.setZoom(15); }
+                    else { const b = new window.google.maps.LatLngBounds(); active.forEach(a => b.extend({ lat: parseFloat(a.latitude), lng: parseFloat(a.longitude) })); centerGMapRef.current.fitBounds(b, 60); }
+                  }}
+                  style={{ position:'absolute', bottom:16, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
+                  title="Haydovchilarni ko'rsatish"
+                >📍</button>
+              </div>
 
               {selectedMapDriver && (
                 <div style={{ width:260, background:'#fff', borderRadius:14, padding:18, boxShadow:'0 2px 8px rgba(0,0,0,0.1)', display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
