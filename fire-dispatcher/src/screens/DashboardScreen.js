@@ -228,15 +228,14 @@ function DashboardScreen({ token, onLogout }) {
           <div ref={mapRef} className="dashboard-map" />
           <button
             onClick={() => {
-              if (!gMapRef.current) return;
-              const tenSec = new Date(Date.now() - 10 * 1000);
-              const active = units.filter(u => u.latitude && u.longitude && u.last_location_update && new Date(u.last_location_update) > tenSec);
-              if (active.length === 0) return;
-              if (active.length === 1) { gMapRef.current.panTo({ lat: parseFloat(active[0].latitude), lng: parseFloat(active[0].longitude) }); gMapRef.current.setZoom(15); }
-              else { const b = new window.google.maps.LatLngBounds(); active.forEach(u => b.extend({ lat: parseFloat(u.latitude), lng: parseFloat(u.longitude) })); gMapRef.current.fitBounds(b, 60); }
+              if (!gMapRef.current || !navigator.geolocation) return;
+              navigator.geolocation.getCurrentPosition(
+                (pos) => { gMapRef.current.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude }); gMapRef.current.setZoom(15); },
+                () => alert("Joylashuvni aniqlab bo'lmadi")
+              );
             }}
             style={{ position:'absolute', bottom:16, right:10, zIndex:1500, background:'#fff', border:'none', borderRadius:8, width:40, height:40, fontSize:22, cursor:'pointer', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', display:'flex', alignItems:'center', justifyContent:'center' }}
-            title="Ekipajlarni ko'rsatish"
+            title="Mening joylashuvim"
           >📍</button>
           <div className="map-legend">
             <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
