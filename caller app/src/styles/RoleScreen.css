@@ -20,7 +20,7 @@
   0% { transform: scale(0.5); opacity: 1; }
   100% { transform: scale(2.5); opacity: 0; }
 }
-.role-logo { font-size: 64px; z-index: 1; margin-bottom: 12px; }
+.role-logo { width: 90px; height: 90px; object-fit: contain; z-index: 1; margin-bottom: 12px; }
 .role-app-name { font-size: 32px; font-weight: 800; color: #fff; z-index: 1; letter-spacing: 1px; }
 .role-tagline { font-size: 11px; color: rgba(255,255,255,0.7); z-index: 1; margin-top: 6px; letter-spacing: 2px; }
 .role-form-card {
