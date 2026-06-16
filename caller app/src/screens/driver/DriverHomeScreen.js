@@ -49,6 +49,8 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
   const availableMarkersRef = useRef({});
   const directionsServiceRef = useRef(null);
   const directionsRendererRef = useRef(null);
+  const markerAnimRef = useRef(null);
+  const markerPosRef = useRef(null);
 
   const locationRef = useRef(null);
   const pollRef = useRef(null);
@@ -256,13 +258,31 @@ function DriverScreen({ token, user, onLogout, onProfile, onNotifications, onFee
       anchor: new window.google.maps.Point(navigatingNow ? 22 : 20, navigatingNow ? 22 : 20),
     };
 
-    if (markerRef.current) {
-      markerRef.current.setPosition(pos);
-      markerRef.current.setIcon(icon);
-    } else {
+    if (!markerRef.current) {
       markerRef.current = new window.google.maps.Marker({
         position: pos, map: gMapRef.current, icon, zIndex: 999,
       });
+      markerPosRef.current = pos;
+    } else {
+      markerRef.current.setIcon(icon);
+      // Smooth animation from current to new position
+      const from = markerPosRef.current || pos;
+      const to = pos;
+      markerPosRef.current = pos;
+      if (markerAnimRef.current) cancelAnimationFrame(markerAnimRef.current);
+      const startTime = performance.now();
+      const DURATION = 800;
+      const tick = (now) => {
+        const raw = (now - startTime) / DURATION;
+        const t = raw >= 1 ? 1 : raw < 0.5 ? 2 * raw * raw : -1 + (4 - 2 * raw) * raw;
+        markerRef.current.setPosition({
+          lat: from.lat + (to.lat - from.lat) * t,
+          lng: from.lng + (to.lng - from.lng) * t,
+        });
+        if (t < 1) markerAnimRef.current = requestAnimationFrame(tick);
+        else markerAnimRef.current = null;
+      };
+      markerAnimRef.current = requestAnimationFrame(tick);
     }
   };
 
