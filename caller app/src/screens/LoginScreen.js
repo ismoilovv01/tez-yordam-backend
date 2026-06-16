@@ -277,9 +277,6 @@ function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
           </>
         )}
 
-        {/* ── EMAIL LOGIN ── */}
-        {step === 'input' && tab === 'email' && (
-          <>
         {/* ── PHONE OTP CODE ── */}
         {step === 'code' && (
           <>
