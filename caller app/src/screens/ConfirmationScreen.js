@@ -107,6 +107,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
         map: gMapRef.current,
         suppressMarkers: true,
+        preserveViewport: true,
         polylineOptions: { strokeColor: '#e74c3c', strokeWeight: 5 },
       });
     }
@@ -282,7 +283,11 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         const bounds = new window.google.maps.LatLngBounds();
         bounds.extend(callerLocation);
         bounds.extend(ambulanceLocation);
-        gMapRef.current.fitBounds(bounds, { padding: 80 });
+        gMapRef.current.fitBounds(bounds, { top: 100, right: 60, bottom: 200, left: 60 });
+        // Prevent over-zooming when markers are very close
+        const listener = window.google.maps.event.addListenerOnce(gMapRef.current, 'idle', () => {
+          if (gMapRef.current.getZoom() > 15) gMapRef.current.setZoom(15);
+        });
       }
     }
   }, [ambulanceLocation]);
@@ -369,16 +374,18 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         className="locate-btn"
         style={{ bottom: locateBtnBottom }}
         onClick={() => {
-          if (!gMapRef.current) return;
-          if (callerLocation) {
-            gMapRef.current.panTo(callerLocation);
-            gMapRef.current.setZoom(16);
-          } else if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(pos => {
-              const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-              gMapRef.current.panTo(loc);
-              gMapRef.current.setZoom(16);
+          if (!gMapRef.current || !window.google) return;
+          if (ambulanceLocation && callerLocation) {
+            const bounds = new window.google.maps.LatLngBounds();
+            bounds.extend(callerLocation);
+            bounds.extend(ambulanceLocation);
+            gMapRef.current.fitBounds(bounds, { top: 100, right: 60, bottom: 200, left: 60 });
+            const l = window.google.maps.event.addListenerOnce(gMapRef.current, 'idle', () => {
+              if (gMapRef.current.getZoom() > 15) gMapRef.current.setZoom(15);
             });
+          } else if (callerLocation) {
+            gMapRef.current.panTo(callerLocation);
+            gMapRef.current.setZoom(15);
           }
         }}
       >📍</button>
