@@ -268,14 +268,9 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       animateMarkerTo(ambulanceMarkRef.current, ambulanceLocation, 900);
     } else {
       const icon = {
-        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
-          <svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
-            <rect width="44" height="44" rx="10" fill="#e74c3c"/>
-            <text y="32" x="22" text-anchor="middle" font-size="26">🚑</text>
-          </svg>
-        `),
-        scaledSize: new window.google.maps.Size(44, 44),
-        anchor: new window.google.maps.Point(22, 22),
+        url: '/ambulance-top.png',
+        scaledSize: new window.google.maps.Size(52, 52),
+        anchor: new window.google.maps.Point(26, 26),
       };
       ambulanceMarkRef.current = new window.google.maps.Marker({
         position: ambulanceLocation, map: gMapRef.current,

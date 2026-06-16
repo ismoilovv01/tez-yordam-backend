@@ -206,7 +206,6 @@ function DashboardScreen({ token, user, onLogout }) {
   const handleCreateDriver = async () => {
     if (!newDriverName || !newDriverUnit) return alert("Ism va mashina raqami kerak");
     if (!newDriverPhone) return alert("Telefon raqami majburiy");
-    if (!newDriverPlate) return alert("Viloyat kodi majburiy (masalan: 01, 90)");
     setDriverLoading(true);
     try {
       const res = await axios.post(`${API_URL}/api/dispatcher/create-driver-code`,
@@ -616,16 +615,6 @@ function DashboardScreen({ token, user, onLogout }) {
                 <input placeholder="Mashina raqami (masalan: A123BC) *" value={newDriverUnit}
                   onChange={e => setNewDriverUnit(e.target.value)}
                   style={{width:'100%',padding:10,marginBottom:10,borderRadius:8,border:'1px solid #ddd',boxSizing:'border-box'}} />
-                <div style={{marginBottom:16}}>
-                  <select value={newDriverPlate} onChange={e => setNewDriverPlate(e.target.value)}
-                    style={{width:'100%',padding:10,borderRadius:8,border:'1px solid #ddd',boxSizing:'border-box',fontSize:14}}>
-                    <option value="">-- Viloyat kodini tanlang * --</option>
-                    {Object.entries(UZ_REGIONS).map(([code, name]) => (
-                      <option key={code} value={code}>{code} — {name}</option>
-                    ))}
-                  </select>
-                  {newDriverPlate && <div style={{fontSize:12,color:'#27ae60',marginTop:4}}>📍 {UZ_REGIONS[newDriverPlate]}</div>}
-                </div>
                 <button className="btn-confirm" onClick={handleCreateDriver} disabled={driverLoading}>
                   {driverLoading ? 'Yaratilmoqda...' : 'Kod yaratish'}
                 </button>
@@ -660,14 +649,6 @@ function DashboardScreen({ token, user, onLogout }) {
                 </div>
                 <input value={editUnit} onChange={e => setEditUnit(e.target.value)} placeholder="Mashina raqami"
                   style={{width:'100%',padding:10,marginBottom:8,borderRadius:8,border:'1px solid #ddd',boxSizing:'border-box'}} />
-                <select value={editPlate} onChange={e => setEditPlate(e.target.value)}
-                  style={{width:'100%',padding:10,marginBottom:8,borderRadius:8,border:'1px solid #ddd',boxSizing:'border-box'}}>
-                  <option value="">-- Viloyat --</option>
-                  {Object.entries(UZ_REGIONS).map(([code, name]) => (
-                    <option key={code} value={code}>{code} — {name}</option>
-                  ))}
-                </select>
-                {editPlate && <div style={{fontSize:12,color:'#27ae60',marginBottom:12}}>📍 {UZ_REGIONS[editPlate]}</div>}
                 <div style={{display:'flex',gap:8}}>
                   <button onClick={() => handleEditDriver(selectedDriver.id)}
                     style={{flex:1,background:'#4fc3f7',color:'#fff',border:'none',borderRadius:8,padding:'10px',cursor:'pointer',fontWeight:'bold'}}>Saqlash</button>
@@ -681,11 +662,6 @@ function DashboardScreen({ token, user, onLogout }) {
                   <div style={{marginBottom:8}}><b>👤 Ism:</b> {selectedDriver.driver_name}</div>
                   <div style={{marginBottom:8}}><b>📱 Telefon:</b> {selectedDriver.driver_phone || '—'}</div>
                   <div style={{marginBottom:8}}><b>🚑 Mashina:</b> {selectedDriver.unit_number}</div>
-                  <div style={{marginBottom:8}}>
-                    <b>📍 Viloyat:</b> {selectedDriver.plate_region
-                      ? `${selectedDriver.plate_region} — ${UZ_REGIONS[selectedDriver.plate_region] || '—'}`
-                      : '—'}
-                  </div>
                   <div style={{marginBottom:4}}><b>🔑 Login kod:</b></div>
                   <code style={{background:'#e3f2fd',padding:'8px 14px',borderRadius:8,fontWeight:'bold',fontSize:18,letterSpacing:3,color:'#1565c0',display:'block',textAlign:'center'}}>
                     {selectedDriver.login_code}
