@@ -149,17 +149,26 @@ async function checkRole(req, res, next) {
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8822164884:AAHl1iSW_PeBX2LxQM2cQQ-bhu3CZcnIVgQ';
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-async function sendTelegramMessage(chatId, text) {
+async function sendTelegramMessage(chatId, text, reply_markup) {
   try {
+    const payload = { chat_id: chatId, text, parse_mode: 'HTML' };
+    if (reply_markup) payload.reply_markup = reply_markup;
     await fetch(`${TELEGRAM_API}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+      body: JSON.stringify(payload)
     });
   } catch (err) {
     console.error('Telegram send error:', err);
   }
 }
+
+const CONTACT_KEYBOARD = {
+  keyboard: [[{ text: '📱 Telefon raqamni ulash', request_contact: true }]],
+  resize_keyboard: true,
+  one_time_keyboard: true,
+};
+const REMOVE_KEYBOARD = { remove_keyboard: true };
 
 // Telegram webhook Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљ handles /start and phone number messages
 app.post('/api/telegram/webhook', async (req, res) => {
@@ -170,11 +179,23 @@ app.post('/api/telegram/webhook', async (req, res) => {
     const text = message.text || '';
     const contact = message.contact;
 
-    if (text === '/start') {
+    if (contact) {
+      const raw = contact.phone_number.replace(/^\+/, '');
+      const phone = '+' + (raw.startsWith('998') ? raw : '998' + raw);
+      await pool.query(
+        'INSERT INTO telegram_users (phone, chat_id) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET chat_id = $2',
+        [phone, chatId.toString()]
+      );
       await sendTelegramMessage(chatId,
-        'Р РЋР вЂљР РЋРЎСџР Р†Р вЂљР’ВР Р†Р вЂљРІвЂћвЂ“ Salom! <b>Help Me</b> ilovasiga xush kelibsiz!\n\n' +
-        'Telefon raqamingizni yuboring (misol: +998901234567) va biz sizni tizimga boglaymiz.\n\n' +
-        'Keyin ilova orqali kirganingizda OTP kodni Telegram orqali olasiz! Р РЋР вЂљР РЋРЎСџР Р†Р вЂљРЎСљР РЋРІР‚в„ў'
+        `✅ Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog’landi!
+
+🔐 Endi <b>Help Mee</b> ilovasiga kirganingizda tasdiqlash kodi shu yerga yuboriladi.`,
+        REMOVE_KEYBOARD
+      );
+    } else if (text === '/start') {
+      await sendTelegramMessage(chatId,
+        '👋 Salom! <b>Help Mee</b> ilovasiga xush kelibsiz!\n\nIlovaga kirishda tasdiqlash kodini Telegram orqali olish uchun telefon raqamingizni ulang 👇',
+        CONTACT_KEYBOARD
       );
     } else if (text.match(/^\+?998[0-9]{9}$/)) {
       const phone = text.startsWith('+') ? text : '+' + text;
@@ -183,12 +204,15 @@ app.post('/api/telegram/webhook', async (req, res) => {
         [phone, chatId.toString()]
       );
       await sendTelegramMessage(chatId,
-        `Р В Р вЂ Р РЋРЎв„ўР Р†Р вЂљР’В¦ Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog'landi!\n\n` +
-        'Endi ilova orqali kirishda OTP kodni shu yerda olasiz. Р РЋР вЂљР РЋРЎСџР В РІР‚в„–Р Р†Р вЂљР’В°'
+        `✅ Telefon raqamingiz <b>${phone}</b> muvaffaqiyatli bog’landi!
+
+🔐 Endi <b>Help Mee</b> ilovasiga kirganingizda tasdiqlash kodi shu yerga yuboriladi.`,
+        REMOVE_KEYBOARD
       );
     } else {
       await sendTelegramMessage(chatId,
-        'Р РЋР вЂљР РЋРЎСџР Р†Р вЂљРЎС™Р вЂ™Р’В± Telefon raqamingizni yuboring (misol: <code>+998901234567</code>)'
+        '👇 Telefon raqamingizni ulash uchun pastdagi tugmani bosing.',
+        CONTACT_KEYBOARD
       );
     }
     res.json({ ok: true });
@@ -252,7 +276,7 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
       const tgUser = await pool.query('SELECT chat_id FROM telegram_users WHERE phone = $1', [phone]);
       if (tgUser.rows.length) {
         await sendTelegramMessage(tgUser.rows[0].chat_id,
-          `<b>Help Me</b> - Tasdiqlash kodi:\n\n<code>${code}</code>\n\nKod 10 daqiqa davomida amal qiladi.`
+          `🔐 <b>Help Mee</b> — Tasdiqlash kodi:\n\n<code>${code}</code>\n\n⏱ Kod 10 daqiqa davomida amal qiladi.`
         );
         sentViaTelegram = true;
         console.log(`OTP sent via Telegram to ${phone}`);
