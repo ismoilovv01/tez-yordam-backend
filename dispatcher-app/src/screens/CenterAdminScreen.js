@@ -174,7 +174,8 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
     if (!map || tab !== 'map' || !window.google) return;
     const seen = new Set();
 
-    ambulances.filter(a => a.latitude && a.longitude).forEach(a => {
+    const tenSecAgo = new Date(Date.now() - 10 * 1000);
+    ambulances.filter(a => a.latitude && a.longitude && a.last_location_update && new Date(a.last_location_update) > tenSecAgo).forEach(a => {
       seen.add(String(a.id));
       const pos = { lat: parseFloat(a.latitude), lng: parseFloat(a.longitude) };
       const visible = mapFilter === 'all' || a.status === mapFilter;
@@ -494,12 +495,12 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
             </div>
             <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12 }}>
               <button onClick={() => setMapFilter('all')} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 14px', background: mapFilter==='all'?'#1e3a5f':'#fff', borderRadius:20, border:'2px solid #1e3a5f', fontSize:12, fontWeight:600, color: mapFilter==='all'?'#fff':'#1e3a5f', cursor:'pointer' }}>
-                Barchasi: {ambulances.length}
+                Barchasi: {ambulances.filter(a => a.last_location_update && new Date(a.last_location_update) > new Date(Date.now() - 10 * 1000)).length}
               </button>
               {Object.entries(DRIVER_STATUS_LABEL).map(([s,l]) => (
                 <button key={s} onClick={() => setMapFilter(mapFilter===s?'all':s)} style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 14px', background: mapFilter===s ? DRIVER_STATUS_COLOR[s] : '#fff', borderRadius:20, border:`2px solid ${DRIVER_STATUS_COLOR[s]}`, fontSize:12, fontWeight:600, color: mapFilter===s?'#fff':DRIVER_STATUS_COLOR[s], cursor:'pointer' }}>
                   <div style={{ width:8, height:8, borderRadius:'50%', background: mapFilter===s?'#fff':DRIVER_STATUS_COLOR[s] }} />
-                  {l}: {ambulances.filter(a=>a.status===s).length}
+                  {l}: {ambulances.filter(a => a.status===s && a.last_location_update && new Date(a.last_location_update) > new Date(Date.now() - 10 * 1000)).length}
                 </button>
               ))}
             </div>
@@ -744,7 +745,7 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
       {assignModal && (
         <Modal title={`🚑 Ambulans biriktirish — #${assignModal.id}`} onClose={() => setAssignModal(null)}>
           <p style={{ fontSize:13, color:'#6b7280', marginBottom:12 }}>Faqat tayyor haydovchilar ko'rsatilmoqda</p>
-          {ambulances.filter(a=>a.status==='available').map(a => (
+          {ambulances.filter(a => a.status==='available' && a.last_location_update && new Date(a.last_location_update) > new Date(Date.now() - 10 * 1000)).map(a => (
             <div key={a.id} onClick={() => assignAmbulance(assignModal.id, a.id)}
               style={{ padding:'12px 14px', border:'2px solid #e2e8f0', borderRadius:10, marginBottom:8, cursor:'pointer', display:'flex', justifyContent:'space-between', transition:'border-color 0.15s' }}
               onMouseOver={e=>e.currentTarget.style.borderColor='#10b981'}
@@ -756,8 +757,8 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
               <span style={{ color:'#10b981', fontWeight:700, fontSize:13 }}>Tayyor ✓</span>
             </div>
           ))}
-          {!ambulances.filter(a=>a.status==='available').length && (
-            <div style={{ textAlign:'center', padding:30, color:'#94a3b8' }}>Tayyor ambulans yo'q</div>
+          {!ambulances.filter(a => a.status==='available' && a.last_location_update && new Date(a.last_location_update) > new Date(Date.now() - 10 * 1000)).length && (
+            <div style={{ textAlign:'center', padding:30, color:'#94a3b8' }}>Faol tayyor ambulans yo'q</div>
           )}
           <button onClick={() => setAssignModal(null)} style={{ ...BS('#f1f5f9','#374151'), width:'100%', marginTop:8 }}>Yopish</button>
         </Modal>
