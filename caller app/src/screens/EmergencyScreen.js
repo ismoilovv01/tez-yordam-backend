@@ -34,17 +34,14 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
   const mountedRef = useRef(true);
   const myGpsRef = useRef(null);
   const watchIdRef = useRef(null);
+  const tgIntervalRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (watchIdRef.current !== null) {
-        const tg = window.Telegram?.WebApp;
-        if (tg?.LocationManager) clearInterval(watchIdRef.current);
-        else navigator.geolocation?.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
+      if (watchIdRef.current !== null) { navigator.geolocation?.clearWatch(watchIdRef.current); watchIdRef.current = null; }
+      if (tgIntervalRef.current !== null) { clearInterval(tgIntervalRef.current); tgIntervalRef.current = null; }
     };
   }, []);
 
@@ -83,32 +80,42 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
       const XORAZM = { lat: 41.5534, lng: 60.6166 };
       initMap(XORAZM.lat, XORAZM.lng, false); // false = don't place marker yet
 
-      // Get location via Telegram native API (works on Android), fall back to browser
+      // Run navigator.geolocation AND Telegram LocationManager simultaneously.
+      // Whichever responds first (or at all) wins — covers all devices/versions.
+      const onGotPos = (lat, lng) => {
+        if (!mountedRef.current) return;
+        const pos = { lat, lng };
+        myGpsRef.current = pos;
+        if (!markerRef.current) placeOrMoveMarker(pos);
+      };
+
+      // 1) navigator.geolocation — works on iPhone always, sometimes on Android
+      if (navigator.geolocation) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (p) => onGotPos(p.coords.latitude, p.coords.longitude),
+          () => { if (!mountedRef.current || markerRef.current) return; placeOrMoveMarker(XORAZM); },
+          { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
+        );
+      }
+
+      // 2) Telegram LocationManager — works on Android where geolocation is blocked
       const tg = window.Telegram?.WebApp;
       if (tg?.LocationManager) {
         const fetchLoc = () => {
           tg.LocationManager.getLocation((loc) => {
             if (!mountedRef.current || !loc) return;
-            const pos = { lat: loc.latitude, lng: loc.longitude };
-            myGpsRef.current = pos;
-            if (!markerRef.current) placeOrMoveMarker(pos);
+            onGotPos(loc.latitude, loc.longitude);
           });
         };
-        const start = () => { fetchLoc(); watchIdRef.current = setInterval(fetchLoc, 3000); };
-        if (tg.LocationManager.isInited) start();
-        else tg.LocationManager.init(() => { if (mountedRef.current) start(); });
-      } else if (navigator.geolocation) {
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (pos) => {
-            if (!mountedRef.current) return;
-            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            myGpsRef.current = loc;
-            if (!markerRef.current) placeOrMoveMarker(loc);
-          },
-          () => { if (!mountedRef.current || markerRef.current) return; placeOrMoveMarker(XORAZM); },
-          { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
-        );
-      } else {
+        const startTg = () => {
+          fetchLoc();
+          if (!tgIntervalRef.current) tgIntervalRef.current = setInterval(fetchLoc, 3000);
+        };
+        if (tg.LocationManager.isInited) startTg();
+        else tg.LocationManager.init(() => { if (mountedRef.current) startTg(); });
+      }
+
+      if (!navigator.geolocation && !window.Telegram?.WebApp?.LocationManager) {
         placeOrMoveMarker(XORAZM);
       }
     });
@@ -154,14 +161,16 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
 
   const handleGetLocation = () => {
     if (myGpsRef.current) { placeOrMoveMarker(myGpsRef.current); return; }
+    // Try both sources simultaneously
     const tg = window.Telegram?.WebApp;
     if (tg?.LocationManager?.isInited) {
       tg.LocationManager.getLocation((loc) => {
         if (loc) { myGpsRef.current = { lat: loc.latitude, lng: loc.longitude }; placeOrMoveMarker(myGpsRef.current); }
       });
-    } else if (navigator.geolocation) {
+    }
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => placeOrMoveMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (p) => { if (!myGpsRef.current) { myGpsRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; placeOrMoveMarker(myGpsRef.current); } },
         () => {},
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
       );

@@ -202,11 +202,22 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     return () => clearInterval(id);
   }, [sheetExpanded]);
 
-  // ── Keep GPS fresh via Telegram native API (Android-safe), fall back to browser ──
+  // ── Keep GPS fresh — run both sources simultaneously, whichever works wins ──
   useEffect(() => {
-    const tg = window.Telegram?.WebApp;
     let intervalId = null;
     let watchId = null;
+
+    // 1) navigator.geolocation (works on iPhone, sometimes Android)
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
+      );
+    }
+
+    // 2) Telegram LocationManager (works on Android where geolocation is blocked)
+    const tg = window.Telegram?.WebApp;
     if (tg?.LocationManager) {
       const poll = () => {
         tg.LocationManager.getLocation((loc) => {
@@ -216,13 +227,8 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
       const start = () => { poll(); intervalId = setInterval(poll, 3000); };
       if (tg.LocationManager.isInited) start();
       else tg.LocationManager.init(start);
-    } else if (navigator.geolocation) {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
-        () => {},
-        { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
-      );
     }
+
     return () => {
       if (intervalId !== null) clearInterval(intervalId);
       if (watchId !== null) navigator.geolocation?.clearWatch(watchId);
@@ -460,9 +466,10 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
               tg.LocationManager.getLocation((loc) => {
                 if (loc) { myGpsRef.current = { lat: loc.latitude, lng: loc.longitude }; panTo(myGpsRef.current); }
               });
-            } else if (navigator.geolocation) {
+            }
+            if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
-                (p) => { myGpsRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; panTo(myGpsRef.current); },
+                (p) => { if (!myGpsRef.current) { myGpsRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; panTo(myGpsRef.current); } },
                 () => {},
                 { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
               );
