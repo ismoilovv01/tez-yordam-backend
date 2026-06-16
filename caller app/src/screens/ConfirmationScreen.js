@@ -203,10 +203,11 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   // ── Request GPS on mount so Telegram shows the permission dialog early ──
   useEffect(() => {
     if (!navigator.geolocation) return;
+    // Low accuracy first so Android doesn't time out waiting for GPS fix
     const watchId = navigator.geolocation.watchPosition(
       (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 5000 }
+      { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
     );
     return () => navigator.geolocation.clearWatch(watchId);
   }, []);
@@ -408,8 +409,8 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
           } else if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
               (p) => { const here = { lat: p.coords.latitude, lng: p.coords.longitude }; myGpsRef.current = here; panTo(here); },
-              () => alert("Joylashuvni aniqlab bo'lmadi"),
-              { enableHighAccuracy: true, timeout: 10000 }
+              () => {},
+              { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
             );
           }
         }}
