@@ -23,7 +23,7 @@ function RoleScreen({ onSelectRole }) {
           <span className="role-btn-arrow">›</span>
         </button>
         <button className="role-btn role-btn-driver" onClick={() => onSelectRole('driver')}>
-          <div className="role-btn-icon driver"><img src="/app-logo.png" alt="" style={{ width: 26, height: 26, objectFit: 'contain' }} /></div>
+          <div className="role-btn-icon driver">🚑</div>
           <div className="role-btn-text">
             <span className="role-btn-label">Haydovchi</span>
             <span className="role-btn-desc">Xizmat ko'rsatish</span>
