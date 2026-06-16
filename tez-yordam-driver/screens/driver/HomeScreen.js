@@ -447,9 +447,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             <Marker key={call.id} coordinate={{ latitude: parseFloat(call.latitude), longitude: parseFloat(call.longitude) }} pinColor="orange" onPress={() => setSelectedCall(call)} />
           ))}
           {showRoute && (
-            <MapViewDirections origin={driverLocation} destination={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }}
-              apikey={GOOGLE_KEY} strokeWidth={isNavigating ? 10 : 5} strokeColor={isNavigating ? accentColor : '#e74c3c'}
-              onReady={(r) => setRouteInfo({ distance: r.distance.toFixed(1) + ' km', duration: Math.round(r.duration) + ' daqiqa' })} />
+            <MapViewDirections key={`route-${activeCall?.id}`} origin={driverLocation} destination={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }}
+              apikey={GOOGLE_KEY} strokeWidth={isNavigating ? 10 : 5} strokeColor="#e74c3c"
+              resetOnChange={false}
+              onReady={(r) => setRouteInfo({ distance: r.distance.toFixed(1) + ' km', duration: Math.round(r.duration) + ' daqiqa' })}
+              onError={() => {}} />
           )}
         </MapView>
 

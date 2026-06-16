@@ -403,7 +403,7 @@ function DashboardScreen({ token, user, onLogout }) {
       const dr = new window.google.maps.DirectionsRenderer({
         map,
         suppressMarkers: true,
-        polylineOptions: { strokeColor: '#2980b9', strokeWeight: 4, strokeOpacity: 0.75 },
+        polylineOptions: { strokeColor: '#e74c3c', strokeWeight: 5, strokeOpacity: 0.9 },
       });
       driverRouteRendererRef.current = dr;
       new window.google.maps.DirectionsService().route({

@@ -216,7 +216,7 @@ export default function CenterAdminScreen({ token, user, onLogout }) {
       const dr = new window.google.maps.DirectionsRenderer({
         map,
         suppressMarkers: true,
-        polylineOptions: { strokeColor: DRIVER_STATUS_COLOR[a.status] || '#f59e0b', strokeWeight: 5, strokeOpacity: 0.9 },
+        polylineOptions: { strokeColor: '#e74c3c', strokeWeight: 5, strokeOpacity: 0.9 },
       });
       directionsRendererRef.current[a.id] = dr;
       new window.google.maps.DirectionsService().route(
