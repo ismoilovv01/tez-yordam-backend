@@ -32,10 +32,15 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
   const markerRef = useRef(null);
   const mapInitRef = useRef(false);
   const mountedRef = useRef(true);
+  const myGpsRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   useEffect(() => {
     mountedRef.current = true;
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+      if (watchIdRef.current !== null) navigator.geolocation?.clearWatch(watchIdRef.current);
+    };
   }, []);
 
   // Resolve dispatch center ID immediately
@@ -73,30 +78,22 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
       const XORAZM = { lat: 41.5534, lng: 60.6166 };
       initMap(XORAZM.lat, XORAZM.lng, false); // false = don't place marker yet
 
-      // Fast GPS (cached/network location, < 1s)
+      // Start watching GPS — triggers permission dialog on open, keeps position fresh
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
+        watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             if (!mountedRef.current) return;
             const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            placeOrMoveMarker(loc);
+            myGpsRef.current = loc;
+            // Only auto-place marker on first fix
+            if (!markerRef.current) placeOrMoveMarker(loc);
           },
           () => {
-            // If GPS denied/failed, place marker at map center so user can drag
+            // GPS unavailable — place marker at Xorazm center so user can drag
             if (!mountedRef.current || markerRef.current) return;
             placeOrMoveMarker(XORAZM);
           },
-          { enableHighAccuracy: false, timeout: 3000, maximumAge: 15000 }
-        );
-        // Then refine with high accuracy
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            if (!mountedRef.current) return;
-            const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-            placeOrMoveMarker(loc);
-          },
-          () => {},
-          { enableHighAccuracy: true, timeout: 10000 }
+          { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
         );
       } else {
         placeOrMoveMarker(XORAZM);
@@ -143,17 +140,16 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
   };
 
   const handleGetLocation = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => placeOrMoveMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: false, timeout: 2000, maximumAge: 5000 }
-    );
-    navigator.geolocation.getCurrentPosition(
-      (pos) => placeOrMoveMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+    // Use cached watchPosition result (available instantly, no click-time permission prompt)
+    if (myGpsRef.current) {
+      placeOrMoveMarker(myGpsRef.current);
+    } else if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => placeOrMoveMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
+      );
+    }
   };
 
   const handleSendEmergency = async () => {
