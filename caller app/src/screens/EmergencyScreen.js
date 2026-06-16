@@ -39,7 +39,12 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      if (watchIdRef.current !== null) navigator.geolocation?.clearWatch(watchIdRef.current);
+      if (watchIdRef.current !== null) {
+        const tg = window.Telegram?.WebApp;
+        if (tg?.LocationManager) clearInterval(watchIdRef.current);
+        else navigator.geolocation?.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
     };
   }, []);
 
@@ -78,21 +83,29 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
       const XORAZM = { lat: 41.5534, lng: 60.6166 };
       initMap(XORAZM.lat, XORAZM.lng, false); // false = don't place marker yet
 
-      // Start watching GPS — triggers permission dialog on open, keeps position fresh
-      if (navigator.geolocation) {
+      // Get location via Telegram native API (works on Android), fall back to browser
+      const tg = window.Telegram?.WebApp;
+      if (tg?.LocationManager) {
+        const fetchLoc = () => {
+          tg.LocationManager.getLocation((loc) => {
+            if (!mountedRef.current || !loc) return;
+            const pos = { lat: loc.latitude, lng: loc.longitude };
+            myGpsRef.current = pos;
+            if (!markerRef.current) placeOrMoveMarker(pos);
+          });
+        };
+        const start = () => { fetchLoc(); watchIdRef.current = setInterval(fetchLoc, 3000); };
+        if (tg.LocationManager.isInited) start();
+        else tg.LocationManager.init(() => { if (mountedRef.current) start(); });
+      } else if (navigator.geolocation) {
         watchIdRef.current = navigator.geolocation.watchPosition(
           (pos) => {
             if (!mountedRef.current) return;
             const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
             myGpsRef.current = loc;
-            // Only auto-place marker on first fix
             if (!markerRef.current) placeOrMoveMarker(loc);
           },
-          () => {
-            // GPS unavailable — place marker at Xorazm center so user can drag
-            if (!mountedRef.current || markerRef.current) return;
-            placeOrMoveMarker(XORAZM);
-          },
+          () => { if (!mountedRef.current || markerRef.current) return; placeOrMoveMarker(XORAZM); },
           { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
         );
       } else {
@@ -140,9 +153,12 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
   };
 
   const handleGetLocation = () => {
-    // Use cached watchPosition result (available instantly, no click-time permission prompt)
-    if (myGpsRef.current) {
-      placeOrMoveMarker(myGpsRef.current);
+    if (myGpsRef.current) { placeOrMoveMarker(myGpsRef.current); return; }
+    const tg = window.Telegram?.WebApp;
+    if (tg?.LocationManager?.isInited) {
+      tg.LocationManager.getLocation((loc) => {
+        if (loc) { myGpsRef.current = { lat: loc.latitude, lng: loc.longitude }; placeOrMoveMarker(myGpsRef.current); }
+      });
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => placeOrMoveMarker({ lat: pos.coords.latitude, lng: pos.coords.longitude }),

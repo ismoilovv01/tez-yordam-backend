@@ -200,16 +200,31 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     return () => clearInterval(id);
   }, [sheetExpanded]);
 
-  // ── Request GPS on mount so Telegram shows the permission dialog early ──
+  // ── Keep GPS fresh via Telegram native API (Android-safe), fall back to browser ──
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    // Low accuracy first so Android doesn't time out waiting for GPS fix
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
-      () => {},
-      { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
+    const tg = window.Telegram?.WebApp;
+    let intervalId = null;
+    let watchId = null;
+    if (tg?.LocationManager) {
+      const poll = () => {
+        tg.LocationManager.getLocation((loc) => {
+          if (loc) myGpsRef.current = { lat: loc.latitude, lng: loc.longitude };
+        });
+      };
+      const start = () => { poll(); intervalId = setInterval(poll, 3000); };
+      if (tg.LocationManager.isInited) start();
+      else tg.LocationManager.init(start);
+    } else if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => { myGpsRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 10000, timeout: 15000 }
+      );
+    }
+    return () => {
+      if (intervalId !== null) clearInterval(intervalId);
+      if (watchId !== null) navigator.geolocation?.clearWatch(watchId);
+    };
   }, []);
 
   // ── Init map ───────────────────────────────────────────────────
@@ -406,12 +421,19 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
           };
           if (myGpsRef.current) {
             panTo(myGpsRef.current);
-          } else if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (p) => { const here = { lat: p.coords.latitude, lng: p.coords.longitude }; myGpsRef.current = here; panTo(here); },
-              () => {},
-              { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
-            );
+          } else {
+            const tg = window.Telegram?.WebApp;
+            if (tg?.LocationManager?.isInited) {
+              tg.LocationManager.getLocation((loc) => {
+                if (loc) { myGpsRef.current = { lat: loc.latitude, lng: loc.longitude }; panTo(myGpsRef.current); }
+              });
+            } else if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (p) => { myGpsRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; panTo(myGpsRef.current); },
+                () => {},
+                { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
+              );
+            }
           }
         }}
       >📍</button>
