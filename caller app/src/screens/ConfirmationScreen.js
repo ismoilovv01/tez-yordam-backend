@@ -55,6 +55,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   const ambulanceMarkRef      = useRef(null);
   const directionsServiceRef  = useRef(null);
   const directionsRendererRef = useRef(null);
+  const routePolylineRef      = useRef(null);
   const cancelShownRef        = useRef(false);
   const mapFittedRef          = useRef(false); // only fit bounds once
   const sheetRef              = useRef(null);
@@ -83,10 +84,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     clearInterval(pollRef.current);
     localStorage.removeItem('last_emergency');
     localStorage.removeItem('caller_location');
-    if (directionsRendererRef.current) {
-      directionsRendererRef.current.setMap(null);
-      directionsRendererRef.current = null;
-    }
+    if (routePolylineRef.current) { routePolylineRef.current.setMap(null); routePolylineRef.current = null; }
     setCancelledBy(by);
     setShowCancelScreen(true);
     let count = 5;
@@ -103,24 +101,28 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     if (!callerLocation || !window.google) return;
     if (!directionsServiceRef.current)
       directionsServiceRef.current = new window.google.maps.DirectionsService();
-    if (!directionsRendererRef.current && gMapRef.current) {
-      directionsRendererRef.current = new window.google.maps.DirectionsRenderer({
-        map: gMapRef.current,
-        suppressMarkers: true,
-        preserveViewport: true,
-        polylineOptions: { strokeColor: '#e74c3c', strokeWeight: 5 },
-      });
-    }
     directionsServiceRef.current.route({
       origin: { lat: ambLat, lng: ambLng },
       destination: callerLocation,
       travelMode: window.google.maps.TravelMode.DRIVING,
     }, (result, s) => {
-      if (s === 'OK') {
-        const leg = result.routes[0].legs[0];
-        setEta({ distance: leg.distance.text, duration: leg.duration.text });
-        if (directionsRendererRef.current)
-          directionsRendererRef.current.setDirections(result);
+      if (s !== 'OK' || !gMapRef.current) return;
+      const leg = result.routes[0].legs[0];
+      setEta({ distance: leg.distance.text, duration: leg.duration.text });
+      // Draw manual red polyline (DirectionsRenderer tints blue regardless of options)
+      const path = result.routes[0].overview_path;
+      if (routePolylineRef.current) {
+        routePolylineRef.current.setPath(path);
+      } else {
+        routePolylineRef.current = new window.google.maps.Polyline({
+          path,
+          geodesic: true,
+          strokeColor: '#e74c3c',
+          strokeOpacity: 1,
+          strokeWeight: 5,
+          map: gMapRef.current,
+          zIndex: 1,
+        });
       }
     });
   };
@@ -170,9 +172,9 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         setAmbulanceLocation({ lat: ambLat, lng: ambLng });
         if (data.status === 'on_the_way') {
           fetchEta(ambLat, ambLng);
-        } else if (directionsRendererRef.current) {
-          directionsRendererRef.current.setMap(null);
-          directionsRendererRef.current = null;
+        } else if (routePolylineRef.current) {
+          routePolylineRef.current.setMap(null);
+          routePolylineRef.current = null;
         }
       }
     } catch {}
@@ -181,7 +183,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   useEffect(() => {
     fetchStatus();
     pollRef.current = setInterval(fetchStatus, 1000);
-    return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
+    return () => { clearInterval(pollRef.current); clearInterval(countdownRef.current); if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); if (routePolylineRef.current) { routePolylineRef.current.setMap(null); routePolylineRef.current = null; } };
   }, [emergencyId, userToken]);
 
   // Track sheet top position so 📍 button always sits 8px above it
