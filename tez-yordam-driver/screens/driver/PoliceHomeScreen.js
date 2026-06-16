@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
   Modal, Alert, ActivityIndicator, Linking,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, MarkerAnimated, AnimatedRegion, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { API_URL, GOOGLE_KEY } from '../../constants';
@@ -28,31 +28,35 @@ const STATUS_LABELS = {
 function DriverScreen({ token, user, onLogout, navigation, accentColor, markerColor, markerEmoji }) {
   const { t, theme, lang } = useLanguage();
   const insets = useSafeAreaInsets();
-  const [activeCall, setActiveCall]         = useState(null);
-  const [availableCalls, setAvailableCalls] = useState([]);
-  const [driverLocation, setDriverLocation] = useState(null);
-  const [driverHeading, setDriverHeading]   = useState(0);
-  const [selectedCall, setSelectedCall]     = useState(null);
-  const [loading, setLoading]               = useState(false);
-  const [routeInfo, setRouteInfo]           = useState(null);
-  const [statusMsg, setStatusMsg]           = useState('');
-  const [isNavigating, setIsNavigating]     = useState(false);
-  const [isFollowing, setIsFollowing]       = useState(true);
-  const [is3D, setIs3D]                     = useState(true);
-  const [driverName, setDriverName]         = useState([user?.first_name, user?.last_name].filter(Boolean).join(' ') || '');
-  const [cityName, setCityName]             = useState('');
-  const [cancelledPopup, setCancelledPopup] = useState(false);
-  const [navModal, setNavModal]             = useState(false);
+  const [activeCall, setActiveCall]           = useState(null);
+  const [availableCalls, setAvailableCalls]   = useState([]);
+  const [driverLocation, setDriverLocation]   = useState(null);
+  const [driverHeading, setDriverHeading]     = useState(0);
+  const [selectedCall, setSelectedCall]       = useState(null);
+  const [loading, setLoading]                 = useState(false);
+  const [routeInfo, setRouteInfo]             = useState(null);
+  const [statusMsg, setStatusMsg]             = useState('');
+  const [isNavigating, setIsNavigating]       = useState(false);
+  const [isFollowing, setIsFollowing]         = useState(true);
+  const [is3D, setIs3D]                       = useState(true);
+  const [driverName, setDriverName]           = useState([user?.first_name, user?.last_name].filter(Boolean).join(' ') || '');
+  const [cityName, setCityName]               = useState('');
+  const [cancelledPopup, setCancelledPopup]   = useState(false);
+  const [completedPopup, setCompletedPopup]   = useState(false);
+  const [navModal, setNavModal]               = useState(false);
 
-  const mapRef             = useRef(null);
-  const locationRef        = useRef(null);
-  const pollRef            = useRef(null);
-  const activeCallRef      = useRef(null);
-  const isFollowingRef     = useRef(true);
-  const is3DRef            = useRef(true);
-  const headingRef         = useRef(0);
-  const userInteractingRef = useRef(false);
-  const prevStatusRef      = useRef(null);
+  const mapRef               = useRef(null);
+  const locationRef          = useRef(null);
+  const pollRef              = useRef(null);
+  const activeCallRef        = useRef(null);
+  const lastCompletedCallRef = useRef(null);
+  const isFollowingRef       = useRef(true);
+  const is3DRef              = useRef(true);
+  const headingRef           = useRef(0);
+  const userInteractingRef   = useRef(false);
+  const prevStatusRef        = useRef(null);
+  const resumeFollowTimerRef = useRef(null);
+  const animatedCoordRef     = useRef(null);
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -75,10 +79,17 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         (loc) => {
           const coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
           const heading = loc.coords.heading || 0;
+          const speed = loc.coords.speed || 0;
           setDriverLocation(coords);
           setDriverHeading(heading);
-          locationRef.current = coords;
+          locationRef.current = { ...coords, speed };
           headingRef.current = heading;
+          // Smooth marker animation
+          if (!animatedCoordRef.current) {
+            animatedCoordRef.current = new AnimatedRegion({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0, longitudeDelta: 0 });
+          } else {
+            animatedCoordRef.current.timing({ latitude: coords.latitude, longitude: coords.longitude, duration: 800, useNativeDriver: false }).start();
+          }
           if (!cityName) {
             fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${GOOGLE_KEY}&language=uz`)
               .then(r => r.json())
@@ -95,7 +106,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         }
       );
     })();
-    return () => sub?.remove();
+    return () => { sub?.remove(); if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); };
   }, []);
 
   const fetchData = useCallback(async () => {
@@ -107,7 +118,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       const assignedData  = await assignedRes.json();
       const availableData = await availableRes.json();
       const call = assignedData.call || null;
-      if (prevStatusRef.current && !['cancelled','completed',null].includes(prevStatusRef.current)) {
+      const prev = prevStatusRef.current;
+      if (prev === 'arrived' && (!call || call.status === 'completed')) {
+        setCompletedPopup(true);
+        lastCompletedCallRef.current = activeCallRef.current?.id || null;
+      } else if (prev && !['cancelled','completed',null].includes(prev)) {
         if (!call || call.status === 'cancelled') setCancelledPopup(true);
       }
       prevStatusRef.current = call?.status || null;
@@ -220,6 +235,15 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
   const handleMapInteraction = () => {
     userInteractingRef.current = true; setIsFollowing(false); isFollowingRef.current = false;
+    if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current);
+    if (activeCallRef.current?.status !== 'on_the_way') return;
+    resumeFollowTimerRef.current = setTimeout(() => {
+      userInteractingRef.current = false;
+      setIsFollowing(true); isFollowingRef.current = true;
+      if (mapRef.current && locationRef.current) {
+        mapRef.current.animateCamera({ center: locationRef.current, heading: headingRef.current, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 1000 });
+      }
+    }, 4000);
   };
 
   const statusInfo = activeCall ? (STATUS_LABELS[activeCall.status] || { label: activeCall.status, color: '#7f8c8d' }) : null;
@@ -238,6 +262,23 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             <Text style={s.cancelTitle}>Chaqiruv bekor qilindi</Text>
             <Text style={s.cancelSub}>Chaqiruv bekor qilindi. Yangi chaqiruvlarni kuting.</Text>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: accentColor }]} onPress={() => setCancelledPopup(false)}>
+              <Text style={s.cancelBtnText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Completion Popup */}
+      <Modal visible={completedPopup} transparent animationType="fade">
+        <View style={s.cancelOverlay}>
+          <View style={s.cancelCard}>
+            <Text style={s.cancelIcon}>✅</Text>
+            <Text style={[s.cancelTitle, { color: '#27ae60' }]}>Muvaffaqiyatli yakunlandi!</Text>
+            <Text style={s.cancelSub}>Chaqiruv muvaffaqiyatli yakunlandi. Yangi chaqiruvlarni kuting.</Text>
+            <TouchableOpacity style={[s.cancelBtn, { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#f39c12' }]} onPress={() => setCompletedPopup(false)}>
+              <Text style={[s.cancelBtnText, { color: '#f39c12' }]}>⭐ Baholash</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[s.cancelBtn, { backgroundColor: '#27ae60', marginTop: 8 }]} onPress={() => setCompletedPopup(false)}>
               <Text style={s.cancelBtnText}>OK</Text>
             </TouchableOpacity>
           </View>
@@ -268,21 +309,22 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE} initialRegion={initialRegion}
           showsUserLocation={false} showsMyLocationButton={false} showsCompass={true} showsTraffic={isNavigating}
           rotateEnabled={true} pitchEnabled={true} onPanDrag={handleMapInteraction} onTouchStart={handleMapInteraction}>
-          {driverLocation && (
-            <Marker coordinate={driverLocation} anchor={{ x: 0.5, y: 0.5 }} rotation={driverHeading} flat>
+          {animatedCoordRef.current && (
+            <MarkerAnimated coordinate={animatedCoordRef.current} anchor={{ x: 0.5, y: 0.5 }} rotation={driverHeading} flat>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
-            </Marker>
+            </MarkerAnimated>
           )}
           {activeCall && <Marker coordinate={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }} pinColor="red" />}
           {!activeCall && availableCalls.map((call) => (
             <Marker key={call.id} coordinate={{ latitude: parseFloat(call.latitude), longitude: parseFloat(call.longitude) }} pinColor="orange" onPress={() => setSelectedCall(call)} />
           ))}
           {showRoute && (
-            <MapViewDirections origin={driverLocation} destination={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }}
-              apikey={GOOGLE_KEY} strokeWidth={isNavigating ? 10 : 5} strokeColor={isNavigating ? accentColor : '#e74c3c'}
-              onReady={(r) => setRouteInfo({ distance: r.distance.toFixed(1) + ' km', duration: Math.round(r.duration) + ' daqiqa' })} />
+            <MapViewDirections key={`route-${activeCall?.id}`} origin={driverLocation} destination={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }}
+              apikey={GOOGLE_KEY} strokeWidth={isNavigating ? 10 : 5} strokeColor="#e74c3c"
+              onReady={(r) => setRouteInfo({ distance: r.distance.toFixed(1) + ' km', duration: Math.round(r.duration) + ' daqiqa' })}
+              onError={() => {}} />
           )}
         </MapView>
 
@@ -326,7 +368,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         )}
 
         <View style={s.rightButtons}>
-          {isNavigating && <TouchableOpacity style={s.toggleBtn} onPress={toggle3D}><Text style={s.toggleBtnText}>{is3D ? '2D' : '3D'}</Text></TouchableOpacity>}
+          <TouchableOpacity style={s.toggleBtn} onPress={toggle3D}><Text style={s.toggleBtnText}>{is3D ? '2D' : '3D'}</Text></TouchableOpacity>
           <TouchableOpacity style={s.locateBtn} onPress={() => {
             if (driverLocation && mapRef.current) { setIsFollowing(true); isFollowingRef.current = true; mapRef.current.animateToRegion({ ...driverLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500); }
           }}><Text style={{ fontSize: 20 }}>📍</Text></TouchableOpacity>
