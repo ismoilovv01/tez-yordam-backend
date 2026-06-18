@@ -224,11 +224,20 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
 // Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™ AUTH Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™
 
+const DEMO_USER_PHONE = '+998000000000';
+const DEMO_USER_CODE  = '482951';
+const DEMO_DRIVER_PHONE = '+998000000001';
+const DEMO_DRIVER_CODE  = 'HM9X3K72';
+
 app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number format' });
+    // Demo account for Google Play review — skip SMS
+    if (phone === DEMO_USER_PHONE) {
+      return res.json({ success: true, message: 'Demo code ready.', via_sms: false, via_telegram: false });
+    }
     const code = generateVerificationCode();
     const codeHash = await hashCode(code);
     const expiresAt = new Date(Date.now() + 10 * 60000);
@@ -294,6 +303,23 @@ app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
     const { phone, code, first_name, last_name } = req.body;
     if (!phone || !code) return res.status(400).json({ error: 'Phone and code required' });
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number' });
+    // Demo account bypass for Google Play review
+    if (phone === DEMO_USER_PHONE) {
+      if (code !== DEMO_USER_CODE) return res.status(400).json({ error: 'Invalid code' });
+      let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+      let user;
+      if (!userR.rows.length) {
+        const created = await pool.query(
+          'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING id, phone, user_type, dispatch_center_id, first_name, last_name',
+          [phone, 'caller', 'Demo', 'User']
+        );
+        user = created.rows[0];
+      } else {
+        user = userR.rows[0];
+      }
+      const token = generateToken(user.id);
+      return res.json({ success: true, token, user: { id: user.id, phone: user.phone, user_type: user.user_type, dispatch_center_id: user.dispatch_center_id, first_name: user.first_name || 'Demo', last_name: user.last_name || 'User' } });
+    }
     const codeResult = await pool.query(
       'SELECT * FROM verification_codes WHERE phone = $1 AND verified = FALSE ORDER BY created_at DESC LIMIT 1',
       [phone]
@@ -460,11 +486,30 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
 
 app.post('/api/emergencies', authenticateToken, async (req, res) => {
   try {
-    const { latitude, longitude, service_type, description, dispatch_center_id } = req.body;
-    if (!latitude || !longitude || !service_type || !dispatch_center_id)
+    const { latitude, longitude, service_type, description } = req.body;
+    let { dispatch_center_id } = req.body;
+    if (!latitude || !longitude || !service_type)
       return res.status(400).json({ error: 'Missing required fields' });
     if (!validateCoordinates(latitude, longitude)) return res.status(400).json({ error: 'Invalid coordinates' });
-    if (!validateServiceType(service_type)) return res.status(400).json({ error: 'Invalid service type' });
+    const allowedTypes = ['ambulance', 'police', 'fire', 'pharmacy'];
+    if (!allowedTypes.includes(service_type)) return res.status(400).json({ error: 'Invalid service type' });
+    // Resolve dispatch center: if provided ID doesn't exist, find best match
+    if (dispatch_center_id) {
+      const check = await pool.query('SELECT id FROM dispatch_centers WHERE id = $1', [dispatch_center_id]);
+      if (!check.rows.length) dispatch_center_id = null;
+    }
+    if (!dispatch_center_id) {
+      const centerRes = await pool.query(
+        'SELECT id FROM dispatch_centers WHERE service_type = $1 ORDER BY id LIMIT 1',
+        [service_type === 'pharmacy' ? 'ambulance' : service_type]
+      );
+      dispatch_center_id = centerRes.rows[0]?.id || null;
+      if (!dispatch_center_id) {
+        const anyCenter = await pool.query('SELECT id FROM dispatch_centers ORDER BY id LIMIT 1');
+        dispatch_center_id = anyCenter.rows[0]?.id || null;
+      }
+    }
+    if (!dispatch_center_id) return res.status(400).json({ error: 'No dispatch center available' });
     const result = await pool.query(
       'INSERT INTO emergencies (user_id, dispatch_center_id, service_type, latitude, longitude, description, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
       [req.userId, dispatch_center_id, service_type, latitude, longitude, description || null, 'new']
@@ -1092,7 +1137,22 @@ app.post('/api/auth/driver-login', async (req, res) => {
   try {
     const { login_code, phone } = req.body;
     if (!login_code || !phone) return res.status(400).json({ error: 'login_code and phone required' });
-
+    // Demo driver account for Google Play review
+    if (phone === DEMO_DRIVER_PHONE && login_code.toUpperCase() === DEMO_DRIVER_CODE) {
+      let userR = await pool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+      let user;
+      if (!userR.rows.length) {
+        const created = await pool.query(
+          'INSERT INTO users (phone, user_type, first_name, last_name) VALUES ($1, $2, $3, $4) RETURNING *',
+          [phone, 'caller', 'Demo', 'Driver']
+        );
+        user = created.rows[0];
+      } else {
+        user = userR.rows[0];
+      }
+      const token = generateToken(user.id);
+      return res.json({ success: true, token, service_type: 'ambulance', user: { id: user.id, phone: user.phone, user_type: user.user_type, first_name: user.first_name || 'Demo', last_name: user.last_name || 'Driver' } });
+    }
     const ambR = await pool.query(
       'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1',
       [login_code.toUpperCase()]
