@@ -1,127 +1,188 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
 .home-container {
   height: 100vh; display: flex; flex-direction: column;
-  background: #f0f4ff; font-family: 'Segoe UI', sans-serif;
+  background: #f0f4f0; font-family: 'Segoe UI', sans-serif;
   max-width: 480px; margin: 0 auto; overflow: hidden;
 }
+
+/* ── Header (sage-green) ── */
 .home-header {
-  background: linear-gradient(135deg, #4fc3f7, #81c784);
-  padding: 20px 20px 32px; flex-shrink: 0;
+  background: #4a9a85;
+  padding: 48px 18px 20px;
+  flex-shrink: 0;
 }
-.home-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.home-greeting { font-size: 17px; font-weight: 600; color: #fff; margin-bottom: 4px; }
-.home-location { display: flex; align-items: center; gap: 4px; }
+
+.home-header-nav {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.home-back-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); border: none; cursor: pointer;
+  color: #fff; font-size: 20px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  line-height: 1;
+}
+.home-refresh-btn {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(255,255,255,0.18); border: none; cursor: pointer;
+  color: #fff; font-size: 17px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.home-greeting { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.home-location { display: flex; align-items: center; gap: 4px; margin-bottom: 14px; }
 .home-location-icon { font-size: 12px; }
-.home-location-text { font-size: 12px; color: rgba(255,255,255,0.85); }
-.home-notif-btn {
-  position: relative; width: 40px; height: 40px; border-radius: 50%;
-  background: rgba(255,255,255,0.25); border: none; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; font-size: 18px;
-}
-.home-notif-dot {
-  position: absolute; top: 6px; right: 6px; width: 9px; height: 9px;
-  background: #e74c3c; border-radius: 50%; border: 1.5px solid #81c784;
-}
+.home-location-text { font-size: 12px; color: rgba(255,255,255,0.88); }
+
 .home-search {
-  background: rgba(255,255,255,0.9); border-radius: 14px;
-  padding: 12px 16px; display: flex; align-items: center; gap: 8px;
+  background: rgba(255,255,255,0.92); border-radius: 14px;
+  padding: 11px 16px; display: flex; align-items: center; gap: 8px;
+  margin-bottom: 12px;
 }
-.home-search-icon { font-size: 16px; }
+.home-search-icon { font-size: 15px; color: #aaa; }
 .home-search-input {
   flex: 1; font-size: 14px; color: #333; border: none; outline: none;
   background: transparent; padding: 0; font-family: inherit;
 }
-.home-search-input::placeholder { color: #aaa; }
+.home-search-input::placeholder { color: #bbb; }
 .home-search-clear {
   background: none; border: none; color: #aaa; font-size: 18px;
   cursor: pointer; padding: 0 4px; line-height: 1;
 }
-.home-no-results { grid-column: 1 / -1; font-size: 14px; color: #aaa; padding: 20px; text-align: center; }
-.home-content {
-  background: #fff; border-radius: 24px 24px 0 0;
-  margin-top: -16px; padding: 20px 16px 0;
-  flex: 1; overflow-y: auto;
-}
 
-/* Active emergency banner */
+/* Active emergency banner — inside header */
 .home-active-banner {
-  width: 100%;
-  background: linear-gradient(135deg, #e74c3c, #c0392b);
-  border: none; border-radius: 16px;
-  padding: 14px 16px; margin-bottom: 16px;
-  display: flex; align-items: center; gap: 12px;
+  width: 100%; background: #e74c3c;
+  border: none; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 12px;
+  display: flex; align-items: center; gap: 10px;
   cursor: pointer; text-align: left;
-  box-shadow: 0 4px 14px rgba(231,76,60,0.35);
   animation: home-banner-pulse 2s ease-in-out infinite;
 }
 @keyframes home-banner-pulse {
-  0%, 100% { box-shadow: 0 4px 14px rgba(231,76,60,0.35); }
-  50% { box-shadow: 0 4px 22px rgba(231,76,60,0.6); }
+  0%,100% { opacity: 1; } 50% { opacity: 0.88; }
 }
-.home-active-banner-icon { font-size: 26px; flex-shrink: 0; }
+.home-active-banner-icon { font-size: 18px; flex-shrink: 0; }
 .home-active-banner-info { flex: 1; min-width: 0; }
-.home-active-banner-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 2px; }
-.home-active-banner-sub { font-size: 12px; color: rgba(255,255,255,0.9); }
-.home-active-banner-arrow { font-size: 22px; color: #fff; flex-shrink: 0; }
+.home-active-banner-title { font-size: 13px; font-weight: 700; color: #fff; }
+.home-active-banner-sub { font-size: 11px; color: rgba(255,255,255,0.85); margin-top: 1px; }
+.home-active-banner-status { font-size: 12px; color: rgba(255,255,255,0.9); white-space: nowrap; }
+.home-active-banner-arrow { font-size: 20px; color: #fff; flex-shrink: 0; }
 
-.home-quick-icons { display: flex; justify-content: space-around; margin-bottom: 24px; }
-.home-quick-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; background: none; border: none; cursor: pointer; }
-.home-quick-icon {
-  width: 52px; height: 52px; border-radius: 16px;
-  display: flex; align-items: center; justify-content: center; font-size: 22px;
+/* Quick action cards — inside header, white cards on green */
+.home-quick-row { display: flex; gap: 12px; }
+.home-quick-card {
+  flex: 1; background: #fff; border: none; border-radius: 16px;
+  padding: 14px 10px 12px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: transform 0.1s;
 }
-.home-quick-icon.blue { background: #f0f4ff; border: 1px solid #e0e8ff; }
-.home-quick-icon.orange { background: #fff8f0; border: 1px solid #ffe0b2; }
-.home-quick-label { font-size: 11px; color: #888; }
-.home-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.home-section-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
-.home-section-all { font-size: 12px; color: #4fc3f7; }
-.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-.home-service-card {
-  border-radius: 18px; padding: 18px 14px; border: 1.5px solid;
-  display: flex; flex-direction: column; align-items: center;
-  justify-content: center; gap: 10px; min-height: 120px;
-  cursor: pointer; background: none; transition: transform 0.1s;
+.home-quick-card:active { transform: scale(0.96); }
+.home-quick-card-icon {
+  width: 44px; height: 44px; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
 }
-.home-service-card:active { transform: scale(0.96); }
-.home-service-card.active { background: #fff0f0; border-color: #ffcdd2; }
-.home-service-card.inactive { background: #f8f9ff; border-color: #e8ecff; opacity: 0.85; }
-.home-service-icon {
-  width: 48px; height: 48px; border-radius: 14px;
-  display: flex; align-items: center; justify-content: center; font-size: 24px;
+.home-quick-card-icon.green { background: #e8f5f0; }
+.home-quick-card-icon.orange { background: #fff3e8; }
+.home-quick-card-label { font-size: 12px; font-weight: 500; color: #333; }
+
+/* ── White content card ── */
+.home-content {
+  background: #fff; border-radius: 24px 24px 0 0;
+  margin-top: -12px; padding: 18px 14px 0;
+  flex: 1; overflow-y: auto;
 }
-.home-service-icon.red { background: #ffebee; }
-.home-service-icon.blue-dark { background: #e8eaf6; }
-.home-service-icon.navy { background: #e3f2fd; }
-.home-service-icon.fire { background: #fff3e0; }
-.home-service-name { font-size: 13px; font-weight: 600; text-align: center; }
-.red-text { color: #c0392b; }
-.blue-text { color: #3949ab; }
-.navy-text { color: #1565c0; }
-.fire-text { color: #bf360c; }
-.home-service-status { font-size: 11px; text-align: center; }
-.active-status { color: #e57373; }
-.soon-status { color: #f39c12; }
-.home-last-call {
-  background: #f8f9ff; border-radius: 16px; padding: 14px 16px;
-  display: flex; align-items: center; gap: 12px;
-  border: 1px solid #e8ecff; margin-bottom: 20px; cursor: pointer;
+.home-drag-handle {
+  width: 36px; height: 4px; background: #e8e8e8;
+  border-radius: 2px; margin: 0 auto 16px;
 }
-.home-last-call-icon { font-size: 24px; }
-.home-last-call-info { flex: 1; }
-.home-last-call-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
-.home-last-call-sub { font-size: 12px; }
-.home-last-call-arrow { font-size: 20px; color: #ccc; }
+
+.home-section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.home-section-title { font-size: 16px; font-weight: 700; color: #111; }
+.home-section-all { font-size: 12px; color: #4a9a85; font-weight: 600; }
+
+/* ── Asymmetric service grid ── */
+.home-services-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.home-service-large {
+  grid-row: span 2;
+  background: #fff0f0; border: 1.5px solid #ffcdd2;
+  border-radius: 18px; padding: 18px 12px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 10px; min-height: 150px;
+  cursor: pointer; transition: transform 0.1s;
+}
+.home-service-large:active { transform: scale(0.97); }
+.home-service-large-icon { font-size: 36px; }
+.home-service-large-name { font-size: 15px; font-weight: 700; color: #c0392b; text-align: center; }
+.home-service-badge {
+  background: #e74c3c; color: #fff;
+  font-size: 10px; font-weight: 700;
+  border-radius: 8px; padding: 3px 12px;
+}
+
+.home-service-small {
+  background: #f8f9ff; border: 1px solid #eaecff;
+  border-radius: 14px; padding: 12px 10px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 5px; cursor: pointer; transition: transform 0.1s;
+}
+.home-service-small:active { transform: scale(0.96); }
+.home-service-small-icon { font-size: 24px; }
+.home-service-small-name { font-size: 12px; font-weight: 600; text-align: center; }
+.home-service-small-status { font-size: 10px; color: #f39c12; }
+
+/* Politsiya — full width row card */
+.home-service-full {
+  background: #f0f4ff; border: 1px solid #e0e6ff;
+  border-radius: 14px; padding: 13px 16px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer; margin-bottom: 12px;
+  transition: transform 0.1s;
+}
+.home-service-full:active { transform: scale(0.98); }
+.home-service-full-icon { font-size: 26px; }
+.home-service-full-info { flex: 1; }
+.home-service-full-name { font-size: 13px; font-weight: 600; color: #1565c0; }
+.home-service-full-status { font-size: 11px; color: #f39c12; margin-top: 2px; }
+
+/* Ad banner */
+.home-ad-banner {
+  height: 68px; border-radius: 14px;
+  border: 1.5px dashed #ddd;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; color: #ccc; font-size: 11px; letter-spacing: 2px;
+}
+
+.home-no-results { font-size: 14px; color: #aaa; padding: 20px; text-align: center; }
+
+/* ── Bottom nav ── */
 .home-bottom-nav {
-  background: #fff; padding: 12px 20px 20px;
+  background: #fff; padding: 10px 20px 22px;
   display: flex; justify-content: space-around;
   border-top: 1px solid #f0f0f0; flex-shrink: 0;
 }
-.home-nav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; cursor: pointer; }
+.home-nav-btn {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; background: none; border: none; cursor: pointer;
+}
 .home-nav-icon { font-size: 22px; }
 .home-nav-label { font-size: 11px; color: #bbb; }
-.home-nav-label.active { color: #4fc3f7; font-weight: 600; }
-/* Coming soon modal */
+.home-nav-label.active { color: #4a9a85; font-weight: 600; }
+
+/* ── Coming soon modal ── */
 .coming-soon-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.4);
   display: flex; align-items: center; justify-content: center; z-index: 100;
@@ -129,11 +190,12 @@
 .coming-soon-modal {
   background: #fff; border-radius: 20px; padding: 32px 40px;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
 }
 .coming-soon-emoji { font-size: 48px; }
 .coming-soon-title { font-size: 20px; font-weight: 700; color: #1a1a1a; }
 .coming-soon-sub { font-size: 14px; color: #888; }
+
+/* ── Location picker modal ── */
 .location-modal-overlay {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(0,0,0,0.5);
@@ -143,29 +205,22 @@
   background: #fff; width: 100%; max-width: 480px;
   border-radius: 24px 24px 0 0;
   padding: 20px; padding-bottom: 32px;
-  box-sizing: border-box;
 }
 .location-modal-header {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 4px;
 }
-.location-modal-title {
-  font-size: 17px; font-weight: 700; margin: 0;
-}
+.location-modal-title { font-size: 17px; font-weight: 700; margin: 0; }
 .location-modal-close {
-  background: none; border: none; font-size: 20px; color: #999; cursor: pointer;
-  padding: 4px;
+  background: none; border: none; font-size: 20px;
+  color: #999; cursor: pointer; padding: 4px;
 }
-.location-modal-sub {
-  font-size: 12px; color: #999; margin: 0 0 14px 0;
-}
+.location-modal-sub { font-size: 12px; color: #999; margin: 0 0 14px 0; }
 .location-map-wrapper {
   position: relative; width: 100%; height: 320px;
   border-radius: 16px; overflow: hidden; margin-bottom: 12px;
 }
-.location-map {
-  width: 100%; height: 100%;
-}
+.location-map { width: 100%; height: 100%; }
 .location-locate-btn {
   position: absolute; right: 12px; bottom: 12px; z-index: 10;
   width: 44px; height: 44px; border-radius: 22px;
@@ -174,12 +229,12 @@
   box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
 .location-modal-city {
-  font-size: 14px; font-weight: 600; text-align: center; margin: 0 0 14px 0;
-  color: #333;
+  font-size: 14px; font-weight: 600; text-align: center;
+  margin: 0 0 14px 0; color: #333;
 }
 .location-save-btn {
   width: 100%; border: none; border-radius: 14px;
-  background: #4fc3f7; color: #fff;
+  background: #4a9a85; color: #fff;
   font-weight: 700; font-size: 15px;
   padding: 14px; cursor: pointer;
 }
