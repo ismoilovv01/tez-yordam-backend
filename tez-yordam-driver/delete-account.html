@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delete Account — Help Mee</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1530;
+      color: #e8ecf4;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .shield { width: 48px; height: 48px; }
+
+    .app-name {
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+    }
+
+    .app-name span { color: #cc2222; }
+
+    .lang-switcher {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 36px;
+    }
+
+    .lang-btn {
+      background: #1a2a5e33;
+      border: 1px solid #ffffff18;
+      color: #8a9bbf;
+      padding: 7px 18px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .lang-btn.active {
+      background: #cc2222;
+      border-color: #cc2222;
+      color: white;
+    }
+
+    .card {
+      background: #1a2a5e22;
+      border: 1px solid #ffffff18;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .card h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: #8a9bbf;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      align-items: flex-start;
+    }
+
+    .step-num {
+      background: #cc2222;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-content h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 14px;
+      color: #8a9bbf;
+      line-height: 1.6;
+    }
+
+    .email-box {
+      background: #0d1530;
+      border: 1px solid #cc222244;
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin: 28px 0;
+      text-align: center;
+    }
+
+    .email-box .label {
+      font-size: 12px;
+      color: #8a9bbf;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .email-box .email {
+      font-size: 17px;
+      font-weight: 600;
+      color: #cc2222;
+    }
+
+    .email-box .subject {
+      font-size: 13px;
+      color: #aab4cc;
+      margin-top: 6px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #ffffff12;
+      margin: 32px 0;
+    }
+
+    .data-section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 16px;
+    }
+
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #ffffff08;
+      font-size: 14px;
+    }
+
+    .data-row:last-child { border-bottom: none; }
+    .data-type { color: #aab4cc; }
+
+    .data-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #cc222222;
+      color: #ff6666;
+    }
+
+    .timeline {
+      font-size: 13px;
+      color: #8a9bbf;
+      margin-top: 24px;
+      padding: 14px 18px;
+      background: #ffffff08;
+      border-radius: 8px;
+      line-height: 1.6;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 13px;
+      color: #4a5a7a;
+      text-align: center;
+    }
+
+    .lang-content { display: none; }
+    .lang-content.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <svg class="shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M50,5 C50,5 90,18 90,55 C90,80 50,95 50,95 C50,95 10,80 10,55 C10,18 50,5 Z" fill="#1e3a8a"/>
+      <path d="M50,5 C50,5 90,18 90,55 C90,80 50,95 50,95 L50,5 Z" fill="#cc1111"/>
+      <path d="M50,5 C50,5 90,18 90,55 C90,80 50,95 50,95 C50,95 10,80 10,55 C10,18 50,5 Z" fill="none" stroke="#c0c8d8" stroke-width="3"/>
+      <rect x="38" y="28" width="24" height="44" rx="3" fill="white" opacity="0.95"/>
+      <rect x="22" y="38" width="56" height="24" rx="3" fill="white" opacity="0.95"/>
+    </svg>
+    <div class="app-name">Help<span>Mee</span></div>
+  </div>
+
+  <div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('uz')">O'zbek</button>
+    <button class="lang-btn" onclick="setLang('ru')">Русский</button>
+    <button class="lang-btn" onclick="setLang('en')">English</button>
+  </div>
+
+  <div class="card">
+
+    <!-- UZBEK -->
+    <div class="lang-content active" id="lang-uz">
+      <h1>Hisobni o'chirish</h1>
+      <p class="subtitle">Siz Help Mee hisobingiz va barcha shaxsiy ma'lumotlaringizni o'chirishni quyidagi qadamlar orqali so'rashingiz mumkin.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>O'chirish so'rovini yuboring</h3>
+          <p>Quyidagi elektron pochta manziliga ro'yxatdan o'tgan telefon raqamingiz bilan xat yuboring.</p>
+        </div>
+      </div>
+
+      <div class="email-box">
+        <div class="label">Elektron pochta</div>
+        <div class="email">diyorbekismoil01@gmail.com</div>
+        <div class="subject">Mavzu: Hisobni o'chirish so'rovi</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Telefon raqamingizni kiriting</h3>
+          <p>Xatda Help Mee hisobingizga bog'liq telefon raqamingizni ko'rsating.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Tasdiqlashni kuting</h3>
+          <p>Hisobingiz va ma'lumotlaringiz to'liq o'chirilgandan so'ng sizga tasdiqlash xati yuboriladi. Bu 7 kun ichida amalga oshiriladi.</p>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="data-section">
+        <h2>Qanday ma'lumotlar o'chiriladi</h2>
+        <div class="data-row"><span class="data-type">Telefon raqami</span><span class="data-badge">O'chiriladi</span></div>
+        <div class="data-row"><span class="data-type">Favqulodda so'rovlar tarixi</span><span class="data-badge">O'chiriladi</span></div>
+        <div class="data-row"><span class="data-type">GPS joylashuv tarixi</span><span class="data-badge">O'chiriladi</span></div>
+        <div class="data-row"><span class="data-type">Hisob profili</span><span class="data-badge">O'chiriladi</span></div>
+        <div class="timeline">⏱ Barcha ma'lumotlar so'rov qabul qilinganidan <strong>7 kun</strong> ichida butunlay o'chiriladi.</div>
+      </div>
+    </div>
+
+    <!-- RUSSIAN -->
+    <div class="lang-content" id="lang-ru">
+      <h1>Удаление аккаунта</h1>
+      <p class="subtitle">Вы можете запросить удаление вашего аккаунта Help Mee и всех связанных персональных данных, выполнив следующие шаги.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Отправьте запрос на удаление</h3>
+          <p>Отправьте письмо на наш адрес поддержки с вашим зарегистрированным номером телефона.</p>
+        </div>
+      </div>
+
+      <div class="email-box">
+        <div class="label">Электронная почта</div>
+        <div class="email">diyorbekismoil01@gmail.com</div>
+        <div class="subject">Тема: Запрос на удаление аккаунта</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Укажите номер телефона</h3>
+          <p>Укажите в письме номер телефона, привязанный к вашему аккаунту Help Mee.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Ожидайте подтверждения</h3>
+          <p>После полного удаления аккаунта и данных вы получите подтверждающее письмо. Это займёт до 7 дней.</p>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="data-section">
+        <h2>Какие данные удаляются</h2>
+        <div class="data-row"><span class="data-type">Номер телефона</span><span class="data-badge">Удаляется</span></div>
+        <div class="data-row"><span class="data-type">История экстренных запросов</span><span class="data-badge">Удаляется</span></div>
+        <div class="data-row"><span class="data-type">История GPS-местоположений</span><span class="data-badge">Удаляется</span></div>
+        <div class="data-row"><span class="data-type">Профиль аккаунта</span><span class="data-badge">Удаляется</span></div>
+        <div class="timeline">⏱ Все данные удаляются в течение <strong>7 дней</strong> после получения запроса.</div>
+      </div>
+    </div>
+
+    <!-- ENGLISH -->
+    <div class="lang-content" id="lang-en">
+      <h1>Delete Your Account</h1>
+      <p class="subtitle">You can request the deletion of your Help Mee account and all associated personal data by following the steps below.</p>
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Send a deletion request</h3>
+          <p>Send an email to our support address with your registered phone number and the subject line below.</p>
+        </div>
+      </div>
+
+      <div class="email-box">
+        <div class="label">Send email to</div>
+        <div class="email">diyorbekismoil01@gmail.com</div>
+        <div class="subject">Subject: Account Deletion Request</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Include your phone number</h3>
+          <p>Include the phone number registered to your Help Mee account so we can identify and delete the correct account.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>We will confirm deletion</h3>
+          <p>You will receive a confirmation email once your account and data have been fully deleted. This takes up to 7 days.</p>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <div class="data-section">
+        <h2>What data gets deleted</h2>
+        <div class="data-row"><span class="data-type">Phone number</span><span class="data-badge">Deleted</span></div>
+        <div class="data-row"><span class="data-type">Emergency request history</span><span class="data-badge">Deleted</span></div>
+        <div class="data-row"><span class="data-type">GPS location history</span><span class="data-badge">Deleted</span></div>
+        <div class="data-row"><span class="data-type">Account profile</span><span class="data-badge">Deleted</span></div>
+        <div class="timeline">⏱ All data is permanently deleted within <strong>7 days</strong> of receiving your request.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    © 2025 Help Mee · O'zbekiston · diyorbekismoil01@gmail.com
+  </div>
+
+  <script>
+    function setLang(lang) {
+      document.querySelectorAll('.lang-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.lang-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById('lang-' + lang).classList.add('active');
+      event.target.classList.add('active');
+    }
+  </script>
+
+</body>
+</html>
