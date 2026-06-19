@@ -1,17 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles/HomeScreen.css';
-import { useLanguage } from '../LanguageContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 
 const ACTIVE_STATUSES = ['new', 'confirmed', 'assigned', 'on_the_way', 'arrived'];
 
-const SERVICES_BASE = [
-  { key: 'ambulance', icon: '🚑', textColor: '#c0392b', bg: '#ffebee'  },
-  { key: 'pharmacy',  icon: '🏥', textColor: '#3949ab', bg: '#e8eaf6'  },
-  { key: 'police',    icon: '🛡️', textColor: '#1565c0', bg: '#e3f2fd'  },
-  { key: 'fire',      icon: '🔥', textColor: '#bf360c', bg: '#fff3e0'  },
+const SERVICES = [
+  { key: 'ambulance', icon: '🚑', name: 'Tez Yordam',  textColor: '#c0392b', bg: '#ffebee'  },
+  { key: 'pharmacy',  icon: '🏥', name: 'Dorixona',    textColor: '#3949ab', bg: '#e8eaf6'  },
+  { key: 'police',    icon: '🛡️', name: 'Politsiya',   textColor: '#1565c0', bg: '#e3f2fd'  },
+  { key: 'fire',      icon: '🔥', name: "Yong'in",     textColor: '#bf360c', bg: '#fff3e0'  },
 ];
 
 const CENTERS_CACHE_KEY = 'dispatch_centers_cache';
@@ -49,7 +48,6 @@ function findNearestCenter(centers, serviceType, userLat, userLon) {
 }
 
 function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
-  const { t } = useLanguage();
   const [lastEmergency, setLastEmergency] = useState(() => {
     try { return JSON.parse(localStorage.getItem('last_emergency') || 'null'); } catch { return null; }
   });
@@ -158,7 +156,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
       return;
     }
     if (!isActive(serviceType)) {
-      const name = serviceType === 'police' ? t.police : serviceType === 'fire' ? t.fire : t.pharmacy;
+      const name = serviceType === 'police' ? 'Politsiya' : serviceType === 'fire' ? "Yong'in xizmati" : 'Dorixona';
       handleComingSoon(name);
       return;
     }
@@ -249,9 +247,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
     setLocationModal(false);
   };
 
-  const SERVICES = SERVICES_BASE.map(s => ({ ...s, name: s.key === 'ambulance' ? t.ambulance : s.key === 'pharmacy' ? t.pharmacy : s.key === 'police' ? t.police : t.fire }));
-
-  const firstName = user?.first_name || user?.phone || t.roleCaller;
+  const firstName = user?.first_name || user?.phone || 'Foydalanuvchi';
 
   const statusColor = (status) => {
     const colors = {
@@ -262,17 +258,15 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
   };
 
   const statusLabel = (status) => {
-    const labels = { new: t.statusNew, confirmed: t.statusConfirmed, assigned: t.statusAssigned, on_the_way: t.statusOnWay, arrived: t.statusArrived, completed: t.statusCompleted, cancelled: t.statusCancelled };
+    const labels = {
+      new: 'Yangi', confirmed: 'Tasdiqlandi', assigned: 'Haydovchi tayinlandi',
+      on_the_way: "Yo'lda", arrived: 'Keldi', completed: 'Tugatildi', cancelled: 'Bekor qilindi'
+    };
     return labels[status] || status;
   };
 
   const q = searchQuery.trim().toLowerCase();
   const filteredServices = q ? SERVICES.filter(s => s.name.toLowerCase().includes(q)) : SERVICES;
-
-  const svcAmbulance = SERVICES.find(s => s.key === 'ambulance');
-  const svcPharmacy  = SERVICES.find(s => s.key === 'pharmacy');
-  const svcFire      = SERVICES.find(s => s.key === 'fire');
-  const svcPolice    = SERVICES.find(s => s.key === 'police');
 
   return (
     <div className="home-container">
@@ -282,7 +276,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
           <div className="coming-soon-modal">
             <span className="coming-soon-emoji">🚀</span>
             <p className="coming-soon-title">{comingSoonName}</p>
-            <p className="coming-soon-sub">{t.comingSoonMsg}</p>
+            <p className="coming-soon-sub">Tez orada ishga tushadi!</p>
           </div>
         </div>
       )}
@@ -292,39 +286,41 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
         <div className="location-modal-overlay" onClick={() => setLocationModal(false)}>
           <div className="location-modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="location-modal-header">
-              <p className="location-modal-title">📍 {t.locationPickerTitle}</p>
+              <p className="location-modal-title">📍 Joylashuvni tanlang</p>
               <button className="location-modal-close" onClick={() => setLocationModal(false)}>✕</button>
             </div>
-            <p className="location-modal-sub">{t.locationPickerSub}</p>
+            <p className="location-modal-sub">Xaritada o'z joyingizni belgilang</p>
             <div className="location-map-wrapper">
               <div ref={modalMapRef} className="location-map" />
               <button className="location-locate-btn" onClick={handleLocateMe}>📍</button>
             </div>
             {pickerCity && <p className="location-modal-city">📍 {pickerCity}, O'zbekiston</p>}
-            <button className="location-save-btn" onClick={handleSaveLocation}>{t.saveLocation}</button>
+            <button className="location-save-btn" onClick={handleSaveLocation}>Shu joyni saqlash</button>
           </div>
         </div>
       )}
 
-      {/* Header — sage-green */}
+      {/* Gradient header */}
       <div className="home-header">
-        <div className="home-header-nav">
-          <button className="home-back-btn">‹</button>
-          <button className="home-refresh-btn" onClick={fetchLastEmergency}>↻</button>
+        <div className="home-header-top">
+          <div>
+            <p className="home-greeting">Salom, {firstName} 👋</p>
+            <div className="home-location">
+              <span className="home-location-icon">📍</span>
+              <span className="home-location-text">{cityName ? `${cityName}, O'zbekiston` : "Toshkent, O'zbekiston"}</span>
+            </div>
+          </div>
+          <button className="home-notif-btn" onClick={onNotifications}>
+            🔔
+            <div className="home-notif-dot" />
+          </button>
         </div>
-
-        <p className="home-greeting">{t.hello}, {firstName} 👋</p>
-        <div className="home-location">
-          <span className="home-location-icon">📍</span>
-          <span className="home-location-text">{cityName ? `${cityName}, O'zbekiston` : "O'zbekiston"}</span>
-        </div>
-
         <div className="home-search">
           <span className="home-search-icon">🔍</span>
           <input
             className="home-search-input"
             type="text"
-            placeholder={t.searchServices}
+            placeholder="Xizmat qidirish..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoCorrect="off"
@@ -334,85 +330,78 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
             <button className="home-search-clear" onClick={() => setSearchQuery('')}>×</button>
           )}
         </div>
-
-        {isActiveEmergency && (
-          <button className="home-active-banner" onClick={handleLastCallClick}>
-            <span className="home-active-banner-icon">🚨</span>
-            <div className="home-active-banner-info">
-              <p className="home-active-banner-title">{t.activeEmergency} #{lastEmergency.id}</p>
-            </div>
-            <span className="home-active-banner-status">{statusLabel(lastEmergency.status)}</span>
-            <span className="home-active-banner-arrow">›</span>
-          </button>
-        )}
-
-        <div className="home-quick-row">
-          <button className="home-quick-card" onClick={() => (isActiveEmergency ? handleLastCallClick() : onCallEmergency())}>
-            <div className="home-quick-card-icon green">📞</div>
-            <span className="home-quick-card-label">{t.call}</span>
-          </button>
-          <button className="home-quick-card" onClick={handleOpenLocationPicker}>
-            <div className="home-quick-card-icon orange">📍</div>
-            <span className="home-quick-card-label">Joylashuv</span>
-          </button>
-        </div>
       </div>
 
       {/* White content */}
       <div className="home-content">
-        <div className="home-drag-handle" />
 
-        <div className="home-section-header">
-          <p className="home-section-title">{t.services}</p>
-          <span className="home-section-all">{t.all}</span>
-        </div>
-
-        {filteredServices.length === 0 ? (
-          <p className="home-no-results">Hech narsa topilmadi</p>
-        ) : (
-          <>
-            <div className="home-services-grid">
-              {/* Tez Yordam — large left, spans 2 rows */}
-              {svcAmbulance && (
-                <button className="home-service-large" onClick={() => handleServiceClick('ambulance')}>
-                  <span className="home-service-large-icon">{svcAmbulance.icon}</span>
-                  <span className="home-service-large-name">{svcAmbulance.name}</span>
-                  <span className="home-service-badge">{t.active || 'Faol'}</span>
-                </button>
-              )}
-              {/* Dorixona */}
-              {svcPharmacy && (
-                <button className="home-service-small" onClick={() => handleServiceClick('pharmacy')}>
-                  <span className="home-service-small-icon">{svcPharmacy.icon}</span>
-                  <span className="home-service-small-name" style={{ color: svcPharmacy.textColor }}>{svcPharmacy.name}</span>
-                  <span className="home-service-small-status">{t.comingSoon || 'Tez orada'}</span>
-                </button>
-              )}
-              {/* Yong'in */}
-              {svcFire && (
-                <button className="home-service-small" onClick={() => handleServiceClick('fire')}>
-                  <span className="home-service-small-icon">{svcFire.icon}</span>
-                  <span className="home-service-small-name" style={{ color: svcFire.textColor }}>{svcFire.name}</span>
-                  <span className="home-service-small-status">{t.comingSoon || 'Tez orada'}</span>
-                </button>
-              )}
+        {/* Active emergency banner */}
+        {isActiveEmergency && (
+          <button className="home-active-banner" onClick={handleLastCallClick}>
+            <div className="home-active-banner-icon">🚑</div>
+            <div className="home-active-banner-info">
+              <p className="home-active-banner-title">Faol chaqiruv #{lastEmergency.id}</p>
+              <p className="home-active-banner-sub">{statusLabel(lastEmergency.status)} — bosing</p>
             </div>
-
-            {/* Politsiya — full width */}
-            {svcPolice && (
-              <div className="home-service-full" onClick={() => handleServiceClick('police')}>
-                <span className="home-service-full-icon">{svcPolice.icon}</span>
-                <div className="home-service-full-info">
-                  <p className="home-service-full-name">{svcPolice.name}</p>
-                  <p className="home-service-full-status">{t.comingSoon || 'Tez orada'}</p>
-                </div>
-              </div>
-            )}
-          </>
+            <span className="home-active-banner-arrow">›</span>
+          </button>
         )}
 
-        {/* Ad banner */}
-        <div className="home-ad-banner">AD</div>
+        {/* Quick icons */}
+        <div className="home-quick-icons">
+          <button className="home-quick-btn" onClick={() => (isActiveEmergency ? handleLastCallClick() : onCallEmergency())}>
+            <div className="home-quick-icon blue">📞</div>
+            <span className="home-quick-label">Qo'ng'iroq</span>
+          </button>
+          <button className="home-quick-btn" onClick={handleOpenLocationPicker}>
+            <div className="home-quick-icon orange">📍</div>
+            <span className="home-quick-label">Joylashuv</span>
+          </button>
+        </div>
+
+        {/* Services */}
+        <div className="home-section-header">
+          <p className="home-section-title">Xizmatlar</p>
+          <span className="home-section-all">Barchasi</span>
+        </div>
+
+        <div className="home-grid">
+          {filteredServices.map((svc) => {
+            const active = isActive(svc.key);
+            return (
+              <button
+                key={svc.key}
+                className={`home-service-card ${active ? 'active' : 'inactive'}`}
+                onClick={() => handleServiceClick(svc.key)}
+              >
+                <div className="home-service-icon" style={{ background: svc.bg }}>
+                  {svc.icon}
+                </div>
+                <p className="home-service-name" style={{ color: svc.textColor }}>{svc.name}</p>
+                <p className={`home-service-status ${active ? 'active-status' : 'soon-status'}`}>
+                  {active ? 'Faol' : 'Tez orada'}
+                </p>
+              </button>
+            );
+          })}
+          {filteredServices.length === 0 && (
+            <p className="home-no-results">Hech narsa topilmadi</p>
+          )}
+        </div>
+
+        {/* Last emergency (history, only show if not currently active) */}
+        {lastEmergency && !isActiveEmergency && (
+          <div className="home-last-call" onClick={handleLastCallClick}>
+            <div className="home-last-call-icon">🚑</div>
+            <div className="home-last-call-info">
+              <p className="home-last-call-title">Oxirgi chaqiruv #{lastEmergency.id}</p>
+              <p className="home-last-call-sub" style={{ color: statusColor(lastEmergency.status) }}>
+                {statusLabel(lastEmergency.status)}
+              </p>
+            </div>
+            <span className="home-last-call-arrow">›</span>
+          </div>
+        )}
       </div>
 
       {/* Bottom nav */}
