@@ -1,7 +1,9 @@
 import React from 'react';
 import '../styles/RoleScreen.css';
+import { useLanguage } from '../LanguageContext';
 
 function RoleScreen({ onSelectRole }) {
+  const { t } = useLanguage();
   return (
     <div className="role-container">
       <div className="role-hero">
@@ -12,25 +14,25 @@ function RoleScreen({ onSelectRole }) {
         <h1 className="role-app-name">Help Mee</h1>
       </div>
       <div className="role-form-card">
-        <h2 className="role-title">Xush kelibsiz!</h2>
-        <p className="role-sub">Rolingizni tanlang</p>
+        <h2 className="role-title">{t.welcome}</h2>
+        <p className="role-sub">{t.selectRole}</p>
         <button className="role-btn role-btn-user" onClick={() => onSelectRole('caller')}>
           <div className="role-btn-icon user">👤</div>
           <div className="role-btn-text">
-            <span className="role-btn-label">Foydalanuvchi</span>
-            <span className="role-btn-desc">Yordam so'rash</span>
+            <span className="role-btn-label">{t.roleCaller}</span>
+            <span className="role-btn-desc">{t.roleCallerDesc}</span>
           </div>
           <span className="role-btn-arrow">›</span>
         </button>
         <button className="role-btn role-btn-driver" onClick={() => onSelectRole('driver')}>
           <div className="role-btn-icon driver">🚑</div>
           <div className="role-btn-text">
-            <span className="role-btn-label">Haydovchi</span>
-            <span className="role-btn-desc">Xizmat ko'rsatish</span>
+            <span className="role-btn-label">{t.roleDriver}</span>
+            <span className="role-btn-desc">{t.roleDriverDesc}</span>
           </div>
           <span className="role-btn-arrow">›</span>
         </button>
-        <p className="role-note">Haydovchilar faqat admin tomonidan qo'shiladi</p>
+        <p className="role-note">{t.roleNote}</p>
       </div>
     </div>
   );

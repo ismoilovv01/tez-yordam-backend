@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image, Animated, Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { API_URL } from '../constants';
@@ -13,6 +13,25 @@ export default function DriverLoginScreen({ onLogin, navigation }) {
   const [loginCode, setLoginCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const ring1 = useRef(new Animated.Value(0)).current;
+  const ring2 = useRef(new Animated.Value(0)).current;
+  const ring3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const pulse = (anim, delay) => Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(anim, { toValue: 1, duration: 2000, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    const a1 = pulse(ring1, 0);
+    const a2 = pulse(ring2, 650);
+    const a3 = pulse(ring3, 1300);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
 
   const handleLogin = async () => {
     const cleanPhone = phone.replace(/\D/g, '');
@@ -39,7 +58,7 @@ export default function DriverLoginScreen({ onLogin, navigation }) {
         <View style={s.circle1} />
         <View style={s.circle2} />
         <View style={s.circle3} />
-        <Text style={s.heroIcon}>👮</Text>
+        <Image source={require('../assets/app-logo.png')} style={s.heroLogo} resizeMode="contain" />
         <Text style={s.heroTitle}>{t.driverLoginTitle}</Text>
         <Text style={s.heroSub}>{t.driverLoginSubtitle}</Text>
       </View>
@@ -106,7 +125,7 @@ const s = StyleSheet.create({
   circle1: { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', top: '50%', left: '50%', marginLeft: -100, marginTop: -100 },
   circle2: { position: 'absolute', width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', top: '50%', left: '50%', marginLeft: -140, marginTop: -140 },
   circle3: { position: 'absolute', width: 360, height: 360, borderRadius: 180, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', top: '50%', left: '50%', marginLeft: -180, marginTop: -180 },
-  heroIcon: { fontSize: 64, marginBottom: 8, zIndex: 1 },
+  heroLogo: { width: 90, height: 90, marginBottom: 8, zIndex: 1 },
   heroTitle: { fontSize: 28, fontWeight: '700', color: '#fff', zIndex: 1 },
   heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', letterSpacing: 2, marginTop: 4, zIndex: 1 },
   card: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, marginTop: -20 },

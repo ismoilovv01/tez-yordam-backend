@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import '../styles/ProfileScreen.css';
+import { useLanguage, LANGUAGES } from '../LanguageContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedback }) {
+  const { t, lang, setLanguage } = useLanguage();
   const [userData, setUserData] = useState(user);
   const [callCount, setCallCount] = useState(0);
-
   const [editNameModal, setEditNameModal] = useState(false);
   const [editEmailModal, setEditEmailModal] = useState(false);
   const [changePassModal, setChangePassModal] = useState(false);
   const [settingsModal, setSettingsModal] = useState(false);
-
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,20 +20,15 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
   const [confirmPassword, setConfirmPassword] = useState('');
   const [darkMode, setDarkMode] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
-  const [language, setLanguage] = useState("O'zbek");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    fetchUser();
-  }, [token]);
+  useEffect(() => { fetchUser(); }, [token]);
 
   const fetchUser = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       if (res.ok) {
         setUserData(data);
@@ -45,13 +40,10 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
     } catch {}
   };
 
-  const showSuccess = (msg) => {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(''), 3000);
-  };
+  const showSuccess = (msg) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
 
   const handleSaveName = async () => {
-    if (!firstName.trim() || !lastName.trim()) return setError('Ism va familiya kiriting');
+    if (!firstName.trim() || !lastName.trim()) return setError(`${t.firstName} ${t.lastName}`);
     setSaving(true); setError('');
     try {
       const res = await fetch(`${API_URL}/api/auth/update-profile`, {
@@ -63,14 +55,14 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       if (!res.ok) throw new Error(data.error || 'Xato');
       setUserData(prev => ({ ...prev, first_name: firstName.trim(), last_name: lastName.trim() }));
       setEditNameModal(false);
-      showSuccess('Ism muvaffaqiyatli yangilandi');
+      showSuccess(t.nameSaved);
     } catch (err) { setError(err.message); }
     setSaving(false);
   };
 
   const handleSaveEmail = async () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return setError("Noto'g'ri email format");
+    if (!emailRegex.test(email)) return setError("Invalid email format");
     setSaving(true); setError('');
     try {
       const res = await fetch(`${API_URL}/api/auth/update-email`, {
@@ -82,19 +74,15 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       if (!res.ok) throw new Error(data.error || 'Xato');
       setUserData(prev => ({ ...prev, email: email.trim().toLowerCase() }));
       setEditEmailModal(false);
-      showSuccess('Email muvaffaqiyatli yangilandi');
+      showSuccess('Email saved');
     } catch (err) { setError(err.message); }
     setSaving(false);
   };
 
   const handleChangePassword = async () => {
-    if (!userData?.email) {
-      setChangePassModal(false);
-      setTimeout(() => setEditEmailModal(true), 100);
-      return;
-    }
-    if (newPassword.length < 8) return setError("Parol kamida 8 ta belgi bo'lishi kerak");
-    if (newPassword !== confirmPassword) return setError("Parollar mos kelmadi");
+    if (!userData?.email) { setChangePassModal(false); setTimeout(() => setEditEmailModal(true), 100); return; }
+    if (newPassword.length < 8) return setError("Password must be at least 8 characters");
+    if (newPassword !== confirmPassword) return setError("Passwords do not match");
     setSaving(true); setError('');
     try {
       const res = await fetch(`${API_URL}/api/auth/change-password`, {
@@ -106,12 +94,12 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       if (!res.ok) throw new Error(data.error || 'Xato');
       setChangePassModal(false);
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-      showSuccess('Parol muvaffaqiyatli yangilandi');
+      showSuccess('Password updated');
     } catch (err) { setError(err.message); }
     setSaving(false);
   };
 
-  const fullName = [userData?.first_name, userData?.last_name].filter(Boolean).join(' ') || 'Foydalanuvchi';
+  const fullName = [userData?.first_name, userData?.last_name].filter(Boolean).join(' ') || t.roleCaller;
   const phone = userData?.phone || '';
   const userEmail = userData?.email || '';
 
@@ -125,10 +113,10 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
           {error && <p className="profile-modal-error">⚠️ {error}</p>}
           {onSave && (
             <button className="profile-modal-btn" onClick={onSave} disabled={saving}>
-              {saving ? 'Saqlanmoqda...' : (saveLabel || 'Saqlash')}
+              {saving ? '...' : (saveLabel || t.save)}
             </button>
           )}
-          <button className="profile-modal-btn-ghost" onClick={onClose}>Bekor</button>
+          <button className="profile-modal-btn-ghost" onClick={onClose}>{t.cancel}</button>
         </div>
       </div>
     );
@@ -145,13 +133,13 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       </div>
 
       <div className="profile-content">
-        <p className="profile-section-title">HISOB</p>
+        <p className="profile-section-title">{t.account.toUpperCase()}</p>
 
         <div className="profile-card" onClick={() => { setError(''); setEditNameModal(true); }}>
           <span className="profile-card-icon">👤</span>
           <div className="profile-card-info">
             <p className="profile-card-value">{fullName}</p>
-            <p className="profile-card-label">Ism Familiya • tahrirlash</p>
+            <p className="profile-card-label">{t.fullName} • {t.edit}</p>
           </div>
           <span className="profile-card-arrow">›</span>
         </div>
@@ -160,65 +148,46 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
           <span className="profile-card-icon">📱</span>
           <div className="profile-card-info">
             <p className="profile-card-value">{phone}</p>
-            <p className="profile-card-label">Telefon raqam</p>
+            <p className="profile-card-label">{t.phone}</p>
           </div>
         </div>
 
         <div className="profile-card" onClick={() => { setError(''); setEditEmailModal(true); }}>
           <span className="profile-card-icon">📧</span>
           <div className="profile-card-info">
-            <p className="profile-card-value">{userEmail || "Email qo'shish"}</p>
-            <p className="profile-card-label">Email • {userEmail ? 'tahrirlash' : "qo'shish"}</p>
+            <p className="profile-card-value">{userEmail || t.email}</p>
+            <p className="profile-card-label">{t.email} • {t.edit}</p>
           </div>
           <span className="profile-card-arrow">›</span>
-        </div>
-
-        <div className="profile-card" onClick={() => { setError(''); setChangePassModal(true); }}>
-          <span className="profile-card-icon">🔑</span>
-          <div className="profile-card-info">
-            <p className="profile-card-value">Parolni o'zgartirish</p>
-            <p className="profile-card-label">{userEmail ? 'Email parolini yangilash' : 'Avval email kiriting'}</p>
-          </div>
-          <span className="profile-card-arrow">›</span>
-        </div>
-
-        <p className="profile-section-title">STATISTIKA</p>
-
-        <div className="profile-card">
-          <span className="profile-card-icon">🚑</span>
-          <div className="profile-card-info">
-            <p className="profile-card-value">{callCount} ta chaqiruv</p>
-            <p className="profile-card-label">Jami chaqiruvlar</p>
-          </div>
         </div>
 
         <div className="profile-card" onClick={onNotifications} style={{ cursor: 'pointer' }}>
           <span className="profile-card-icon">📋</span>
           <div className="profile-card-info">
-            <p className="profile-card-value">Chaqiruvlar tarixi</p>
-            <p className="profile-card-label">Barcha chaqiruvlarni ko'rish</p>
+            <p className="profile-card-value">{t.callHistory}</p>
+            <p className="profile-card-label">{t.viewAllCalls}</p>
           </div>
           <span className="profile-card-arrow">›</span>
         </div>
 
-        <p className="profile-section-title">FIKR VA TAKLIFLAR</p>
+        <p className="profile-section-title">{t.feedback.toUpperCase()}</p>
 
         <div className="profile-card" onClick={onFeedback} style={{ cursor: 'pointer' }}>
           <span className="profile-card-icon">⭐</span>
           <div className="profile-card-info">
-            <p className="profile-card-value">Fikr va takliflar</p>
-            <p className="profile-card-label">Ilovani yaxshilashga yordam bering</p>
+            <p className="profile-card-value">{t.feedback}</p>
+            <p className="profile-card-label">{t.feedbackSub}</p>
           </div>
           <span className="profile-card-arrow">›</span>
         </div>
 
-        <p className="profile-section-title">SOZLAMALAR</p>
+        <p className="profile-section-title">{t.settings.toUpperCase()}</p>
 
         <div className="profile-card" onClick={() => setSettingsModal(true)}>
           <span className="profile-card-icon">⚙️</span>
           <div className="profile-card-info">
-            <p className="profile-card-value">Ilova sozlamalari</p>
-            <p className="profile-card-label">Tema, til, bildirishnoma</p>
+            <p className="profile-card-value">{t.settings}</p>
+            <p className="profile-card-label">{t.settingsSub}</p>
           </div>
           <span className="profile-card-arrow">›</span>
         </div>
@@ -227,14 +196,14 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
           <span className="profile-card-icon">ℹ️</span>
           <div className="profile-card-info">
             <p className="profile-card-value">Help Mee v1.0.0</p>
-            <p className="profile-card-label">Ilova versiyasi</p>
+            <p className="profile-card-label">{t.version}</p>
           </div>
         </div>
 
         <div className="profile-card logout" onClick={onLogout}>
           <span className="profile-card-icon">🚪</span>
           <div className="profile-card-info">
-            <p className="profile-card-value logout-text">Chiqish</p>
+            <p className="profile-card-value logout-text">{t.logout}</p>
           </div>
         </div>
       </div>
@@ -242,46 +211,40 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       <div className="profile-bottom-nav">
         <button className="profile-nav-btn" onClick={onBack}>
           <span>🏠</span>
-          <span className="profile-nav-label">Asosiy</span>
+          <span className="profile-nav-label">{t.welcome.replace('!','')}</span>
         </button>
         <button className="profile-nav-btn active">
           <span>👤</span>
-          <span className="profile-nav-label active">Profil</span>
+          <span className="profile-nav-label active">{t.account}</span>
         </button>
       </div>
 
       {/* Edit Name Modal */}
-      <Modal visible={editNameModal} onClose={() => setEditNameModal(false)} title="Ismni tahrirlash" onSave={handleSaveName}>
-        <input className="profile-modal-input" placeholder="Ismingiz" value={firstName} onChange={e => setFirstName(e.target.value)} />
-        <input className="profile-modal-input" placeholder="Familiyangiz" value={lastName} onChange={e => setLastName(e.target.value)} />
+      <Modal visible={editNameModal} onClose={() => setEditNameModal(false)} title={t.editName} onSave={handleSaveName}>
+        <input className="profile-modal-input" placeholder={t.firstName} value={firstName} onChange={e => setFirstName(e.target.value)} />
+        <input className="profile-modal-input" placeholder={t.lastName} value={lastName} onChange={e => setLastName(e.target.value)} />
       </Modal>
 
       {/* Edit Email Modal */}
-      <Modal visible={editEmailModal} onClose={() => setEditEmailModal(false)}
-        title={userEmail ? 'Emailni tahrirlash' : "Email qo'shish"} onSave={handleSaveEmail}>
-        <input className="profile-modal-input" placeholder="email@example.com" type="email"
-          value={email} onChange={e => setEmail(e.target.value)} />
+      <Modal visible={editEmailModal} onClose={() => setEditEmailModal(false)} title={t.email} onSave={handleSaveEmail}>
+        <input className="profile-modal-input" placeholder="email@example.com" type="email" value={email} onChange={e => setEmail(e.target.value)} />
       </Modal>
 
       {/* Change Password Modal */}
-      <Modal visible={changePassModal} onClose={() => setChangePassModal(false)} title="Parolni o'zgartirish"
-        onSave={userData?.email ? handleChangePassword : null}
-        saveLabel="Saqlash">
+      <Modal visible={changePassModal} onClose={() => setChangePassModal(false)} title="🔑 Password"
+        onSave={userData?.email ? handleChangePassword : null} saveLabel={t.save}>
         {!userData?.email ? (
           <>
-            <p style={{ color: '#888', fontSize: 14, marginBottom: 16 }}>Parol o'zgartirish uchun avval email kiriting.</p>
+            <p style={{ color: '#888', fontSize: 14, marginBottom: 16 }}>Please add email first.</p>
             <button className="profile-modal-btn" onClick={() => { setChangePassModal(false); setTimeout(() => setEditEmailModal(true), 100); }}>
-              Email kiriting
+              {t.email}
             </button>
           </>
         ) : (
           <>
-            <input className="profile-modal-input" placeholder="Hozirgi parol" type="password"
-              value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
-            <input className="profile-modal-input" placeholder="Yangi parol (min 8 belgi)" type="password"
-              value={newPassword} onChange={e => setNewPassword(e.target.value)} />
-            <input className="profile-modal-input" placeholder="Yangi parolni tasdiqlang" type="password"
-              value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+            <input className="profile-modal-input" placeholder="Current password" type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+            <input className="profile-modal-input" placeholder="New password (min 8)" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            <input className="profile-modal-input" placeholder="Confirm new password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
           </>
         )}
       </Modal>
@@ -290,28 +253,38 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
       {settingsModal && (
         <div className="profile-modal-overlay" onClick={() => setSettingsModal(false)}>
           <div className="profile-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="profile-modal-title">⚙️ Sozlamalar</h3>
+            <h3 className="profile-modal-title">⚙️ {t.settingsTitle}</h3>
             <div className="profile-setting-row">
-              <span>🌙 Qorong'u tema</span>
+              <span>🌙 {t.darkMode}</span>
               <label className="profile-toggle">
                 <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
                 <span className="profile-toggle-slider" />
               </label>
             </div>
             <div className="profile-setting-row">
-              <span>🔔 Ovozli bildirishnoma</span>
+              <span>🔔 {t.soundNotif}</span>
               <label className="profile-toggle">
                 <input type="checkbox" checked={soundOn} onChange={e => setSoundOn(e.target.checked)} />
                 <span className="profile-toggle-slider" />
               </label>
             </div>
-            <div className="profile-setting-row">
-              <span>🌐 Til</span>
-              <button className="profile-lang-btn" onClick={() => setLanguage(language === "O'zbek" ? 'Русский' : "O'zbek")}>
-                {language}
-              </button>
+            <div style={{ paddingTop: 14 }}>
+              <p style={{ fontSize: 14, marginBottom: 10 }}>🌐 {t.language}</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {LANGUAGES.map(l => (
+                  <button key={l.code} onClick={() => setLanguage(l.code)}
+                    style={{
+                      flex: 1, padding: '10px 4px', borderRadius: 12, border: `2px solid ${lang === l.code ? '#4fc3f7' : '#ddd'}`,
+                      background: lang === l.code ? '#4fc3f7' : '#f5f5f5',
+                      color: lang === l.code ? '#fff' : '#333', fontWeight: 600, cursor: 'pointer', fontSize: 12,
+                    }}>
+                    <div style={{ fontSize: 18 }}>{l.flag}</div>
+                    {l.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button className="profile-modal-btn" onClick={() => setSettingsModal(false)}>Yopish</button>
+            <button className="profile-modal-btn" style={{ marginTop: 16 }} onClick={() => setSettingsModal(false)}>{t.save}</button>
           </div>
         </div>
       )}

@@ -267,6 +267,10 @@ nav { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 2px; }
 }
 .field input:focus, .field select:focus { border-color: #3b82f6; }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.phone-row { display: flex; align-items: center; border: 1.5px solid #e2e8f0; border-radius: 9px; overflow: hidden; background: white; transition: border-color 0.15s; }
+.phone-row:focus-within { border-color: #3b82f6; }
+.phone-prefix { padding: 10px 10px 10px 13px; background: #f1f5f9; color: #374151; font-size: 14px; font-weight: 700; border-right: 1.5px solid #e2e8f0; white-space: nowrap; }
+.phone-row input { flex: 1; padding: 10px 13px; border: none; font-size: 14px; outline: none; background: transparent; }
 
 /* ── Buttons ── */
 .btn-primary {

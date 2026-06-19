@@ -439,7 +439,10 @@ function UsersPage({ token }) {
             </div>
             <div className="field">
               <label>Telefon {createForm.user_type === 'center_admin' ? '*' : ''}</label>
-              <input value={createForm.phone} onChange={e => setCreateForm({...createForm, phone: e.target.value})} placeholder="+998901234567" required={createForm.user_type === 'center_admin'} />
+              <div className="phone-row">
+                <span className="phone-prefix">+998</span>
+                <input value={createForm.phone.replace(/^\+?998/, '')} onChange={e => setCreateForm({...createForm, phone: '+998' + e.target.value.replace(/^\+?998/, '')})} placeholder="901234567" maxLength={9} required={createForm.user_type === 'center_admin'} />
+              </div>
             </div>
             <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '9px 13px', fontSize: 12, color: '#166534', marginBottom: 12 }}>
               🔐 Parol avtomatik yaratiladi va yaratilgandan so'ng ko'rsatiladi
@@ -532,7 +535,12 @@ function UsersPage({ token }) {
             <div className="field"><label>Ism</label><input value={editForm.first_name} onChange={e => setEditForm({...editForm, first_name: e.target.value})} /></div>
             <div className="field"><label>Familiya</label><input value={editForm.last_name} onChange={e => setEditForm({...editForm, last_name: e.target.value})} /></div>
           </div>
-          <div className="field"><label>Telefon</label><input value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} placeholder="+998901234567" /></div>
+          <div className="field"><label>Telefon</label>
+            <div className="phone-row">
+              <span className="phone-prefix">+998</span>
+              <input value={editForm.phone.replace(/^\+?998/, '')} onChange={e => setEditForm({...editForm, phone: '+998' + e.target.value.replace(/^\+?998/, '')})} placeholder="901234567" maxLength={9} />
+            </div>
+          </div>
           <div className="field">
             <label>Rol</label>
             <select value={editForm.user_type} onChange={e => setEditForm({...editForm, user_type: e.target.value})}>

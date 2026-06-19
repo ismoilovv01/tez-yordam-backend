@@ -1,0 +1,215 @@
+```css
+.dashboard-container {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  overflow: hidden;
+}
+
+.dashboard-header {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.dashboard-header h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-refresh, .btn-logout {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-refresh:hover, .btn-logout:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.dashboard-content {
+  display: flex;
+  flex: 1;
+  gap: 16px;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.map-section {
+  flex: 1;
+  position: relative;
+  background: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dispatcher-map {
+  width: 100%;
+  height: 100%;
+}
+
+.loading-map {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.emergencies-section {
+  width: 320px;
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.emergencies-section h2 {
+  font-size: 16px;
+  color: #333;
+  padding: 16px;
+  margin: 0;
+  border-bottom: 1px solid #eee;
+  background: #f9f9f9;
+}
+
+.emergencies-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.no-emergencies {
+  padding: 32px 16px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+
+.emergency-item {
+  background: white;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: all 0.2s;
+}
+
+.emergency-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.emergency-info {
+  margin-bottom: 12px;
+}
+
+.emergency-id {
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.emergency-type {
+  color: #dc3545;
+  font-weight: 500;
+  margin: 0 0 4px;
+  font-size: 12px;
+}
+
+.emergency-location {
+  color: #666;
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.emergency-time {
+  color: #999;
+  margin: 0;
+  font-size: 11px;
+}
+
+.emergency-description {
+  color: #555;
+  font-size: 11px;
+  margin: 6px 0 0;
+  font-style: italic;
+}
+
+.emergency-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.btn-action {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-confirm {
+  background: #4CAF50;
+  color: white;
+}
+
+.btn-confirm:hover {
+  background: #45a049;
+}
+
+.btn-dispatch {
+  background: #2196f3;
+  color: white;
+}
+
+.btn-dispatch:hover {
+  background: #0b7dda;
+}
+
+.btn-complete {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-complete:hover {
+  background: #e68900;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-content {
+    flex-direction: column;
+  }
+
+  .emergencies-section {
+    width: 100%;
+    height: 200px;
+  }
+}
+```

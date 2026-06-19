@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, Image } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const COLLAPSED_HEIGHT = 110;
@@ -11,10 +12,12 @@ import { useLanguage } from '../../LanguageContext';
 
 export default function CallerConfirmationScreen({ token, onLogout, navigation, route }) {
   const { t, theme } = useLanguage();
-  const { emergencyId, callerLocation } = route?.params || {};
+  const { emergencyId, callerLocation: callerLocationParam } = route?.params || {};
+  const [callerLocation, setCallerLocation] = useState(callerLocationParam || null);
   const [status, setStatus] = useState('new');
   const [ambulanceInfo, setAmbulanceInfo] = useState(null);
   const [ambulanceLocation, setAmbulanceLocation] = useState(null);
+  const [ambulanceHeading, setAmbulanceHeading] = useState(0);
   const [cancelled, setCancelled] = useState(false);
   const [cancelledBy, setCancelledBy] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
@@ -70,6 +73,11 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
   ];
 
   useEffect(() => {
+    if (!callerLocationParam) {
+      AsyncStorage.getItem('caller_location').then(v => {
+        if (v) { try { setCallerLocation(JSON.parse(v)); } catch {} }
+      });
+    }
     fetchStatus();
     pollRef.current = setInterval(fetchStatus, 2000);
     return () => clearInterval(pollRef.current);
@@ -82,9 +90,18 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
       const data = await res.json();
       if (!res.ok) return;
       setStatus(data.status);
+      // Cache emergency for fast restore on reopen
+      AsyncStorage.setItem('last_emergency', JSON.stringify(data)).catch(() => {});
+      // Save caller location from API if not available from params
+      if (data.latitude && data.longitude && !callerLocation) {
+        const loc = { lat: parseFloat(data.latitude), lng: parseFloat(data.longitude) };
+        setCallerLocation(loc);
+        AsyncStorage.setItem('caller_location', JSON.stringify(loc)).catch(() => {});
+      }
       if ((data.status === 'cancelled' || data.status === 'rejected') && !cancelShownRef.current) {
         cancelShownRef.current = true;
         clearInterval(pollRef.current);
+        AsyncStorage.removeItem('last_emergency').catch(() => {});
         setCancelledBy(data.cancelled_by || 'dispatcher');
         setCancelled(true);
         return;
@@ -99,6 +116,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
       if (data.amb_lat && data.amb_lng) {
         const ambCoord = { latitude: parseFloat(data.amb_lat), longitude: parseFloat(data.amb_lng) };
         setAmbulanceLocation(ambCoord);
+        if (data.amb_heading != null) setAmbulanceHeading(parseFloat(data.amb_heading) || 0);
         if (!mapFittedRef.current && callerLocation && mapRef.current) {
           mapFittedRef.current = true;
           mapRef.current.fitToCoordinates(
@@ -118,6 +136,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
           await fetch(`${API_URL}/api/emergencies/${emergencyId}/cancel`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
           cancelShownRef.current = true;
           clearInterval(pollRef.current);
+          AsyncStorage.removeItem('last_emergency').catch(() => {});
           setCancelledBy('user'); setCancelled(true);
         } catch {}
       }},
@@ -170,8 +189,8 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
             <Marker coordinate={{ latitude: callerLocation.lat, longitude: callerLocation.lng }} pinColor="red" title={t.yourLocation} />
           )}
           {ambulanceLocation && (
-            <Marker coordinate={ambulanceLocation} title={`${t.ambulance}${ambulanceInfo ? ` (${ambulanceInfo})` : ''}`}>
-              <Image source={require('../../assets/ambulance-top.png')} style={s.ambMarkerImg} resizeMode="contain" />
+            <Marker coordinate={ambulanceLocation} title={`${t.ambulance}${ambulanceInfo ? ` (${ambulanceInfo})` : ''}`} rotation={ambulanceHeading} anchor={{ x: 0.5, y: 0.5 }} flat>
+              <Image source={require('../../assets/ambulance-marker.png')} style={s.ambMarkerImg} resizeMode="contain" />
             </Marker>
           )}
           {showRoute && (
@@ -183,9 +202,11 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
             />
           )}
         </MapView>
+      </View>
 
+      <Animated.View style={[s.locateBtn, { bottom: Animated.add(sheetHeight, 16) }]}>
         <TouchableOpacity
-          style={s.locateBtn}
+          style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
           onPress={() => {
             if (callerLocation && mapRef.current) {
               mapRef.current.animateToRegion({
@@ -199,7 +220,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
         >
           <Text style={s.locateBtnIcon}>📍</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       <Animated.View style={[s.bottomSheet, { maxHeight: sheetHeight }]} {...panResponder.panHandlers}>
         <TouchableOpacity style={s.handle} onPress={() => sheetExpanded ? collapseSheet() : expandSheet()}>
@@ -288,7 +309,7 @@ const s = StyleSheet.create({
   mapContainer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
   map: { flex: 1 },
   ambMarkerImg: { width: 36, height: 36 },
-  locateBtn: { position: 'absolute', right: 16, bottom: 180, width: 48, height: 48, borderRadius: 24, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, zIndex: 30 },
+  locateBtn: { position: 'absolute', right: 16, width: 48, height: 48, borderRadius: 24, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center', elevation: 30, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 6, zIndex: 30 },
   locateBtnIcon: { fontSize: 22 },
   bottomSheet: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 25, backgroundColor: '#1a1a2e', borderTopLeftRadius: 20, borderTopRightRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 10, paddingBottom: 20 },
   bottomSheetExpanded: {},

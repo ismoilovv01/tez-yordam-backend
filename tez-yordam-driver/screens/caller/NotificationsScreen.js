@@ -88,7 +88,7 @@ export default function CallerNotificationsScreen({ token, navigation }) {
                 {/* Details */}
                 <View style={s.detailRow}>
                   <Text style={s.detailIcon}>🗓️</Text>
-                  <Text style={[s.detailLabel, { color: theme.textSub }]}>Sana</Text>
+                  <Text style={[s.detailLabel, { color: theme.textSub }]}>{t.date || 'Sana'}</Text>
                   <Text style={[s.detailValue, { color: theme.text }]}>{formatDate(item.created_at)}</Text>
                 </View>
 
@@ -102,14 +102,17 @@ export default function CallerNotificationsScreen({ token, navigation }) {
 
                 <View style={s.detailRow}>
                   <Text style={s.detailIcon}>📍</Text>
-                  <Text style={[s.detailLabel, { color: theme.textSub }]}>Koordinata</Text>
+                  <Text style={[s.detailLabel, { color: theme.textSub }]}>{t.coordinate || 'Koordinata'}</Text>
                   <TouchableOpacity onPress={() => {
-                    const lat = parseFloat(item.latitude).toFixed(4);
-                    const lng = parseFloat(item.longitude).toFixed(4);
-                    Linking.openURL(`https://maps.google.com?q=${lat},${lng}`);
+                    const lat = parseFloat(item.latitude);
+                    const lng = parseFloat(item.longitude);
+                    if (!isNaN(lat) && !isNaN(lng))
+                      Linking.openURL(`https://maps.google.com?q=${lat.toFixed(4)},${lng.toFixed(4)}`);
                   }}>
                     <Text style={[s.detailValue, { color: '#3498db' }]}>
-                      {parseFloat(item.latitude).toFixed(4)}, {parseFloat(item.longitude).toFixed(4)}
+                      {!isNaN(parseFloat(item.latitude)) && !isNaN(parseFloat(item.longitude))
+                        ? `${parseFloat(item.latitude).toFixed(4)}, ${parseFloat(item.longitude).toFixed(4)}`
+                        : '—'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -117,7 +120,7 @@ export default function CallerNotificationsScreen({ token, navigation }) {
                 {item.driver_name && (
                   <View style={s.detailRow}>
                     <Text style={s.detailIcon}>🚑</Text>
-                    <Text style={[s.detailLabel, { color: theme.textSub }]}>Haydovchi</Text>
+                    <Text style={[s.detailLabel, { color: theme.textSub }]}>{t.roleDriver || 'Driver'}</Text>
                     <Text style={[s.detailValue, { color: theme.text }]}>{item.driver_name}</Text>
                   </View>
                 )}

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Animated,
+  ActivityIndicator, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, Animated, Image,
 } from 'react-native';
 import { API_URL } from '../constants';
 import { useLanguage } from '../LanguageContext';
@@ -124,7 +124,7 @@ export default function LoginScreen({ onLogin, route }) {
           <Animated.View style={[s.pulseRing, ringStyle(pulse1)]} />
           <Animated.View style={[s.pulseRing, ringStyle(pulse2)]} />
           <Animated.View style={[s.pulseRing, ringStyle(pulse3)]} />
-          <Text style={s.heroIcon}>🚑</Text>
+          <Image source={require('../assets/app-logo.png')} style={s.heroLogo} resizeMode="contain" />
           <Text style={s.heroTitle}>Help Mee</Text>
         </View>
 
@@ -212,7 +212,7 @@ const s = StyleSheet.create({
   safe: { flex: 1 },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e74c3c', position: 'relative', minHeight: 220 },
   pulseRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' },
-  heroIcon: { fontSize: 64, zIndex: 1, marginBottom: 12 },
+  heroLogo: { width: 90, height: 90, zIndex: 1, marginBottom: 12 },
   heroTitle: { fontSize: 32, fontWeight: '800', color: '#fff', zIndex: 1, letterSpacing: 1 },
   card: { borderTopLeftRadius: 28, borderTopRightRadius: 28, flexShrink: 0 },
   cardContent: { padding: 28, paddingBottom: 40 },

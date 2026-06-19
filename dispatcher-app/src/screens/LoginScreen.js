@@ -17,7 +17,9 @@ const styles = {
   roleIcon: { fontSize: 28 },
   roleLabel: { fontSize: 13 },
   label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 },
-  input: { width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: 10, fontSize: 15, outline: 'none', boxSizing: 'border-box', marginBottom: 14 },
+  phoneRow: { display: 'flex', alignItems: 'center', border: '1.5px solid #e2e8f0', borderRadius: 10, marginBottom: 14, overflow: 'hidden' },
+  prefix: { padding: '12px 10px 12px 14px', background: '#f1f5f9', color: '#374151', fontSize: 15, fontWeight: 700, borderRight: '1.5px solid #e2e8f0', whiteSpace: 'nowrap' },
+  input: { flex: 1, padding: '12px 14px', border: 'none', fontSize: 15, outline: 'none', boxSizing: 'border-box' },
   codeInput: { width: '100%', padding: '14px', border: '2px solid #e2e8f0', borderRadius: 10, fontSize: 28, fontWeight: 800, letterSpacing: 8, textAlign: 'center', outline: 'none', boxSizing: 'border-box', marginBottom: 14, textTransform: 'uppercase' },
   btn: (disabled, color) => ({
     width: '100%', padding: '14px', border: 'none', borderRadius: 10,
@@ -41,7 +43,7 @@ function LoginScreen({ onLogin, loading, error }) {
     setLocalError('');
     if (!phone.trim()) { setLocalError("Telefon raqamni kiriting"); return; }
     if (code.trim().length < 4) { setLocalError("Kodni to'liq kiriting"); return; }
-    onLogin({ phone: phone.trim(), code: code.trim().toUpperCase(), role });
+    onLogin({ phone: '+998' + phone.trim().replace(/^\+?998/, ''), code: code.trim().toUpperCase(), role });
   };
 
   const handleBack = () => { setRole(null); setPhone(''); setCode(''); setLocalError(''); };
@@ -81,15 +83,19 @@ function LoginScreen({ onLogin, loading, error }) {
             </div>
 
             <label style={styles.label}>📱 Telefon raqam</label>
-            <input
-              type="tel"
-              value={phone}
-              onChange={e => { setPhone(e.target.value); setLocalError(''); }}
-              placeholder="+998901234567"
-              style={styles.input}
-              disabled={loading}
-              autoFocus
-            />
+            <div style={styles.phoneRow}>
+              <span style={styles.prefix}>+998</span>
+              <input
+                type="tel"
+                value={phone}
+                onChange={e => { setPhone(e.target.value.replace(/^\+?998/, '')); setLocalError(''); }}
+                placeholder="901234567"
+                style={styles.input}
+                disabled={loading}
+                autoFocus
+                maxLength={9}
+              />
+            </div>
 
             <label style={styles.label}>🔑 {role === 'center_admin' ? 'Super admin bergan kod' : 'Markaz admin bergan kod'}</label>
             <input

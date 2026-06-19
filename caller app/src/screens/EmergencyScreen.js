@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import '../styles/EmergencyScreen.css';
+import { useLanguage } from '../LanguageContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 const GOOGLE_KEY = process.env.REACT_APP_GOOGLE_MAPS_KEY;
@@ -20,6 +21,7 @@ const PIN_ICON = () => ({
 });
 
 function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, dispatchCenterId, serviceType = 'ambulance' }) {
+  const { t } = useLanguage();
   const [markerLocation, setMarkerLocation] = useState(null);
   const [description, setDescription] = useState('');
   const [sending, setSending] = useState(false);
@@ -180,7 +182,7 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
   const handleSendEmergency = async () => {
     const now = Date.now();
     if (now - lastEmergencySendTime < 2000) return;
-    if (!markerLocation) { setError("Joylashuvni aniqlash kutilmoqda..."); return; }
+    if (!markerLocation) { setError(t.waitingGps); return; }
     if (!resolvedCenterId) { setError("Dispatch markaz aniqlanmoqda..."); return; }
     lastEmergencySendTime = now;
     setSending(true);
@@ -205,8 +207,8 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
     }
   };
 
-  const serviceTitle = serviceType === 'police' ? '🛡️ Politsiya' : serviceType === 'fire' ? "🔥 Yong'in" : '🚑 Tez Yordam';
-  const btnLabel = serviceType === 'police' ? 'POLITSIYA CHAQIRISH' : serviceType === 'fire' ? "YONG'IN CHAQIRISH" : 'TEZ YORDAM CHAQIRISH';
+  const serviceTitle = serviceType === 'police' ? `🛡️ ${t.police}` : serviceType === 'fire' ? `🔥 ${t.fire}` : `🚑 ${t.ambulance}`;
+  const btnLabel = serviceType === 'police' ? t.sendPolice : serviceType === 'fire' ? t.sendFire : t.sendEmergency;
   const canSend = gpsReady && resolvedCenterId && !sending;
 
   return (
@@ -235,14 +237,14 @@ function EmergencyScreen({ onSendEmergency, onBack, onNotifications, token, disp
         {error && <div className="em-error">⚠️ {error}</div>}
         <textarea
           className="em-textarea"
-          placeholder="Qo'shimcha ma'lumot (ixtiyoriy)..."
+          placeholder={t.additionalInfo}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           disabled={sending}
           rows={2}
         />
         <button className="em-send-btn" onClick={handleSendEmergency} disabled={!canSend}>
-          {sending ? 'Yuborilmoqda...' : !gpsReady ? '📍 Joylashuv kutilmoqda...' : `🚑 ${btnLabel}`}
+          {sending ? t.sending : !gpsReady ? t.waitingLocation : `🚑 ${btnLabel}`}
         </button>
       </div>
     </div>

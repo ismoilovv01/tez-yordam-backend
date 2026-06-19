@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../../constants';
 import { useLanguage } from '../../LanguageContext';
 
@@ -31,25 +32,34 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
   const ring3 = useRef(new Animated.Value(0)).current;
   const animsRef = useRef([]);
 
+  const locationSubRef = useRef(null);
+  const hasInitialFix = useRef(false);
+  const userMovedPin = useRef(false);
+
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
+      if (status !== 'granted' || cancelled) return;
       try {
-        // Try a fast/cached fix first so the marker snaps to the real
-        // location quickly, then refine with a high-accuracy fix.
-        const quick = await Location.getLastKnownPositionAsync();
-        if (quick) {
-          const coords = { latitude: quick.coords.latitude, longitude: quick.coords.longitude };
-          setLocation(coords);
-          mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
-        }
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-        setLocation(coords);
-        mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
+        locationSubRef.current = await Location.watchPositionAsync(
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 5 },
+          (pos) => {
+            if (cancelled || userMovedPin.current) return;
+            const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+            setLocation(coords);
+            if (!hasInitialFix.current) {
+              hasInitialFix.current = true;
+              mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 400);
+            }
+          }
+        );
       } catch {}
     })();
+    return () => {
+      cancelled = true;
+      locationSubRef.current?.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -94,6 +104,7 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
     try {
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+      userMovedPin.current = false;
       setLocation(coords);
       mapRef.current?.animateToRegion({ ...coords, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 500);
     } catch {
@@ -115,11 +126,14 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t.error);
+      const loc = { lat: location.latitude, lng: location.longitude };
+      AsyncStorage.setItem('caller_location', JSON.stringify(loc)).catch(() => {});
+      AsyncStorage.setItem('last_emergency', JSON.stringify(data)).catch(() => {});
       // Brief delay so the searching animation is visible before navigating
       setTimeout(() => {
         navigation.replace('CallerConfirmation', {
           emergencyId: data.id,
-          callerLocation: { lat: location.latitude, lng: location.longitude },
+          callerLocation: loc,
         });
       }, 900);
     } catch (err) {
@@ -140,8 +154,8 @@ export default function CallerEmergencyScreen({ token, navigation, route }) {
           initialRegion={{ ...location, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
           showsUserLocation showsMyLocationButton={false}
           onMapReady={() => setMapReady(true)}
-          onPress={(e) => !sending && setLocation(e.nativeEvent.coordinate)}>
-          <Marker coordinate={location} draggable={!sending} onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
+          onPress={(e) => { if (!sending) { userMovedPin.current = true; setLocation(e.nativeEvent.coordinate); } }}>
+          <Marker coordinate={location} draggable={!sending} onDragStart={() => { userMovedPin.current = true; }} onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)} pinColor="red" />
         </MapView>
         {!mapReady && (
           <View style={[s.mapLoading, { backgroundColor: theme.cardBg }]}>
@@ -229,7 +243,7 @@ const s = StyleSheet.create({
   notifBtn: { position: 'absolute', top: 12, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, backgroundColor: '#4fc3f7', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   notifIcon: { fontSize: 18 },
   notifDot: { position: 'absolute', top: 6, right: 6, width: 8, height: 8, backgroundColor: '#e74c3c', borderRadius: 4, borderWidth: 1.5, borderColor: '#4fc3f7' },
-  locateBtn: { position: 'absolute', top: 60, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
+  locateBtn: { position: 'absolute', bottom: 14, right: 12, zIndex: 10, width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   locateIcon: { fontSize: 18 },
   bottom: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 12, paddingBottom: 16, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 20, elevation: 8 },
   handle: { width: 36, height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, alignSelf: 'center', marginBottom: 10 },

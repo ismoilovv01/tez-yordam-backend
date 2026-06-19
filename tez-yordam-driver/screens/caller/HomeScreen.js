@@ -245,28 +245,30 @@ export default function CallerHomeScreen({ user, token, navigation }) {
             </Text>
             {pickerLocation && (
               <View style={s.locationMapWrapper}>
-                <MapView
-                  ref={mapRef}
-                  style={s.locationMap}
-                  provider={PROVIDER_GOOGLE}
-                  initialRegion={{ ...pickerLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-                  onPress={(e) => {
-                    const coords = e.nativeEvent.coordinate;
-                    setPickerLocation(coords);
-                    reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
-                  }}
-                >
-                  <Marker
-                    coordinate={pickerLocation}
-                    draggable
-                    onDragEnd={(e) => {
+                <View style={s.locationMapClip}>
+                  <MapView
+                    ref={mapRef}
+                    style={s.locationMap}
+                    provider={PROVIDER_GOOGLE}
+                    initialRegion={{ ...pickerLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+                    onPress={(e) => {
                       const coords = e.nativeEvent.coordinate;
                       setPickerLocation(coords);
                       reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
                     }}
-                    pinColor="red"
-                  />
-                </MapView>
+                  >
+                    <Marker
+                      coordinate={pickerLocation}
+                      draggable
+                      onDragEnd={(e) => {
+                        const coords = e.nativeEvent.coordinate;
+                        setPickerLocation(coords);
+                        reverseGeocode(coords.latitude, coords.longitude, setPickerCity);
+                      }}
+                      pinColor="red"
+                    />
+                  </MapView>
+                </View>
                 <TouchableOpacity style={s.locateMeBtn} onPress={handleLocateMe}>
                   <Text style={s.locateMeBtnIcon}>📍</Text>
                 </TouchableOpacity>
@@ -372,21 +374,9 @@ export default function CallerHomeScreen({ user, token, navigation }) {
           )}
         </View>
 
-        {lastEmergency && (
-          <TouchableOpacity
-            style={[s.lastCall, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}
-            onPress={handleLastCallPress}
-          >
-            <Text style={s.lastCallIcon}>🚑</Text>
-            <View style={s.lastCallInfo}>
-              <Text style={[s.lastCallTitle, { color: theme.text }]}>{t.lastCall} #{lastEmergency.id}</Text>
-              <Text style={[s.lastCallSub, { color: STATUS_COLOR[lastEmergency.status] || '#aaa' }]}>
-                {STATUS_LABEL[lastEmergency.status] || lastEmergency.status}
-              </Text>
-            </View>
-            <Text style={s.lastCallArrow}>›</Text>
-          </TouchableOpacity>
-        )}
+        <View style={[s.adBanner, { borderColor: theme.cardBorder || '#e0e0e0' }]}>
+          <Text style={s.adLabel}>AD</Text>
+        </View>
       </ScrollView>
 
       <View style={[s.bottomNav, { backgroundColor: theme.navBg, borderTopColor: theme.navBorder, paddingBottom: insets.bottom || 16 }]}>
@@ -440,12 +430,8 @@ const s = StyleSheet.create({
   cardName: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
   cardStatus: { fontSize: 11, textAlign: 'center' },
   noResults: { fontSize: 14, padding: 20 },
-  lastCall: { borderRadius: 16, padding: 14, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, marginBottom: 20 },
-  lastCallIcon: { fontSize: 24 },
-  lastCallInfo: { flex: 1 },
-  lastCallTitle: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
-  lastCallSub: { fontSize: 12 },
-  lastCallArrow: { fontSize: 20, color: '#ccc' },
+  adBanner: { height: 72, borderRadius: 16, borderWidth: 1.5, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  adLabel: { fontSize: 12, color: '#ccc', letterSpacing: 2 },
   bottomNav: { paddingTop: 12, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1 },
   navBtn: { alignItems: 'center', gap: 3 },
   navIcon: { fontSize: 22 },
@@ -463,7 +449,8 @@ const s = StyleSheet.create({
   locationModalTitle: { fontSize: 17, fontWeight: '700' },
   locationModalSub: { fontSize: 12, marginBottom: 14 },
   locationMap: { width: '100%', height: '100%' },
-  locationMapWrapper: { width: '100%', height: 280, borderRadius: 16, marginBottom: 12, overflow: 'hidden' },
+  locationMapWrapper: { width: '100%', height: 280, borderRadius: 16, marginBottom: 12, position: 'relative' },
+  locationMapClip: { width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' },
   locateMeBtn: { position: 'absolute', right: 12, bottom: 12, width: 44, height: 44, borderRadius: 22, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4 },
   locateMeBtnIcon: { fontSize: 20 },
   locationModalCity: { fontSize: 14, fontWeight: '600', textAlign: 'center', marginBottom: 14 },

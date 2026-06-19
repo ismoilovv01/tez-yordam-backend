@@ -12,8 +12,8 @@ export const translations = {
     no: "Yo'q",
 
     // Role screen
-    roleTitle: 'Tez Yordam',
-    roleSub: 'Tez tibbiy yordam tizimi',
+    roleTitle: 'Help Mee',
+    roleSub: '',
     roleQuestion: 'Siz kimsiz?',
     roleCaller: 'Foydalanuvchi',
     roleCallerSub: 'Tez yordam chaqirish uchun',
@@ -147,6 +147,8 @@ export const translations = {
     notifications: 'Bildirishnomalar',
     noHistory: "Chaqiruvlar tarixi yo'q",
     callId: 'Chaqiruv',
+    date: 'Sana',
+    coordinate: 'Koordinata',
 
     // Status labels
     statusLabelNew: 'Yangi',
@@ -223,8 +225,8 @@ export const translations = {
     yes: 'Да',
     no: 'Нет',
 
-    roleTitle: 'Tez Yordam',
-    roleSub: 'Система скорой медицинской помощи',
+    roleTitle: 'Help Mee',
+    roleSub: '',
     roleQuestion: 'Кто вы?',
     roleCaller: 'Пользователь',
     roleCallerSub: 'Для вызова скорой помощи',
@@ -350,6 +352,8 @@ export const translations = {
     notifications: 'Уведомления',
     noHistory: 'История вызовов пуста',
     callId: 'Вызов',
+    date: 'Дата',
+    coordinate: 'Координаты',
 
     statusLabelNew: 'Новый',
     statusLabelConfirmed: 'Подтверждён',
@@ -424,8 +428,8 @@ export const translations = {
     yes: 'Yes',
     no: 'No',
 
-    roleTitle: 'Tez Yordam',
-    roleSub: 'Emergency Medical Service',
+    roleTitle: 'Help Mee',
+    roleSub: '',
     roleQuestion: 'Who are you?',
     roleCaller: 'User',
     roleCallerSub: 'To call for emergency help',
@@ -551,6 +555,8 @@ export const translations = {
     notifications: 'Notifications',
     noHistory: 'No call history',
     callId: 'Call',
+    date: 'Date',
+    coordinate: 'Coordinate',
 
     statusLabelNew: 'New',
     statusLabelConfirmed: 'Confirmed',

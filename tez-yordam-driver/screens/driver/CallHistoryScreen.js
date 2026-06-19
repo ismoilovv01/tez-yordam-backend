@@ -8,14 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_URL } from '../../constants';
 import { useLanguage } from '../../LanguageContext';
 
-const STATUS_LABELS = {
-  assigned:   { label: 'Qabul qilindi', color: '#2980b9' },
-  on_the_way: { label: "Yo'lda",        color: '#e67e22' },
-  arrived:    { label: 'Yetib bordi',   color: '#27ae60' },
-  completed:  { label: 'Tugallangan',   color: '#27ae60' },
-  cancelled:  { label: 'Bekor qilindi', color: '#e74c3c' },
-};
-
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
@@ -24,7 +16,15 @@ function formatDate(dateStr) {
 }
 
 export default function CallHistoryScreen({ token, navigation }) {
-  const { theme } = useLanguage();
+  const { t, theme } = useLanguage();
+
+  const STATUS_LABELS = {
+    assigned:   { label: t.statusLabelAssigned,  color: '#2980b9' },
+    on_the_way: { label: t.statusLabelOnWay,     color: '#e67e22' },
+    arrived:    { label: t.statusLabelArrived,    color: '#27ae60' },
+    completed:  { label: t.statusLabelCompleted,  color: '#27ae60' },
+    cancelled:  { label: t.statusLabelCancelled,  color: '#e74c3c' },
+  };
   const insets = useSafeAreaInsets();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,19 +58,19 @@ export default function CallHistoryScreen({ token, navigation }) {
         </View>
 
         <View style={[s.row, { borderBottomColor: theme.cardBorder }]}>
-          <Text style={[s.label, { color: theme.textSub }]}>🗓️ Sana</Text>
+          <Text style={[s.label, { color: theme.textSub }]}>🗓️ {t.date || 'Sana'}</Text>
           <Text style={[s.val, { color: theme.text }]}>{formatDate(item.created_at)}</Text>
         </View>
 
         <View style={[s.row, { borderBottomColor: theme.cardBorder }]}>
-          <Text style={[s.label, { color: theme.textSub }]}>📞 Bemor tel.</Text>
+          <Text style={[s.label, { color: theme.textSub }]}>📞 {t.phone || 'Tel.'}</Text>
           <TouchableOpacity onPress={() => Linking.openURL(`tel:${item.caller_phone}`)}>
             <Text style={[s.val, { color: '#3498db' }]}>{item.caller_phone || '—'}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={[s.row, { borderBottomWidth: 0 }]}>
-          <Text style={[s.label, { color: theme.textSub }]}>📍 Koordinata</Text>
+          <Text style={[s.label, { color: theme.textSub }]}>📍 {t.coordinate || 'Koordinata'}</Text>
           <TouchableOpacity onPress={() => {
             if (item.latitude && item.longitude) {
               Linking.openURL(`https://maps.google.com?q=${item.latitude},${item.longitude}`);
@@ -94,14 +94,14 @@ export default function CallHistoryScreen({ token, navigation }) {
         <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()}>
           <Text style={s.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Chaqiruvlar tarixi</Text>
+        <Text style={s.headerTitle}>{t.callHistory || 'Chaqiruvlar tarixi'}</Text>
         <View style={{ width: 40 }} />
       </LinearGradient>
 
       {loading && (
         <View style={s.center}>
           <ActivityIndicator color="#4fc3f7" size="large" />
-          <Text style={[s.loadingText, { color: theme.textSub }]}>Yuklanmoqda...</Text>
+          <Text style={[s.loadingText, { color: theme.textSub }]}>{t.loading}</Text>
         </View>
       )}
 
@@ -110,7 +110,7 @@ export default function CallHistoryScreen({ token, navigation }) {
       {!loading && !error && history.length === 0 && (
         <View style={s.center}>
           <Text style={s.emptyIcon}>📋</Text>
-          <Text style={[s.emptyText, { color: theme.textSub }]}>Hali chaqiruvlar yo'q</Text>
+          <Text style={[s.emptyText, { color: theme.textSub }]}>{t.noHistory}</Text>
         </View>
       )}
 

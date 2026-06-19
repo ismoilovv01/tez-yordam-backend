@@ -102,16 +102,6 @@ export default function CallerProfileScreen({ user, token, onLogout, navigation,
               </View>
             </View>
 
-            <Text style={[s.sectionTitle, { color: theme.sectionTitle }]}>{t.stats.toUpperCase()}</Text>
-
-            <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
-              <Text style={s.cardIcon}>🚑</Text>
-              <View style={s.cardInfo}>
-                <Text style={[s.cardValue, { color: theme.text }]}>{callCount} {t.calls}</Text>
-                <Text style={[s.cardLabel, { color: theme.textSub }]}>{t.totalCalls}</Text>
-              </View>
-            </View>
-
             <TouchableOpacity style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]} onPress={() => navigation.navigate(isDriver ? 'DriverHistory' : 'CallerNotifications')}>
               <Text style={s.cardIcon}>📋</Text>
               <View style={s.cardInfo}>
@@ -149,7 +139,7 @@ export default function CallerProfileScreen({ user, token, onLogout, navigation,
             <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
               <Text style={s.cardIcon}>ℹ️</Text>
               <View style={s.cardInfo}>
-                <Text style={[s.cardValue, { color: theme.text }]}>Tez Yordam v1.0.0</Text>
+                <Text style={[s.cardValue, { color: theme.text }]}>Help Mee v1.0.0</Text>
                 <Text style={[s.cardLabel, { color: theme.textSub }]}>{t.version}</Text>
               </View>
             </View>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Image, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from '../LanguageContext';
 import { LANGUAGES } from '../translations';
@@ -7,8 +7,26 @@ import { LANGUAGES } from '../translations';
 export default function RoleScreen({ onSelectRole }) {
   const { t, lang, setLanguage, theme, darkMode, setDarkMode } = useLanguage();
   const [langModal, setLangModal] = useState(false);
-
   const currentLang = LANGUAGES.find(l => l.code === lang);
+
+  const ring1 = useRef(new Animated.Value(0)).current;
+  const ring2 = useRef(new Animated.Value(0)).current;
+  const ring3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const pulse = (anim, delay) => Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.timing(anim, { toValue: 1, duration: 2000, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
+    );
+    const a1 = pulse(ring1, 0);
+    const a2 = pulse(ring2, 700);
+    const a3 = pulse(ring3, 1400);
+    a1.start(); a2.start(); a3.start();
+    return () => { a1.stop(); a2.stop(); a3.stop(); };
+  }, []);
 
   return (
     <SafeAreaView style={s.safe}>
@@ -42,12 +60,11 @@ export default function RoleScreen({ onSelectRole }) {
       </View>
 
       <View style={s.hero}>
-        <View style={s.pulseRing} />
-        <View style={[s.pulseRing, s.delay1]} />
-        <View style={[s.pulseRing, s.delay2]} />
-        <Text style={s.heroIcon}>+</Text>
+        <Animated.View style={[s.pulseRing, { opacity: ring1.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: ring1.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }] }]} />
+        <Animated.View style={[s.pulseRing, { opacity: ring2.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: ring2.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }] }]} />
+        <Animated.View style={[s.pulseRing, { opacity: ring3.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }), transform: [{ scale: ring3.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] }) }] }]} />
+        <Image source={require('../assets/app-logo.png')} style={s.heroLogo} resizeMode="contain" />
         <Text style={s.heroTitle}>{t.roleTitle}</Text>
-        <Text style={s.heroSub}>{t.roleSub}</Text>
       </View>
 
       <View style={[s.card, { backgroundColor: theme.card }]}>
@@ -97,12 +114,9 @@ const s = StyleSheet.create({
   langOptionLabelActive: { color: '#4fc3f7', fontWeight: '700' },
   langCheck: { color: '#4fc3f7', fontSize: 16, fontWeight: '700' },
   hero: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#e74c3c', position: 'relative' },
-  pulseRing: { position: 'absolute', width: 160, height: 160, borderRadius: 80, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)' },
-  delay1: { width: 200, height: 200, borderRadius: 100 },
-  delay2: { width: 240, height: 240, borderRadius: 120 },
-  heroIcon: { fontSize: 60, zIndex: 1, marginBottom: 16, color: '#fff', fontWeight: '900' },
+  pulseRing: { position: 'absolute', width: 140, height: 140, borderRadius: 70, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
+  heroLogo: { width: 90, height: 90, zIndex: 1, marginBottom: 16 },
   heroTitle: { fontSize: 32, fontWeight: '800', color: '#fff', zIndex: 1, letterSpacing: 1 },
-  heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)', zIndex: 1, marginTop: 8 },
   card: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: 40 },
   question: { fontSize: 16, fontWeight: '600', color: '#555', marginBottom: 16 },
   roleBtn: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 1.5 },

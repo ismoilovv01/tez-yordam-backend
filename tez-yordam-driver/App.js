@@ -31,6 +31,8 @@ export default function App() {
   const [role, setRole] = useState(null);
   const [serviceType, setServiceType] = useState('ambulance');
   const [ready, setReady] = useState(false);
+  const [initialCallerScreen, setInitialCallerScreen] = useState('CallerHome');
+  const [initialCallerParams, setInitialCallerParams] = useState(null);
 
   useEffect(() => {
     const restore = async () => {
@@ -45,6 +47,19 @@ export default function App() {
           setUser(userData);
           setRole(savedRole === 'driver' ? 'driver' : 'caller');
           setServiceType(savedServiceType || 'ambulance');
+          // Check for active emergency to restore
+          if (savedRole !== 'driver') {
+            try {
+              const emStr = await AsyncStorage.getItem('last_emergency');
+              const locStr = await AsyncStorage.getItem('caller_location');
+              const em = emStr ? JSON.parse(emStr) : null;
+              if (em && em.id && !['completed', 'cancelled', 'rejected'].includes(em.status)) {
+                const loc = locStr ? JSON.parse(locStr) : null;
+                setInitialCallerScreen('CallerConfirmation');
+                setInitialCallerParams({ emergencyId: em.id, callerLocation: loc });
+              }
+            } catch {}
+          }
         }
       } catch {}
       setReady(true);
@@ -77,6 +92,10 @@ export default function App() {
     await AsyncStorage.removeItem('app_user');
     await AsyncStorage.removeItem('app_service_type');
     await AsyncStorage.removeItem('app_role');
+    await AsyncStorage.removeItem('last_emergency');
+    await AsyncStorage.removeItem('caller_location');
+    setInitialCallerScreen('CallerHome');
+    setInitialCallerParams(null);
     setToken(null);
     setUser(null);
     setRole(null);
@@ -103,8 +122,8 @@ export default function App() {
         {token && isDriver && <LocationTracker token={token} />}
         {token && isDriver && <SoundNotification token={token} />}
 
-        <NavigationContainer>
-          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <NavigationContainer key={token ? (isDriver ? 'driver' : 'caller') : 'auth'}>
+          <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }} initialRouteName={!token ? 'Role' : isDriver ? 'DriverHome' : initialCallerScreen}>
             {!token ? (
               <>
                 <Stack.Screen name="Role">
@@ -172,7 +191,7 @@ export default function App() {
                 <Stack.Screen name="CallerEmergency">
                   {(props) => <CallerEmergencyScreen {...props} token={token} />}
                 </Stack.Screen>
-                <Stack.Screen name="CallerConfirmation">
+                <Stack.Screen name="CallerConfirmation" initialParams={initialCallerParams ?? undefined}>
                   {(props) => (
                     <CallerConfirmationScreen {...props} token={token} onLogout={handleLogout} />
                   )}

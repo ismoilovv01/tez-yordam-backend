@@ -1,0 +1,21 @@
+/* ADD ONLY THESE LINES TO THE END OF YOUR DashboardScreen.css */
+
+.btn-arrive {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-arrive:hover {
+  background: #e68900;
+}
+
+.emergency-phone {
+  color: #2196f3;
+  font-weight: 700;
+  margin: 4px 0;
+  font-size: 13px;
+  padding: 6px 8px;
+  background: #e3f2fd;
+  border-left: 3px solid #2196f3;
+  border-radius: 3px;
+}
