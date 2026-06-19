@@ -389,19 +389,8 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
           )}
         </div>
 
-        {/* Last emergency (history, only show if not currently active) */}
-        {lastEmergency && !isActiveEmergency && (
-          <div className="home-last-call" onClick={handleLastCallClick}>
-            <div className="home-last-call-icon">🚑</div>
-            <div className="home-last-call-info">
-              <p className="home-last-call-title">Oxirgi chaqiruv #{lastEmergency.id}</p>
-              <p className="home-last-call-sub" style={{ color: statusColor(lastEmergency.status) }}>
-                {statusLabel(lastEmergency.status)}
-              </p>
-            </div>
-            <span className="home-last-call-arrow">›</span>
-          </div>
-        )}
+        {/* Ad banner */}
+        <div className="home-ad-banner">AD</div>
       </div>
 
       {/* Bottom nav */}

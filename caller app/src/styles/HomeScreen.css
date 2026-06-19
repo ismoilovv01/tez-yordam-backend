@@ -102,16 +102,12 @@
 .home-service-status { font-size: 11px; text-align: center; }
 .active-status { color: #e57373; }
 .soon-status { color: #f39c12; }
-.home-last-call {
-  background: #f8f9ff; border-radius: 16px; padding: 14px 16px;
-  display: flex; align-items: center; gap: 12px;
-  border: 1px solid #e8ecff; margin-bottom: 20px; cursor: pointer;
+.home-ad-banner {
+  height: 68px; border-radius: 16px;
+  border: 1.5px dashed #ddd;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; color: #ccc; font-size: 11px; letter-spacing: 2px;
 }
-.home-last-call-icon { font-size: 24px; }
-.home-last-call-info { flex: 1; }
-.home-last-call-title { font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 2px; }
-.home-last-call-sub { font-size: 12px; }
-.home-last-call-arrow { font-size: 20px; color: #ccc; }
 .home-bottom-nav {
   background: #fff; padding: 12px 20px 20px;
   display: flex; justify-content: space-around;
