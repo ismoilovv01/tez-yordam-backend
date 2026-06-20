@@ -62,6 +62,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const smoothedCoordsRef    = useRef(null);
   const prevAvailableKeyRef  = useRef('');
   const cityFetchedRef       = useRef(false);
+  const gpsTargetRef         = useRef(null);
+  const displayCoordsRef     = useRef(null);
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -111,7 +113,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           locationRef.current = { ...coords, speed };
           headingRef.current = heading;
 
-          setMarkerCoords({ ...coords });
+          gpsTargetRef.current = { ...coords };
 
           if (Math.abs(heading - prevHeadingStateRef.current) > 15) {
             prevHeadingStateRef.current = heading;
@@ -141,12 +143,33 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           if (isFirstFix && mapRef.current) {
             mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 50 : 0, zoom: 17 }, { duration: 800 });
           } else if (isFollowingRef.current && activeCallRef.current?.status === 'on_the_way' && mapRef.current && !userInteractingRef.current) {
-            mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 200 });
+            mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 600 });
           }
         }
       );
     })();
     return () => { sub?.remove(); if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); if (locationUpdateTimer) clearTimeout(locationUpdateTimer); };
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!gpsTargetRef.current) return;
+      if (!displayCoordsRef.current) {
+        displayCoordsRef.current = { ...gpsTargetRef.current };
+        setMarkerCoords({ ...gpsTargetRef.current });
+        return;
+      }
+      const t = gpsTargetRef.current;
+      const c = displayCoordsRef.current;
+      const a = 0.3;
+      const next = {
+        latitude:  c.latitude  + a * (t.latitude  - c.latitude),
+        longitude: c.longitude + a * (t.longitude - c.longitude),
+      };
+      displayCoordsRef.current = next;
+      setMarkerCoords({ ...next });
+    }, 50);
+    return () => clearInterval(id);
   }, []);
 
   const fetchData = useCallback(async () => {

@@ -82,6 +82,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const prevHeadingStateRef = useRef(0);
   const smoothedCoordsRef   = useRef(null);
   const prevAvailableKeyRef = useRef('');
+  const gpsTargetRef        = useRef(null);
+  const displayCoordsRef    = useRef(null);
 
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
@@ -132,7 +134,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         setDriverHeading(heading);
         locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
-        setMarkerCoords(coords);
+        gpsTargetRef.current = { ...coords };
         // Set 3D camera on first fix — onMapReady may have fired before GPS arrived
         if (mapReadyRef.current) {
           moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
@@ -182,7 +184,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           locationRef.current = { ...coords, speed };
           headingRef.current = heading;
 
-          setMarkerCoords({ ...coords });
+          gpsTargetRef.current = { ...coords };
 
           // Only update heading state when it changes by >15° — avoids
           // a full re-render every 500ms just for tiny heading drift
@@ -236,7 +238,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           // based on current speed (Google Maps navigator style).
           const navigatingNow = activeCallRef.current?.status === 'on_the_way';
           if (navigatingNow && isFollowingRef.current && !userInteractingRef.current) {
-            moveCamera(coords, heading, { pitch: NAV_TILT, speed, duration: 200 });
+            moveCamera(coords, heading, { pitch: NAV_TILT, speed, duration: 600 });
           }
         }
       );
@@ -287,6 +289,30 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
   useEffect(() => {
     return () => { if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); };
+  }, []);
+
+  // 50ms interpolation loop — glides displayed marker toward latest GPS fix.
+  // Alpha 0.3 per tick means ~95% convergence in ~280ms, giving Google-Maps-style
+  // continuous glide without teleporting between GPS readings.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!gpsTargetRef.current) return;
+      if (!displayCoordsRef.current) {
+        displayCoordsRef.current = { ...gpsTargetRef.current };
+        setMarkerCoords({ ...gpsTargetRef.current });
+        return;
+      }
+      const t = gpsTargetRef.current;
+      const c = displayCoordsRef.current;
+      const a = 0.3;
+      const next = {
+        latitude:  c.latitude  + a * (t.latitude  - c.latitude),
+        longitude: c.longitude + a * (t.longitude - c.longitude),
+      };
+      displayCoordsRef.current = next;
+      setMarkerCoords({ ...next });
+    }, 50);
+    return () => clearInterval(id);
   }, []);
 
   const showMsg = (msg) => { setStatusMsg(msg); setTimeout(() => setStatusMsg(''), 3000); };
