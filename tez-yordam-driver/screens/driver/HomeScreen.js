@@ -3,9 +3,6 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
   Modal, Alert, ActivityIndicator, Linking, AppState,
 } from 'react-native';
-import Animated, {
-  useSharedValue, useAnimatedProps, withTiming, Easing,
-} from 'react-native-reanimated';
 import { Magnetometer } from 'expo-sensors';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
@@ -86,8 +83,6 @@ function snapToPolyline(point, polyline, thresholdM = 40) {
   return bestDist < thresholdM ? best : point;
 }
 
-// Reanimated animated Marker — runs coordinate updates on the UI thread (native 60fps)
-const AnimatedMarker = Animated.createAnimatedComponent(Marker);
 
 function DriverScreen({ token, user, onLogout, navigation, accentColor, markerColor, markerEmoji }) {
   const { t, theme, lang } = useLanguage();
@@ -108,13 +103,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const [routeOrigin, setRouteOrigin]       = useState(null);
   const [completedPopup, setCompletedPopup] = useState(false);
   const [navModal, setNavModal]             = useState(false);
-  const [markerVisible, setMarkerVisible]   = useState(false);
-  // Reanimated shared values — updated on the UI thread for true 60fps marker movement
-  const latShared = useSharedValue(41.2995);
-  const lngShared = useSharedValue(69.2401);
-  const markerAnimatedProps = useAnimatedProps(() => ({
-    coordinate: { latitude: latShared.value, longitude: lngShared.value },
-  }));
+  const [markerCoords, setMarkerCoords]     = useState(null);
 
   const mapRef             = useRef(null);
   const locationRef        = useRef(null);
@@ -142,8 +131,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const routeCoordsRef      = useRef([]);
   const offRouteStartRef    = useRef(null);
   const magHeadingRef       = useRef(null);
-  const kalmanLat           = useRef(new KalmanFilter());
-  const kalmanLng           = useRef(new KalmanFilter());
+  const kalmanLatRef        = useRef(new KalmanFilter());
+  const kalmanLngRef        = useRef(new KalmanFilter());
 
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
@@ -197,13 +186,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
         smoothedCoordsRef.current = coords;
-        kalmanLat.current.reset(coords.latitude);
-        kalmanLng.current.reset(coords.longitude);
+        kalmanLatRef.current.reset(coords.latitude);
+        kalmanLngRef.current.reset(coords.longitude);
         gpsTargetRef.current = { ...coords };
         lastGpsTimeRef.current = Date.now();
-        latShared.value = coords.latitude;
-        lngShared.value = coords.longitude;
-        setMarkerVisible(true);
+        setMarkerCoords({ ...coords });
         if (mapReadyRef.current) {
           moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
         }
@@ -221,8 +208,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           let coords;
           if (!smoothedCoordsRef.current) {
             smoothedCoordsRef.current = raw;
-            kalmanLat.current.reset(raw.latitude);
-            kalmanLng.current.reset(raw.longitude);
+            kalmanLatRef.current.reset(raw.latitude);
+            kalmanLngRef.current.reset(raw.longitude);
             coords = raw;
           } else {
             const jumpM = getDistanceKm(
@@ -233,8 +220,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
               coords = smoothedCoordsRef.current;
             } else {
               // Kalman filter on each axis — removes GPS noise without EMA lag
-              const kLat = kalmanLat.current.filter(raw.latitude);
-              const kLng = kalmanLng.current.filter(raw.longitude);
+              const kLat = kalmanLatRef.current.filter(raw.latitude);
+              const kLng = kalmanLngRef.current.filter(raw.longitude);
               coords = { latitude: kLat, longitude: kLng };
               smoothedCoordsRef.current = coords;
             }
@@ -278,7 +265,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           headingRef.current = heading;
           gpsTargetRef.current = { ...coords };
           lastGpsTimeRef.current = Date.now();
-          if (!markerVisible) setMarkerVisible(true);
+          if (!gpsTargetRef.current) setMarkerCoords({ ...coords });
 
           if (Math.abs(heading - prevHeadingStateRef.current) > 15) {
             prevHeadingStateRef.current = heading;
@@ -335,8 +322,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       if (nextState === 'active') {
         lastGpsTimeRef.current = null;
         displayCoordsRef.current = null;
-        kalmanLat.current = new KalmanFilter();
-        kalmanLng.current = new KalmanFilter();
+        kalmanLatRef.current = new KalmanFilter();
+        kalmanLngRef.current = new KalmanFilter();
         routeCoordsRef.current = [];
         offRouteStartRef.current = null;
         startTracking();
@@ -437,9 +424,18 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           longitude: gpsTargetRef.current.longitude + speed * dt * Math.sin(rad) * lngPerM,
         };
       }
-      // withTiming animates on the native UI thread at 60fps between ticks
-      latShared.value = withTiming(target.latitude,  { duration: 50, easing: Easing.linear });
-      lngShared.value = withTiming(target.longitude, { duration: 50, easing: Easing.linear });
+      if (!displayCoordsRef.current) {
+        displayCoordsRef.current = { ...target };
+        setMarkerCoords({ ...target });
+        return;
+      }
+      const c = displayCoordsRef.current;
+      const next = {
+        latitude:  c.latitude  + 0.3 * (target.latitude  - c.latitude),
+        longitude: c.longitude + 0.3 * (target.longitude - c.longitude),
+      };
+      displayCoordsRef.current = next;
+      setMarkerCoords({ ...next });
     }, 50);
     return () => clearInterval(id);
   }, []);
@@ -638,12 +634,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           showsUserLocation={false} showsMyLocationButton={false} showsCompass={true} showsTraffic={true} showsBuildings={true}
           rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
           onPanDrag={() => handleMapInteractionRef.current()} onRegionChangeComplete={() => {}}>
-          {markerVisible && (
-            <AnimatedMarker animatedProps={markerAnimatedProps} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
+          {markerCoords && (
+            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
-            </AnimatedMarker>
+            </Marker>
           )}
           {activeCall && <Marker coordinate={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }} pinColor="red" />}
           {!activeCall && availableCalls.map((call) => (
