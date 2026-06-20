@@ -256,53 +256,18 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
       [phone, code, codeHash, expiresAt]
     );
     console.log(`Verification code for ${phone}: ${code}`);
-    // Try to send via Eskiz SMS
-    let sentViaSMS = false;
-    try {
-      const eskizEmail = process.env.ESKIZ_EMAIL;
-      const eskizPassword = process.env.ESKIZ_PASSWORD;
-      if (!eskizEmail || !eskizPassword) { console.log('Eskiz credentials not set in env vars, skipping SMS'); throw new Error('No Eskiz credentials'); }
-      // Get token
-      const tokenRes = await fetch('https://notify.eskiz.uz/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: eskizEmail, password: eskizPassword })
+    // Send via Telegram bot
+    const tgUser = await pool.query('SELECT chat_id FROM telegram_users WHERE phone = $1', [phone]);
+    if (!tgUser.rows.length) {
+      return res.status(400).json({
+        error: `Telefon raqami Telegram botda topilmadi. Avval @helpmee_uz_bot botini ishga tushiring va raqamingizni ulashing.`
       });
-      const tokenData = await tokenRes.json();
-      const eskizToken = tokenData?.data?.token;
-      if (eskizToken) {
-        const smsRes = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${eskizToken}` },
-          body: JSON.stringify({
-            mobile_phone: phone.replace('+', ''),
-            message: `Help Me: Tasdiqlash kodingiz: ${code}. Kod 10 daqiqa amal qiladi.`,
-            from: '4546',
-            callback_url: ''
-          })
-        });
-        const smsData = await smsRes.json();
-        if (smsData?.status === 'waiting') {
-          sentViaSMS = true;
-          console.log(`OTP sent via Eskiz SMS to ${phone}`);
-        } else {
-          console.log('Eskiz SMS response:', JSON.stringify(smsData));
-        }
-      }
-    } catch (e) { console.error('Eskiz SMS error:', e); }
-    // Try to send via Telegram
-    let sentViaTelegram = false;
-    try {
-      const tgUser = await pool.query('SELECT chat_id FROM telegram_users WHERE phone = $1', [phone]);
-      if (tgUser.rows.length) {
-        await sendTelegramMessage(tgUser.rows[0].chat_id,
-          `🔐 <b>Help Mee</b> — Tasdiqlash kodi:\n\n<code>${code}</code>\n\n⏱ Kod 10 daqiqa davomida amal qiladi.`
-        );
-        sentViaTelegram = true;
-        console.log(`OTP sent via Telegram to ${phone}`);
-      }
-    } catch (e) { console.error('Telegram OTP error:', e); }
-    res.json({ success: true, message: 'Code sent.', via_sms: sentViaSMS, via_telegram: sentViaTelegram });
+    }
+    await sendTelegramMessage(tgUser.rows[0].chat_id,
+      `🔐 <b>Help Mee</b> — Tasdiqlash kodi:\n\n<code>${code}</code>\n\n⏱ Kod 10 daqiqa davomida amal qiladi.`
+    );
+    console.log(`OTP sent via Telegram to ${phone}`);
+    res.json({ success: true, message: 'Code sent via Telegram.', via_telegram: true });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send code' });
