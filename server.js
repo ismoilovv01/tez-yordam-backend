@@ -3,6 +3,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { randomInt } = require('crypto');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const rateLimit = require('express-rate-limit');
@@ -107,7 +108,7 @@ function validatePhone(phone) { return /^\+?[0-9]{10,15}$/.test(phone); }
 function generateLoginCode(length = 6) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let result = '';
-  for (let i = 0; i < length; i++) result += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < length; i++) result += chars[randomInt(0, chars.length)];
   return result;
 }
 function validateCoordinates(lat, lng) {
@@ -146,7 +147,7 @@ async function checkRole(req, res, next) {
 }
 
 // Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™ TELEGRAM BOT Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™Р В Р вЂ Р Р†Р вЂљРЎСљР В РІР‚С™
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8822164884:AAHl1iSW_PeBX2LxQM2cQQ-bhu3CZcnIVgQ';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 async function sendTelegramMessage(chatId, text, reply_markup) {
@@ -1156,18 +1157,16 @@ app.post('/api/auth/driver-login', async (req, res) => {
       const token = generateToken(user.id);
       return res.json({ success: true, token, service_type: 'ambulance', user: { id: user.id, phone: user.phone, user_type: user.user_type, first_name: user.first_name || 'Demo', last_name: user.last_name || 'Driver' } });
     }
+    const normalizedPhone = '+998' + phone.replace('+998', '').replace(/[^0-9]/g, '');
     const ambR = await pool.query(
-      'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1',
-      [login_code.toUpperCase()]
+      'SELECT a.*, dc.service_type as center_service_type FROM ambulances a LEFT JOIN dispatch_centers dc ON a.dispatch_center_id = dc.id WHERE a.login_code = $1 AND a.driver_phone = $2',
+      [login_code.toUpperCase(), normalizedPhone]
     );
     if (!ambR.rows.length) {
-      // Debug: check if code exists with different casing or whitespace
-      const allR = await pool.query("SELECT login_code, driver_name, unit_number FROM ambulances WHERE UPPER(TRIM(login_code)) = $1", [login_code.trim().toUpperCase()]);
-      if (allR.rows.length) {
-        // Code exists but with whitespace — fix and retry
-        const fixedCode = allR.rows[0].login_code.trim();
-        await pool.query("UPDATE ambulances SET login_code = $1 WHERE UPPER(TRIM(login_code)) = $2", [fixedCode, login_code.trim().toUpperCase()]);
-        return res.status(400).json({ error: `Login kod topildi, qayta urinib ko'ring: ${fixedCode}` });
+      // Check if code exists at all (wrong phone or wrong code)
+      const codeR = await pool.query("SELECT id FROM ambulances WHERE UPPER(TRIM(login_code)) = $1", [login_code.trim().toUpperCase()]);
+      if (codeR.rows.length) {
+        return res.status(403).json({ error: "Telefon raqami login kod bilan mos kelmaydi." });
       }
       return res.status(404).json({ error: "Noto'g'ri login kod. Dispetcher bilan bog'laning." });
     }
