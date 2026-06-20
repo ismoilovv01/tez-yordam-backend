@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
-  Modal, Alert, ActivityIndicator, Linking, Animated,
+  Modal, Alert, ActivityIndicator, Linking, Animated, AppState,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
@@ -85,6 +85,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const gpsTargetRef        = useRef(null);
   const displayCoordsRef    = useRef(null);
   const lastGpsTimeRef      = useRef(null);
+  const locationSubRef      = useRef(null);
+  const locationTimerRef    = useRef(null);
 
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
@@ -117,13 +119,15 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   };
 
   useEffect(() => {
-    let sub;
-    let locationUpdateTimer = null;
-    (async () => {
+    const startTracking = async () => {
+      // Kill any existing subscription before restarting
+      locationSubRef.current?.remove();
+      locationSubRef.current = null;
+      smoothedCoordsRef.current = null; // reset jump-filter reference
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Xato', 'Joylashuvga ruxsat bering'); return; }
 
-      // Get a fresh initial fix — maximumAge:0 forces a real GPS read, not cache
       try {
         const initial = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.BestForNavigation,
@@ -135,23 +139,25 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         setDriverHeading(heading);
         locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
+        smoothedCoordsRef.current = coords;
         gpsTargetRef.current = { ...coords };
-        // Set 3D camera on first fix — onMapReady may have fired before GPS arrived
+        lastGpsTimeRef.current = Date.now();
         if (mapReadyRef.current) {
           moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
         }
       } catch {}
-      sub = await Location.watchPositionAsync(
-        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 200, distanceInterval: 0 },
+
+      locationSubRef.current = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 500, distanceInterval: 0 },
         (loc) => {
           const raw = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
           const rawHeading = loc.coords.heading;
           const rawSpeed = loc.coords.speed;
           const speed = (rawSpeed !== null && rawSpeed !== undefined && !isNaN(rawSpeed) && rawSpeed >= 0) ? rawSpeed : 0;
 
-          // EMA smoothing — removes GPS jitter before animating.
-          // Alpha 0.3 = strong smoothing; tune up if feels laggy, down if still jittery.
-          // Jump > 80m in 200ms is physically impossible at road speeds → treat as GPS glitch, skip it.
+          // Jump filter only — skip readings that jump >80m (GPS glitch).
+          // No EMA: EMA causes oscillation when combined with dead reckoning
+          // because it pulls gpsTarget backward while DR projects it forward.
           let coords;
           if (!smoothedCoordsRef.current) {
             smoothedCoordsRef.current = raw;
@@ -162,15 +168,10 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
               raw.latitude, raw.longitude
             ) * 1000;
             if (jumpM > 80) {
-              // GPS glitch — ignore this reading entirely
-              coords = smoothedCoordsRef.current;
+              coords = smoothedCoordsRef.current; // discard glitch
             } else {
-              const a = 0.5;
-              smoothedCoordsRef.current = {
-                latitude:  a * raw.latitude  + (1 - a) * smoothedCoordsRef.current.latitude,
-                longitude: a * raw.longitude + (1 - a) * smoothedCoordsRef.current.longitude,
-              };
-              coords = smoothedCoordsRef.current;
+              smoothedCoordsRef.current = raw; // update reference for next check
+              coords = raw;
             }
           }
 
@@ -184,29 +185,21 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
           locationRef.current = { ...coords, speed };
           headingRef.current = heading;
-
           gpsTargetRef.current = { ...coords };
           lastGpsTimeRef.current = Date.now();
 
-          // Only update heading state when it changes by >15° — avoids
-          // a full re-render every 500ms just for tiny heading drift
           if (Math.abs(heading - prevHeadingStateRef.current) > 15) {
             prevHeadingStateRef.current = heading;
             setDriverHeading(heading);
           }
 
-          // Throttle driverLocation state to once per 2 seconds —
-          // the marker uses animatedCoord (not state) so this only
-          // affects distance display and MapViewDirections origin
-          if (!locationUpdateTimer) {
-            locationUpdateTimer = setTimeout(() => {
+          if (!locationTimerRef.current) {
+            locationTimerRef.current = setTimeout(() => {
               setDriverLocation({ ...coords });
-              locationUpdateTimer = null;
+              locationTimerRef.current = null;
             }, 2000);
           }
 
-          // Update routeOrigin only when driver moves >30m — prevents
-          // MapViewDirections from re-calling Directions API every second
           if (!routeOriginRef.current) {
             routeOriginRef.current = coords;
             setRouteOrigin({ ...coords });
@@ -233,19 +226,33 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
               }).catch(() => { cityFetchedRef.current = false; });
           }
 
-          // Only auto-follow the driver's position while actively navigating
-          // to a call ("on_the_way"). When idle, the map behaves like a
-          // normal free map — no camera snapping — matching Google/Yandex
-          // driver apps. During navigation, tilt is fixed and zoom eases
-          // based on current speed (Google Maps navigator style).
           const navigatingNow = activeCallRef.current?.status === 'on_the_way';
           if (navigatingNow && isFollowingRef.current && !userInteractingRef.current) {
             moveCamera(coords, heading, { pitch: NAV_TILT, speed, duration: 600 });
           }
         }
       );
-    })();
-    return () => { sub?.remove(); if (locationUpdateTimer) clearTimeout(locationUpdateTimer); };
+    };
+
+    startTracking();
+
+    // Restart location subscription whenever app returns to foreground —
+    // Android kills watchPositionAsync when app is backgrounded with foreground-only
+    // permission. Without this, the marker freezes permanently after the app is reopened.
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        lastGpsTimeRef.current = null; // disable dead reckoning until fresh GPS arrives
+        displayCoordsRef.current = null; // reset interpolation start point
+        startTracking();
+      }
+    });
+
+    return () => {
+      locationSubRef.current?.remove();
+      locationSubRef.current = null;
+      if (locationTimerRef.current) clearTimeout(locationTimerRef.current);
+      appStateSub.remove();
+    };
   }, []);
 
   const fetchData = useCallback(async () => {
