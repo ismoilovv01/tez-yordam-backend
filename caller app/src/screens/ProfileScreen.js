@@ -18,7 +18,7 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('dark_mode') === 'true');
   const [soundOn, setSoundOn] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -257,7 +257,12 @@ function ProfileScreen({ user, token, onBack, onLogout, onNotifications, onFeedb
             <div className="profile-setting-row">
               <span>🌙 {t.darkMode}</span>
               <label className="profile-toggle">
-                <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
+                <input type="checkbox" checked={darkMode} onChange={e => {
+                  const val = e.target.checked;
+                  setDarkMode(val);
+                  localStorage.setItem('dark_mode', val);
+                  document.body.classList.toggle('dark', val);
+                }} />
                 <span className="profile-toggle-slider" />
               </label>
             </div>
