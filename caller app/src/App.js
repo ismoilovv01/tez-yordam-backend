@@ -11,11 +11,12 @@ import NotificationsScreen from './screens/NotificationsScreen';
 import DriverHomeScreen from './screens/driver/DriverHomeScreen';
 import DriverCallHistoryScreen from './screens/driver/DriverCallHistoryScreen';
 import FeedbackScreen from './screens/FeedbackScreen';
+import EmergencyNumbersScreen from './screens/EmergencyNumbersScreen';
 import LocationTracker from './components/LocationTracker';
 import SoundNotification from './components/SoundNotification';
 
 const SCREEN_ORDER = [
-  'splash', 'role', 'login', 'home', 'emergency', 'confirmation', 'notifications', 'profile',
+  'splash', 'role', 'login', 'home', 'emergency-numbers', 'emergency', 'confirmation', 'notifications', 'profile',
   'driver-home', 'driver-history', 'driver-profile', 'feedback',
 ];
 
@@ -207,6 +208,7 @@ function App() {
             user={user}
             token={userToken}
             onCallEmergency={handleStartEmergency}
+            onEmergencyNumbers={() => navigate('emergency-numbers')}
             onProfile={() => navigate('profile')}
             onNotifications={() => navigate('notifications')}
             onOpenActiveEmergency={handleOpenActiveEmergency}
@@ -246,6 +248,10 @@ function App() {
             onNotifications={() => navigate('notifications')}
             onFeedback={() => openFeedback('caller', null, 'profile')}
           />
+        )}
+
+        {screen === 'emergency-numbers' && (
+          <EmergencyNumbersScreen onBack={() => navigate('home')} />
         )}
 
         {screen === 'notifications' && (

@@ -47,7 +47,7 @@ function findNearestCenter(centers, serviceType, userLat, userLon) {
   return nearest || filtered[0];
 }
 
-function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency }) {
+function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, onOpenActiveEmergency, onEmergencyNumbers }) {
   const [lastEmergency, setLastEmergency] = useState(() => {
     try { return JSON.parse(localStorage.getItem('last_emergency') || 'null'); } catch { return null; }
   });
@@ -378,7 +378,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
         {/* Quick icons */}
         <div className="home-quick-icons">
-          <button className="home-quick-btn" onClick={() => onCallEmergency(null, 'ambulance')}>
+          <button className="home-quick-btn" onClick={onEmergencyNumbers}>
             <div className="home-quick-icon blue">📞</div>
             <span className="home-quick-label">Qo'ng'iroq</span>
           </button>
