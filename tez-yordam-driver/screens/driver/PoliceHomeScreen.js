@@ -64,6 +64,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const cityFetchedRef       = useRef(false);
   const gpsTargetRef         = useRef(null);
   const displayCoordsRef     = useRef(null);
+  const lastGpsTimeRef       = useRef(null);
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -114,6 +115,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           headingRef.current = heading;
 
           gpsTargetRef.current = { ...coords };
+          lastGpsTimeRef.current = Date.now();
 
           if (Math.abs(heading - prevHeadingStateRef.current) > 15) {
             prevHeadingStateRef.current = heading;
@@ -154,17 +156,29 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   useEffect(() => {
     const id = setInterval(() => {
       if (!gpsTargetRef.current) return;
+      const speed = locationRef.current?.speed || 0;
+      const heading = headingRef.current;
+      const dt = lastGpsTimeRef.current ? (Date.now() - lastGpsTimeRef.current) / 1000 : 0;
+      let target = gpsTargetRef.current;
+      if (speed > 0.5 && dt > 0 && dt < 3) {
+        const rad = (heading * Math.PI) / 180;
+        const lat = gpsTargetRef.current.latitude;
+        const latPerM = 1 / 111320;
+        const lngPerM = 1 / (111320 * Math.cos(lat * Math.PI / 180));
+        target = {
+          latitude:  lat + speed * dt * Math.cos(rad) * latPerM,
+          longitude: gpsTargetRef.current.longitude + speed * dt * Math.sin(rad) * lngPerM,
+        };
+      }
       if (!displayCoordsRef.current) {
-        displayCoordsRef.current = { ...gpsTargetRef.current };
-        setMarkerCoords({ ...gpsTargetRef.current });
+        displayCoordsRef.current = { ...target };
+        setMarkerCoords({ ...target });
         return;
       }
-      const t = gpsTargetRef.current;
       const c = displayCoordsRef.current;
-      const a = 0.3;
       const next = {
-        latitude:  c.latitude  + a * (t.latitude  - c.latitude),
-        longitude: c.longitude + a * (t.longitude - c.longitude),
+        latitude:  c.latitude  + 0.3 * (target.latitude  - c.latitude),
+        longitude: c.longitude + 0.3 * (target.longitude - c.longitude),
       };
       displayCoordsRef.current = next;
       setMarkerCoords({ ...next });
