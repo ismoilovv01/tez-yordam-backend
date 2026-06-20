@@ -53,6 +53,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
   });
   const [showComingSoon, setShowComingSoon] = useState(false);
   const [comingSoonName, setComingSoonName] = useState('');
+  const [showEmergencyNumbers, setShowEmergencyNumbers] = useState(false);
   const [dispatchCenters, setDispatchCenters] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cityName, setCityName] = useState('');
@@ -281,6 +282,34 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
         </div>
       )}
 
+      {/* Emergency numbers modal */}
+      {showEmergencyNumbers && (
+        <div className="coming-soon-overlay" onClick={() => setShowEmergencyNumbers(false)}>
+          <div className="emergency-numbers-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="emergency-numbers-header">
+              <span className="emergency-numbers-title">📞 Favqulodda raqamlar</span>
+              <button className="emergency-numbers-close" onClick={() => setShowEmergencyNumbers(false)}>✕</button>
+            </div>
+            {[
+              { num: '103', icon: '🚑', name: 'Tez tibbiy yordam', color: '#e74c3c', bg: '#ffebee' },
+              { num: '102', icon: '🚔', name: 'Politsiya',          color: '#1565c0', bg: '#e3f2fd' },
+              { num: '101', icon: '🚒', name: "Yong'in xizmati",   color: '#bf360c', bg: '#fff3e0' },
+              { num: '1050', icon: '⚡', name: 'Gaz xizmati',      color: '#f39c12', bg: '#fffde7' },
+              { num: '1058', icon: '💧', name: 'Suv xizmati',      color: '#0288d1', bg: '#e1f5fe' },
+            ].map(({ num, icon, name, color, bg }) => (
+              <a key={num} href={`tel:${num}`} className="emergency-number-row" style={{ background: bg }}>
+                <span className="emergency-number-icon" style={{ color }}>{icon}</span>
+                <div className="emergency-number-info">
+                  <span className="emergency-number-name" style={{ color }}>{name}</span>
+                  <span className="emergency-number-num">{num}</span>
+                </div>
+                <span className="emergency-number-call" style={{ background: color }}>📞</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Location picker modal */}
       {locationModal && (
         <div className="location-modal-overlay" onClick={() => setLocationModal(false)}>
@@ -349,11 +378,7 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
         {/* Quick icons */}
         <div className="home-quick-icons">
-          <button className="home-quick-btn" onClick={() => (isActiveEmergency ? handleLastCallClick() : onCallEmergency())}>
-            <div className="home-quick-icon blue">📞</div>
-            <span className="home-quick-label">Qo'ng'iroq</span>
-          </button>
-          <button className="home-quick-btn" onClick={handleOpenLocationPicker}>
+<button className="home-quick-btn" onClick={handleOpenLocationPicker}>
             <div className="home-quick-icon orange">📍</div>
             <span className="home-quick-label">Joylashuv</span>
           </button>
