@@ -190,6 +190,7 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
   }, [emergencyId, userToken]);
 
   // Track sheet top position so 📍 button always sits 8px above it
+  const prevSheetHeightRef = useRef(0);
   useEffect(() => {
     const update = () => {
       if (sheetRef.current) {
@@ -200,6 +201,18 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
     update();
     const id = setInterval(update, 50);
     return () => clearInterval(id);
+  }, [sheetExpanded]);
+
+  // Pan map vertically when sheet expands/collapses so marker stays above sheet
+  useEffect(() => {
+    if (!gMapRef.current || !sheetRef.current) return;
+    const rect = sheetRef.current.getBoundingClientRect();
+    const sheetHeight = window.innerHeight - rect.top;
+    const delta = sheetHeight - prevSheetHeightRef.current;
+    if (Math.abs(delta) > 10) {
+      gMapRef.current.panBy(0, delta / 2);
+      prevSheetHeightRef.current = sheetHeight;
+    }
   }, [sheetExpanded]);
 
   // ── Keep GPS fresh — run both sources simultaneously, whichever works wins ──
