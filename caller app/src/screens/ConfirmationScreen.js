@@ -307,6 +307,15 @@ function ConfirmationScreen({ emergencyId, userToken, callerLocation, onNewEmerg
         icon: callerPinIcon(),
       });
     }
+    // Pan map down so pin appears just above the bottom sheet (not at screen center)
+    window.google.maps.event.addListenerOnce(map, 'idle', () => {
+      if (sheetRef.current) {
+        const rect = sheetRef.current.getBoundingClientRect();
+        const sheetHeight = window.innerHeight - rect.top;
+        map.panBy(0, -Math.round(sheetHeight / 2));
+        prevSheetHeightRef.current = sheetHeight;
+      }
+    });
   };
 
   // ── Smooth ambulance marker animation ─────────────────────────
