@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
   Modal, Alert, ActivityIndicator, Linking, Animated,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE, AnimatedRegion, MarkerAnimated } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { API_URL, GOOGLE_KEY } from '../../constants';
@@ -62,6 +62,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const [routeOrigin, setRouteOrigin]       = useState(null);
   const [completedPopup, setCompletedPopup] = useState(false);
   const [navModal, setNavModal]             = useState(false);
+  const [markerCoords, setMarkerCoords]     = useState(null);
 
   const mapRef             = useRef(null);
   const locationRef        = useRef(null);
@@ -82,15 +83,6 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const smoothedCoordsRef   = useRef(null);
   const prevAvailableKeyRef = useRef('');
 
-  // Animated marker position for smooth gliding (like Google/Yandex)
-  const animatedCoord = useRef(
-    new AnimatedRegion({
-      latitude: 41.2995,
-      longitude: 69.2401,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-    })
-  ).current;
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -103,17 +95,6 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       .catch(() => {});
   }, [token]);
 
-  const animateMarkerTo = (coords) => {
-    animatedCoord.stopAnimation();
-    animatedCoord.timing({
-      latitude: coords.latitude,
-      longitude: coords.longitude,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-      duration: 180,
-      useNativeDriver: false,
-    }).start();
-  };
 
   // pitch/zoom: if not provided, falls back to is3D toggle (idle) values.
   // Pass `speed` (m/s) during navigation for speed-based zoom easing.
@@ -134,6 +115,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
   useEffect(() => {
     let sub;
+    let locationUpdateTimer = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Xato', 'Joylashuvga ruxsat bering'); return; }
@@ -150,12 +132,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         setDriverHeading(heading);
         locationRef.current = { ...coords, speed: 0 };
         headingRef.current = heading;
-        animatedCoord.setValue({ ...coords, latitudeDelta: 0, longitudeDelta: 0 });
+        setMarkerCoords(coords);
+        // Set 3D camera on first fix — onMapReady may have fired before GPS arrived
+        if (mapReadyRef.current) {
+          moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
+        }
       } catch {}
-
-      // 200ms interval → 5 updates/sec, animation 180ms → always finishes before next update.
-      // Combined with EMA smoothing below this gives buttery-smooth movement.
-      let locationUpdateTimer = null;
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 200, distanceInterval: 0 },
         (loc) => {
@@ -180,7 +162,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
               // GPS glitch — ignore this reading entirely
               coords = smoothedCoordsRef.current;
             } else {
-              const a = 0.35;
+              const a = 0.5;
               smoothedCoordsRef.current = {
                 latitude:  a * raw.latitude  + (1 - a) * smoothedCoordsRef.current.latitude,
                 longitude: a * raw.longitude + (1 - a) * smoothedCoordsRef.current.longitude,
@@ -195,12 +177,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             const shortDelta = ((delta + 540) % 360) - 180;
             if (Math.abs(shortDelta) > 5) heading = heading + shortDelta;
           }
+          heading = ((heading % 360) + 360) % 360;
 
           locationRef.current = { ...coords, speed };
           headingRef.current = heading;
 
-          // Animate marker every update — smooth glide, no teleporting
-          animateMarkerTo(coords);
+          setMarkerCoords({ ...coords });
 
           // Only update heading state when it changes by >15° — avoids
           // a full re-render every 500ms just for tiny heading drift
@@ -291,13 +273,9 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         prevAvailableKeyRef.current = newAvailKey;
         setAvailableCalls(availableData.calls || []);
       }
-      if (!call) { setRouteInfo(null); setIsNavigating(false); }
-      if (call?.status === 'on_the_way') {
-        setIsNavigating(true);
-        if (isFollowingRef.current && locationRef.current && !userInteractingRef.current) {
-          moveCamera(locationRef.current, headingRef.current, { pitch: NAV_TILT, speed: locationRef.current.speed, duration: 1000 });
-        }
-      } else if (!call || call.status !== 'on_the_way') setIsNavigating(false);
+      const nowNavigating = call?.status === 'on_the_way';
+      setIsNavigating(nowNavigating);
+      if (!call) { setRouteInfo(null); }
     } catch {}
   }, [token]);
 
@@ -505,12 +483,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           showsUserLocation={false} showsMyLocationButton={false} showsCompass={true} showsTraffic={isNavigating} showsBuildings={true}
           rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
           onPanDrag={() => handleMapInteractionRef.current()} onRegionChangeComplete={() => {}}>
-          {driverLocation && (
-            <MarkerAnimated coordinate={animatedCoord} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
+          {markerCoords && (
+            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
-            </MarkerAnimated>
+            </Marker>
           )}
           {activeCall && <Marker coordinate={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }} pinColor="red" />}
           {!activeCall && availableCalls.map((call) => (

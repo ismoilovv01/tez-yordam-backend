@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
   Modal, Alert, ActivityIndicator, Linking,
 } from 'react-native';
-import MapView, { Marker, MarkerAnimated, AnimatedRegion, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { API_URL, GOOGLE_KEY } from '../../constants';
@@ -44,6 +44,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const [completedPopup, setCompletedPopup]   = useState(false);
   const [navModal, setNavModal]               = useState(false);
   const [routeOrigin, setRouteOrigin]         = useState(null);
+  const [markerCoords, setMarkerCoords]       = useState(null);
 
   const mapRef               = useRef(null);
   const locationRef          = useRef(null);
@@ -56,11 +57,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const userInteractingRef   = useRef(false);
   const prevStatusRef        = useRef(null);
   const resumeFollowTimerRef = useRef(null);
-  const animatedCoordRef     = useRef(null);
   const routeOriginRef       = useRef(null);
   const prevHeadingStateRef  = useRef(0);
   const smoothedCoordsRef    = useRef(null);
   const prevAvailableKeyRef  = useRef('');
+  const cityFetchedRef       = useRef(false);
 
   useEffect(() => { isFollowingRef.current = isFollowing; }, [isFollowing]);
   useEffect(() => { is3DRef.current = is3D; }, [is3D]);
@@ -75,10 +76,10 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
 
   useEffect(() => {
     let sub;
+    let locationUpdateTimer = null;
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Xato', 'Joylashuvga ruxsat bering'); return; }
-      let locationUpdateTimer = null;
       sub = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 200, distanceInterval: 0 },
         (loc) => {
@@ -86,15 +87,16 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           const rawHeading = loc.coords.heading;
           const speed = loc.coords.speed ?? 0;
 
+          const isFirstFix = !smoothedCoordsRef.current;
           let coords;
-          if (!smoothedCoordsRef.current) {
+          if (isFirstFix) {
             smoothedCoordsRef.current = raw; coords = raw;
           } else {
             const jumpM = getDistanceKm(smoothedCoordsRef.current.latitude, smoothedCoordsRef.current.longitude, raw.latitude, raw.longitude) * 1000;
             if (jumpM > 80) {
               coords = smoothedCoordsRef.current;
             } else {
-              const a = 0.35;
+              const a = 0.5;
               smoothedCoordsRef.current = { latitude: a * raw.latitude + (1 - a) * smoothedCoordsRef.current.latitude, longitude: a * raw.longitude + (1 - a) * smoothedCoordsRef.current.longitude };
               coords = smoothedCoordsRef.current;
             }
@@ -105,14 +107,12 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             const shortDelta = ((rawHeading - heading + 540) % 360) - 180;
             if (Math.abs(shortDelta) > 5) heading = heading + shortDelta;
           }
+          heading = ((heading % 360) + 360) % 360;
           locationRef.current = { ...coords, speed };
           headingRef.current = heading;
-          if (!animatedCoordRef.current) {
-            animatedCoordRef.current = new AnimatedRegion({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0, longitudeDelta: 0 });
-          } else {
-            animatedCoordRef.current.stopAnimation();
-            animatedCoordRef.current.timing({ latitude: coords.latitude, longitude: coords.longitude, latitudeDelta: 0, longitudeDelta: 0, duration: 180, useNativeDriver: false }).start();
-          }
+
+          setMarkerCoords({ ...coords });
+
           if (Math.abs(heading - prevHeadingStateRef.current) > 15) {
             prevHeadingStateRef.current = heading;
             setDriverHeading(heading);
@@ -127,7 +127,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
             const moved = getDistanceKm(routeOriginRef.current.latitude, routeOriginRef.current.longitude, coords.latitude, coords.longitude) * 1000;
             if (moved > 30) { routeOriginRef.current = coords; setRouteOrigin({ ...coords }); }
           }
-          if (!cityName) {
+          if (!cityFetchedRef.current) {
+            cityFetchedRef.current = true;
             fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${coords.latitude},${coords.longitude}&key=${GOOGLE_KEY}&language=uz`)
               .then(r => r.json())
               .then(data => {
@@ -135,9 +136,11 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
                 const city = components.find(c => c.types.includes('locality'));
                 const region = components.find(c => c.types.includes('administrative_area_level_1'));
                 if (city?.long_name || region?.long_name) setCityName(city?.long_name || region?.long_name);
-              }).catch(() => {});
+              }).catch(() => { cityFetchedRef.current = false; });
           }
-          if (isFollowingRef.current && activeCallRef.current?.status === 'on_the_way' && mapRef.current && !userInteractingRef.current) {
+          if (isFirstFix && mapRef.current) {
+            mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 50 : 0, zoom: 17 }, { duration: 800 });
+          } else if (isFollowingRef.current && activeCallRef.current?.status === 'on_the_way' && mapRef.current && !userInteractingRef.current) {
             mapRef.current.animateCamera({ center: coords, heading, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 200 });
           }
         }
@@ -172,13 +175,9 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         prevAvailableKeyRef.current = newAvailKey;
         setAvailableCalls(availableData.calls || []);
       }
-      if (!call) { setRouteInfo(null); setIsNavigating(false); }
-      if (call?.status === 'on_the_way') {
-        setIsNavigating(true);
-        if (isFollowingRef.current && mapRef.current && locationRef.current && !userInteractingRef.current) {
-          mapRef.current.animateCamera({ center: locationRef.current, heading: headingRef.current, pitch: is3DRef.current ? 60 : 0, zoom: 18 }, { duration: 1000 });
-        }
-      } else if (!call || call.status !== 'on_the_way') setIsNavigating(false);
+      const nowNavigating = call?.status === 'on_the_way';
+      setIsNavigating(nowNavigating);
+      if (!call) { setRouteInfo(null); }
     } catch {}
   }, [token]);
 
@@ -338,13 +337,13 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         <MapView ref={mapRef} style={s.map} provider={PROVIDER_GOOGLE} initialRegion={initialRegion}
           mapType={is3D ? 'hybrid' : 'standard'}
           showsUserLocation={false} showsMyLocationButton={false} showsCompass={true} showsTraffic={isNavigating} showsBuildings={true}
-          rotateEnabled={true} pitchEnabled={true} onPanDrag={handleMapInteraction} onTouchStart={handleMapInteraction}>
-          {animatedCoordRef.current && (
-            <MarkerAnimated coordinate={animatedCoordRef.current} anchor={{ x: 0.5, y: 0.5 }} rotation={driverHeading} flat>
+          rotateEnabled={true} pitchEnabled={true} onPanDrag={handleMapInteraction}>
+          {markerCoords && (
+            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} rotation={driverHeading} flat>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
-            </MarkerAnimated>
+            </Marker>
           )}
           {activeCall && <Marker coordinate={{ latitude: parseFloat(activeCall.latitude), longitude: parseFloat(activeCall.longitude) }} pinColor="red" />}
           {!activeCall && availableCalls.map((call) => (
