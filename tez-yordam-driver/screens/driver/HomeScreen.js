@@ -742,16 +742,18 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
                 renderItem={({ item }) => {
                   const dist = driverLocation ? getDistanceKm(driverLocation.latitude, driverLocation.longitude, parseFloat(item.latitude), parseFloat(item.longitude)).toFixed(1) : null;
                   return (
-                    <TouchableOpacity style={[s.availableCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]} onPress={() => setSelectedCall(item)}>
-                      <View style={[s.availableCardIcon, { backgroundColor: '#e3f2fd' }]}><Text style={{ fontSize: 18 }}>{markerEmoji}</Text></View>
-                      <View style={s.availableCardInfo}>
-                        <Text style={[s.availableCardId, { color: theme.text }]}>Chaqiruv #{item.id}</Text>
-                        <Text style={[s.availableCardDist, { color: theme.textSub }]}>{dist ? dist + ' km' : item.caller_phone}</Text>
-                      </View>
+                    <View style={[s.availableCard, { backgroundColor: theme.cardBg, borderColor: theme.cardBorder }]}>
+                      <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }} onPress={() => setSelectedCall(item)} activeOpacity={0.7}>
+                        <View style={[s.availableCardIcon, { backgroundColor: '#e3f2fd' }]}><Text style={{ fontSize: 18 }}>{markerEmoji}</Text></View>
+                        <View style={s.availableCardInfo}>
+                          <Text style={[s.availableCardId, { color: theme.text }]}>Chaqiruv #{item.id}</Text>
+                          <Text style={[s.availableCardDist, { color: theme.textSub }]}>{dist ? dist + ' km' : item.caller_phone}</Text>
+                        </View>
+                      </TouchableOpacity>
                       <TouchableOpacity style={[s.qabulBtn, { backgroundColor: accentColor }]} onPress={() => handleAccept(item.id)} disabled={loading}>
                         <Text style={s.qabulBtnText}>Qabul</Text>
                       </TouchableOpacity>
-                    </TouchableOpacity>
+                    </View>
                   );
                 }} />
             )}
