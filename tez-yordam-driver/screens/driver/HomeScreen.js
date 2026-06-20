@@ -3,7 +3,6 @@ import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
   Modal, Alert, ActivityIndicator, Linking, AppState,
 } from 'react-native';
-import { Magnetometer } from 'expo-sensors';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
@@ -383,25 +382,6 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
     return () => { if (resumeFollowTimerRef.current) clearTimeout(resumeFollowTimerRef.current); };
   }, []);
 
-  // Magnetometer — gives compass heading independent of GPS speed.
-  // GPS heading is unreliable below ~15 km/h; magnetometer works at any speed.
-  // We blend: when moving fast GPS heading wins (more accurate), at slow speed
-  // magnetometer takes over so the arrow doesn't spin randomly while stopped.
-  useEffect(() => {
-    let sub;
-    (async () => {
-      const { granted } = await Magnetometer.requestPermissionsAsync();
-      if (!granted) return;
-      Magnetometer.setUpdateInterval(100);
-      sub = Magnetometer.addListener(({ x, y }) => {
-        // Convert raw field vector to compass bearing (0° = north, clockwise)
-        let angle = Math.atan2(y, x) * (180 / Math.PI);
-        angle = (angle + 360) % 360;
-        magHeadingRef.current = angle;
-      });
-    })();
-    return () => sub?.remove();
-  }, []);
 
   // 50ms dead-reckoning loop — projects last GPS fix forward using speed + heading,
   // then animates the Reanimated shared values to the predicted position.
