@@ -48,13 +48,6 @@ function App() {
   const [pendingDispatchCenterId, setPendingDispatchCenterId] = useState(null);
   const [pendingServiceType, setPendingServiceType] = useState('ambulance');
 
-  // Apply persisted dark mode on startup
-  useEffect(() => {
-    if (localStorage.getItem('dark_mode') === 'true') {
-      document.body.classList.add('dark');
-    }
-  }, []);
-
   // Initialize Telegram WebApp SDK if running inside Telegram
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
