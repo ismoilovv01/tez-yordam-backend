@@ -378,6 +378,10 @@ function HomeScreen({ user, token, onCallEmergency, onProfile, onNotifications, 
 
         {/* Quick icons */}
         <div className="home-quick-icons">
+          <button className="home-quick-btn" onClick={() => setShowEmergencyNumbers(true)}>
+            <div className="home-quick-icon blue">📞</div>
+            <span className="home-quick-label">Qo'ng'iroq</span>
+          </button>
 <button className="home-quick-btn" onClick={handleOpenLocationPicker}>
             <div className="home-quick-icon orange">📍</div>
             <span className="home-quick-label">Joylashuv</span>
