@@ -72,7 +72,10 @@ function LoginScreen({ onLogin, onDriverLogin, onBack, role }) {
     try {
       const res = await fetch(`${API_URL}/api/auth/send-code`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: '+998' + cleanPhone }),
+        body: JSON.stringify({
+          phone: '+998' + cleanPhone,
+          telegram_chat_id: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Xato yuz berdi');

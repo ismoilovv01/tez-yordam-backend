@@ -232,8 +232,17 @@ const DEMO_DRIVER_CODE  = 'HM9X3K72';
 
 app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, telegram_chat_id } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number required' });
+    // If caller sent their Telegram chat ID (from mini app), register it now
+    if (telegram_chat_id) {
+      try {
+        await pool.query(
+          'INSERT INTO telegram_users (phone, chat_id) VALUES ($1, $2) ON CONFLICT (phone) DO UPDATE SET chat_id = $2',
+          [phone, telegram_chat_id.toString()]
+        );
+      } catch (e) { console.error('Failed to register telegram chat_id:', e); }
+    }
     if (!validatePhone(phone)) return res.status(400).json({ error: 'Invalid phone number format' });
     // Demo account for Google Play review — skip SMS
     if (phone === DEMO_USER_PHONE) {
@@ -250,8 +259,9 @@ app.post('/api/auth/send-code', phoneRateLimit, async (req, res) => {
     // Try to send via Eskiz SMS
     let sentViaSMS = false;
     try {
-      const eskizEmail = process.env.ESKIZ_EMAIL || 'diyorbekismoil01@gmail.com';
-      const eskizPassword = process.env.ESKIZ_PASSWORD || 'Qwerty2005120';
+      const eskizEmail = process.env.ESKIZ_EMAIL;
+      const eskizPassword = process.env.ESKIZ_PASSWORD;
+      if (!eskizEmail || !eskizPassword) { console.log('Eskiz credentials not set in env vars, skipping SMS'); throw new Error('No Eskiz credentials'); }
       // Get token
       const tokenRes = await fetch('https://notify.eskiz.uz/api/auth/login', {
         method: 'POST',
