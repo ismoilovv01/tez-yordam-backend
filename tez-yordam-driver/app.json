@@ -29,6 +29,7 @@
         "backgroundColor": "#e74c3c"
       },
       "package": "com.no_replied.tezyordamdriver",
+      "versionCode": 40,
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
@@ -38,14 +39,19 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
-      "expo-location"
+      [
+        "expo-location",
+        {
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      "./plugins/removeBackgroundLocation"
     ],
     "extra": {
       "eas": {
