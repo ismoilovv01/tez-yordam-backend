@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, Image, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -222,11 +222,12 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
         </TouchableOpacity>
       </Animated.View>
 
-      <Animated.View style={[s.bottomSheet, { maxHeight: sheetHeight }]} {...panResponder.panHandlers}>
+      <Animated.View style={[s.bottomSheet, { height: sheetHeight }]} {...panResponder.panHandlers}>
         <TouchableOpacity style={s.handle} onPress={() => sheetExpanded ? collapseSheet() : expandSheet()}>
           <View style={s.handleBar} />
           <Text style={s.handleHint}>{sheetExpanded ? t.showLess : t.showMore}</Text>
         </TouchableOpacity>
+        <ScrollView scrollEnabled={sheetExpanded} showsVerticalScrollIndicator={false}>
 
         {ambulanceLocation && ['assigned', 'on_the_way'].includes(status) && (
           <View style={s.etaCard}>
@@ -293,6 +294,7 @@ export default function CallerConfirmationScreen({ token, onLogout, navigation, 
             </TouchableOpacity>
           </View>
         )}
+        </ScrollView>
       </Animated.View>
     </View>
   );
