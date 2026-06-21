@@ -189,7 +189,8 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         kalmanLngRef.current.reset(coords.longitude);
         gpsTargetRef.current = { ...coords };
         lastGpsTimeRef.current = Date.now();
-        // display is initialised by the 16ms loop on its first tick
+        displayCoordsRef.current = { ...coords };
+        setMarkerCoords({ ...coords });
         if (mapReadyRef.current) {
           moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
         }
@@ -644,7 +645,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
           onPanDrag={() => handleMapInteractionRef.current()} onRegionChangeComplete={() => {}}>
           {markerCoords && (
-            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading} tracksViewChanges={false}>
+            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
