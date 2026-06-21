@@ -189,7 +189,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         kalmanLngRef.current.reset(coords.longitude);
         gpsTargetRef.current = { ...coords };
         lastGpsTimeRef.current = Date.now();
-        setMarkerCoords({ ...coords });
+        // display is initialised by the 16ms loop on its first tick
         if (mapReadyRef.current) {
           moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
         }
@@ -383,40 +383,69 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   }, []);
 
 
-  // 50ms dead-reckoning loop — projects last GPS fix forward using speed + heading,
-  // then animates the Reanimated shared values to the predicted position.
-  // withTiming(50ms) hands off to the UI thread, giving true 60fps rendering
-  // between each JS-side dead-reckoning tick.
+  // Predict-Correct smoothing loop (runs every 16ms ≈ 60fps).
+  //
+  // PREDICT: each tick the display position advances forward by speed × 16ms
+  // in the current heading direction — the marker moves continuously even
+  // between GPS updates (dead reckoning).
+  //
+  // CORRECT: a small 8% nudge pulls the display toward the last GPS fix,
+  // preventing dead-reckoning drift without any visible jump. Over 500ms
+  // (one GPS interval) this applies ~32 gentle corrections instead of one
+  // big 30% snap, which is what caused the 0.5s jump before.
+  //
+  // Safety clamp: if dead reckoning somehow drifts >40m from GPS (e.g.
+  // GPS correction lags badly) the display snaps 50% toward GPS immediately.
   useEffect(() => {
     const id = setInterval(() => {
       if (!gpsTargetRef.current) return;
-      const speed = locationRef.current?.speed || 0;
+
+      const speed  = locationRef.current?.speed || 0;
       const heading = headingRef.current;
-      const dt = lastGpsTimeRef.current ? (Date.now() - lastGpsTimeRef.current) / 1000 : 0;
-      let target = gpsTargetRef.current;
-      if (speed > 0.5 && dt > 0 && dt < 3) {
-        const rad = (heading * Math.PI) / 180;
-        const lat = gpsTargetRef.current.latitude;
-        const latPerM = 1 / 111320;
-        const lngPerM = 1 / (111320 * Math.cos(lat * Math.PI / 180));
-        target = {
-          latitude:  lat + speed * dt * Math.cos(rad) * latPerM,
-          longitude: gpsTargetRef.current.longitude + speed * dt * Math.sin(rad) * lngPerM,
-        };
-      }
+      const gps    = gpsTargetRef.current;
+
+      // First fix — initialise display at GPS position
       if (!displayCoordsRef.current) {
-        displayCoordsRef.current = { ...target };
-        setMarkerCoords({ ...target });
+        displayCoordsRef.current = { ...gps };
+        setMarkerCoords({ ...gps });
         return;
       }
+
       const c = displayCoordsRef.current;
-      const next = {
-        latitude:  c.latitude  + 0.3 * (target.latitude  - c.latitude),
-        longitude: c.longitude + 0.3 * (target.longitude - c.longitude),
+      const DT = 0.016; // 16 ms
+
+      // ── Predict ──────────────────────────────────────────────────────
+      let next = { latitude: c.latitude, longitude: c.longitude };
+      if (speed > 0.3) {
+        const rad    = (heading * Math.PI) / 180;
+        const latPerM = 1 / 111320;
+        const lngPerM = 1 / (111320 * Math.cos(c.latitude * Math.PI / 180));
+        next = {
+          latitude:  c.latitude  + speed * DT * Math.cos(rad) * latPerM,
+          longitude: c.longitude + speed * DT * Math.sin(rad) * lngPerM,
+        };
+      }
+
+      // ── Correct ───────────────────────────────────────────────────────
+      // Small 8% pull toward GPS each tick — smooth, no jump
+      const ALPHA = 0.08;
+      next = {
+        latitude:  next.latitude  + ALPHA * (gps.latitude  - next.latitude),
+        longitude: next.longitude + ALPHA * (gps.longitude - next.longitude),
       };
+
+      // Safety clamp: if drifted too far, snap harder toward GPS
+      const distM = getDistanceKm(next.latitude, next.longitude, gps.latitude, gps.longitude) * 1000;
+      if (distM > 40) {
+        next = {
+          latitude:  c.latitude  + 0.5 * (gps.latitude  - c.latitude),
+          longitude: c.longitude + 0.5 * (gps.longitude - c.longitude),
+        };
+      }
+
       displayCoordsRef.current = next;
       setMarkerCoords({ ...next });
-    }, 50);
+    }, 16);
     return () => clearInterval(id);
   }, []);
 
@@ -615,7 +644,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
           onPanDrag={() => handleMapInteractionRef.current()} onRegionChangeComplete={() => {}}>
           {markerCoords && (
-            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
+            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading} tracksViewChanges={false}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
