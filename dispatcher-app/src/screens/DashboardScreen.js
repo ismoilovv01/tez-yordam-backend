@@ -121,6 +121,7 @@ function DashboardScreen({ token, user, onLogout }) {
   const animFramesRef = useRef({});       // {id: rafId}
   const ambulanceImgDataRef = useRef(null); // preloaded PNG data URL
   const driverRouteRendererRef = useRef(null);
+  const emergencyMarkersRef = useRef({});   // {id: google.maps.Marker}
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);
 
@@ -390,6 +391,58 @@ function DashboardScreen({ token, user, onLogout }) {
     });
   }, [ambulances, mapFilter, allEmergencies, mapReady]);
 
+  // Emergency location pins — red pulsing markers for active/unresolved calls.
+  // Dispatcher can instantly see WHERE each emergency is on the map relative to ambulances.
+  useEffect(() => {
+    if (!gMapRef.current || !window.google) return;
+    const ACTIVE = ['new', 'confirmed', 'assigned', 'on_the_way'];
+    const active = allEmergencies.filter(e => ACTIVE.includes(e.status) && e.latitude && e.longitude);
+    const activeIds = new Set(active.map(e => String(e.id)));
+
+    // Remove stale pins
+    Object.keys(emergencyMarkersRef.current).forEach(id => {
+      if (!activeIds.has(id)) {
+        emergencyMarkersRef.current[id].setMap(null);
+        delete emergencyMarkersRef.current[id];
+      }
+    });
+
+    const statusColor = { new: '#e74c3c', confirmed: '#f39c12', assigned: '#2980b9', on_the_way: '#27ae60' };
+
+    active.forEach(e => {
+      const id = String(e.id);
+      const pos = { lat: parseFloat(e.latitude), lng: parseFloat(e.longitude) };
+      const color = statusColor[e.status] || '#e74c3c';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="44" viewBox="0 0 36 44">
+        <circle cx="18" cy="18" r="16" fill="${color}" stroke="#fff" stroke-width="3" opacity="0.25"/>
+        <circle cx="18" cy="18" r="10" fill="${color}" stroke="#fff" stroke-width="2.5"/>
+        <line x1="18" y1="28" x2="18" y2="44" stroke="${color}" stroke-width="3" stroke-linecap="round"/>
+        <text x="18" y="22" text-anchor="middle" font-size="11" fill="#fff" font-weight="bold">${e.id}</text>
+      </svg>`;
+      const icon = {
+        url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+        scaledSize: new window.google.maps.Size(36, 44),
+        anchor: new window.google.maps.Point(18, 44),
+      };
+
+      if (emergencyMarkersRef.current[id]) {
+        emergencyMarkersRef.current[id].setPosition(pos);
+        emergencyMarkersRef.current[id].setIcon(icon);
+      } else {
+        const marker = new window.google.maps.Marker({
+          position: pos, map: gMapRef.current,
+          title: `Chaqiruv #${e.id} — ${STATUS_UZ[e.status] || e.status}`,
+          icon, zIndex: 1000,
+        });
+        marker.addListener('click', () => {
+          setDetailEmergency(e);
+          gMapRef.current.panTo(pos);
+        });
+        emergencyMarkersRef.current[id] = marker;
+      }
+    });
+  }, [allEmergencies, mapReady]);
+
   // Draw route line only for selected driver (on click), clear when deselected
   useEffect(() => {
     const map = gMapRef.current;
@@ -519,19 +572,33 @@ function DashboardScreen({ token, user, onLogout }) {
             <h2>Ambulans belgilash #{selectedEmergency.id}</h2>
             <div className="ambulance-list">
               {(() => {
-                const fiveMinAgo = new Date(Date.now() - 10 * 1000);
-                const activeAvailable = ambulances.filter(a =>
-                  a.status === 'available' &&
-                  a.last_location_update &&
-                  new Date(a.last_location_update) > fiveMinAgo
-                );
+                const tenSecAgo = new Date(Date.now() - 10 * 1000);
+                const eLat = parseFloat(selectedEmergency.latitude);
+                const eLng = parseFloat(selectedEmergency.longitude);
+                const haversine = (lat1, lon1, lat2, lon2) => {
+                  const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+                  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+                  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                };
+                const activeAvailable = ambulances
+                  .filter(a => a.status === 'available' && a.last_location_update && new Date(a.last_location_update) > tenSecAgo)
+                  .map(a => ({
+                    ...a,
+                    distKm: (a.latitude && a.longitude)
+                      ? haversine(eLat, eLng, parseFloat(a.latitude), parseFloat(a.longitude))
+                      : Infinity,
+                  }))
+                  .sort((a, b) => a.distKm - b.distKm); // nearest first
+
                 if (activeAvailable.length === 0)
                   return <p style={{textAlign:'center',color:'#888',padding:20}}>Faol bo'sh ambulans yo'q</p>;
                 return activeAvailable.map((amb) => (
                   <button key={amb.id} className="ambulance-option"
                     onClick={() => handleAssignAmbulance(selectedEmergency.id, amb.id)}>
-                    <strong>{amb.unit_number}</strong><br />{amb.driver_name}
-                    <span style={{fontSize:11,color:'#27ae60',display:'block',marginTop:2}}>🟢 Faol / Tayyor</span>
+                    <strong>{amb.unit_number}</strong> — {amb.driver_name}
+                    <span style={{fontSize:11,color:'#27ae60',display:'block',marginTop:2}}>
+                      🟢 Tayyor &nbsp;•&nbsp; 📍 {amb.distKm === Infinity ? '—' : amb.distKm.toFixed(1) + ' km uzoqlikda'}
+                    </span>
                   </button>
                 ));
               })()}

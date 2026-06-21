@@ -917,15 +917,54 @@ app.patch('/api/driver/cancel/:callId', authenticateToken, async (req, res) => {
   }
 });
 
+// Haversine distance between two lat/lng points, returns km
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Proximity-based call visibility (mirrors taxi-dispatch logic):
+//   0–3 s after creation  → only drivers within 3 km see the call
+//   3–6 s after creation  → drivers within 8 km see the call
+//   6 s+                  → all drivers in the system see the call
+// If the driver has no location on file yet, they only see calls older than 6 s.
 app.get('/api/driver/available-calls', authenticateToken, async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT e.id, e.latitude, e.longitude, e.status, e.created_at, e.description,
-              u.phone AS caller_phone, u.first_name, u.last_name
-       FROM emergencies e LEFT JOIN users u ON e.user_id = u.id
-       WHERE e.status = 'confirmed' ORDER BY e.created_at DESC`
-    );
-    res.json({ calls: result.rows });
+    const [callsResult, driverResult] = await Promise.all([
+      pool.query(
+        `SELECT e.id, e.latitude, e.longitude, e.status, e.created_at, e.description,
+                u.phone AS caller_phone, u.first_name, u.last_name
+         FROM emergencies e LEFT JOIN users u ON e.user_id = u.id
+         WHERE e.status = 'confirmed' ORDER BY e.created_at DESC`
+      ),
+      pool.query('SELECT latitude, longitude FROM ambulances WHERE driver_user_id = $1', [req.userId]),
+    ]);
+
+    const amb = driverResult.rows[0];
+    const driverLat = amb?.latitude ? parseFloat(amb.latitude) : null;
+    const driverLng = amb?.longitude ? parseFloat(amb.longitude) : null;
+    const now = Date.now();
+
+    const calls = callsResult.rows.filter(call => {
+      const ageSec = (now - new Date(call.created_at).getTime()) / 1000;
+
+      // Old enough — everyone sees it
+      if (ageSec >= 6) return true;
+
+      // Driver has no location stored yet — only show old calls
+      if (driverLat === null) return false;
+
+      const dist = haversineKm(driverLat, driverLng, parseFloat(call.latitude), parseFloat(call.longitude));
+
+      if (ageSec < 3) return dist <= 3;   // wave 1: 3 km radius
+      return dist <= 8;                    // wave 2: 8 km radius
+    });
+
+    res.json({ calls });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
