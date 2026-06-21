@@ -814,14 +814,20 @@ app.get('/api/driver/assigned-call', authenticateToken, async (req, res) => {
   }
 });
 
-// Re-links ambulance to driver by phone if driver_user_id is missing (e.g. after ambulance was deleted/recreated)
+// Re-links ambulance to driver by phone if driver_user_id is missing or points to a deleted user.
 async function relinkAmbulanceIfNeeded(userId) {
   let r = await pool.query('SELECT id FROM ambulances WHERE driver_user_id = $1', [userId]);
   if (r.rows.length) return r.rows[0].id;
   const uR = await pool.query('SELECT phone FROM users WHERE id = $1', [userId]);
   if (!uR.rows.length || !uR.rows[0].phone) return null;
+  // Match ambulances whose driver_phone matches AND whose driver_user_id is either
+  // NULL (never linked) or points to a user that no longer exists (deleted account).
   const aR = await pool.query(
-    "SELECT id FROM ambulances WHERE driver_phone = $1 AND driver_user_id IS NULL ORDER BY id DESC LIMIT 1",
+    `SELECT a.id FROM ambulances a
+     LEFT JOIN users u ON a.driver_user_id = u.id
+     WHERE a.driver_phone = $1
+       AND (a.driver_user_id IS NULL OR u.id IS NULL)
+     ORDER BY a.id DESC LIMIT 1`,
     [uR.rows[0].phone]
   );
   if (!aR.rows.length) return null;

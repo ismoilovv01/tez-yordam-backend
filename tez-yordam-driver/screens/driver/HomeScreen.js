@@ -122,6 +122,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const prevHeadingStateRef = useRef(0);
   const smoothedCoordsRef   = useRef(null);
   const prevAvailableKeyRef = useRef('');
+  const markerRef           = useRef(null);
   const gpsTargetRef        = useRef(null);
   const displayCoordsRef    = useRef(null);
   const lastGpsTimeRef      = useRef(null);
@@ -192,7 +193,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
         displayCoordsRef.current = { ...coords };
         setMarkerCoords({ ...coords });
         if (mapReadyRef.current) {
-          moveCamera(coords, heading, { pitch: is3DRef.current ? 50 : 0, zoom: 17, duration: 800 });
+          moveCamera(coords, 0, { pitch: 0, zoom: 17, duration: 0 });
         }
       } catch {}
 
@@ -445,7 +446,13 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
       }
 
       displayCoordsRef.current = next;
-      setMarkerCoords({ ...next });
+      // animateMarkerToCoordinate runs on the Android native thread at 60fps —
+      // no React re-render, no JS bridge overhead, no visible jump.
+      if (markerRef.current) {
+        markerRef.current.animateMarkerToCoordinate(next, 100);
+      } else {
+        setMarkerCoords({ ...next });
+      }
     }, 16);
     return () => clearInterval(id);
   }, []);
@@ -583,7 +590,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
   const onMapReady = () => {
     mapReadyRef.current = true;
     if (locationRef.current) {
-      moveCamera(locationRef.current, headingRef.current, { pitch: is3DRef.current ? 35 : 0, zoom: 17, duration: 0 });
+      moveCamera(locationRef.current, 0, { pitch: 0, zoom: 17, duration: 0 });
     }
   };
 
@@ -645,7 +652,7 @@ function DriverScreen({ token, user, onLogout, navigation, accentColor, markerCo
           rotateEnabled={true} pitchEnabled={true} onMapReady={onMapReady}
           onPanDrag={() => handleMapInteractionRef.current()} onRegionChangeComplete={() => {}}>
           {markerCoords && (
-            <Marker coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
+            <Marker ref={markerRef} coordinate={markerCoords} anchor={{ x: 0.5, y: 0.5 }} flat rotation={driverHeading}>
               {isNavigating
                 ? <View style={[s.navArrow, { backgroundColor: accentColor }]}><Text style={s.navArrowText}>▲</Text></View>
                 : <View style={[s.driverMarker, { borderColor: accentColor }]}><Text style={{ fontSize: 20 }}>{markerEmoji}</Text></View>}
