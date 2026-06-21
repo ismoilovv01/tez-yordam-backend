@@ -905,7 +905,7 @@ app.patch('/api/driver/cancel/:callId', authenticateToken, async (req, res) => {
     const ambId = await relinkAmbulanceIfNeeded(req.userId);
     if (!ambId) return res.status(404).json({ error: 'No ambulance linked' });
     const result = await pool.query(
-      "UPDATE emergencies SET status = 'cancelled', cancelled_by = 'driver', assigned_ambulance_id = NULL, rejected_at = NOW() WHERE id = $1 AND assigned_ambulance_id = $2 RETURNING *",
+      "UPDATE emergencies SET status = 'cancelled', cancelled_by = 'driver', assigned_ambulance_id = NULL WHERE id = $1 AND assigned_ambulance_id = $2 RETURNING *",
       [req.params.callId, ambId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Call not found' });
